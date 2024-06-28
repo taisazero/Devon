@@ -25,6 +25,7 @@ from devon_agent.agents.default.openai_prompts import (
     openai_system_prompt_template_v3)
 from devon_agent.agents.model import (AnthropicModel, GroqModel,
                                       ModelArguments, OllamaModel, OpenAiModel)
+from devon_agent.config import AgentConfig, Config
 from devon_agent.tools.utils import get_cwd
 from devon_agent.udiff import Hallucination
 from devon_agent.utils import LOGGER_NAME, DotDict
@@ -47,11 +48,9 @@ class AgentArguments(BaseModel):
 @dataclass(frozen=False)
 class Agent:
     name: str
-    args: AgentArguments
-    chat_history: list[dict[str, str]] = field(default_factory=list)
+    global_config : Config
+    agent_config: AgentConfig
     interrupt: str = ""
-    temperature: float = 0.0
-    api_key: Optional[str] = None
 
     def run(self, session: "Session", observation: str = None): ...
 
@@ -103,38 +102,37 @@ class TaskAgent(Agent):
     }
 
     def reset(self):
-        self.chat_history = []
+        self.agent_config.chat_history = []
         self.interrupt = ""
-        self.temperature = 0.0
         self.scratchpad = None
 
     def _initialize_model(self):
-        is_custom_model = self.args.model not in self.default_models
+        is_custom_model = self.agent_config.model not in self.default_models
         if is_custom_model:
-            if not self.api_key:
+            if not self.agent_config.api_key:
                 raise Exception("API key not specified for custom model")
-            if not self.args.api_base:
+            if not self.agent_config.api_base:
                 raise Exception("API base not specified for custom model")
-            if not self.args.prompt_type:
+            if not self.agent_config.prompt_type:
                 raise Exception("Prompt type not specified for custom model")
 
             # Assume it is openai-compatible
             return OpenAiModel(
                 args=ModelArguments(
-                    model_name=self.args.model,
-                    temperature=self.temperature,
-                    api_key=self.api_key,
-                    api_base=self.args.api_base,
-                    prompt_type=self.args.prompt_type,
+                    model_name=self.agent_config.model,
+                    temperature=self.agent_config.temperature,
+                    api_key=self.agent_config.api_key,
+                    api_base=self.agent_config.api_base,
+                    prompt_type=self.agent_config.prompt_type,
                 )
             )
         # print("API KEY", self.api_key)
 
-        return self.default_models[self.args.model](
+        return self.default_models[self.agent_config.model](
             args=ModelArguments(
-                model_name=self.args.model,
-                temperature=self.temperature,
-                api_key=self.api_key,
+                model_name=self.agent_config.model,
+                temperature=self.agent_config.temperature,
+                api_key=self.agent_config.api_key,
             )
         )
 
@@ -176,7 +174,7 @@ class TaskAgent(Agent):
             + "\n"
         )
 
-        history = anthropic_history_to_bash_history(self.chat_history)
+        history = anthropic_history_to_bash_history(self.agent_config.chat_history)
         system_prompt = anthropic_system_prompt_template_v3(command_docs)
         last_user_prompt = anthropic_last_user_prompt_template_v3(
             task,
@@ -209,7 +207,7 @@ class TaskAgent(Agent):
 
         history = [
             entry
-            for entry in self.chat_history
+            for entry in self.agent_config.chat_history
             if entry["role"] == "user" or entry["role"] == "assistant"
         ]
         system_prompt = openai_system_prompt_template_v3(command_docs)
@@ -241,7 +239,7 @@ class TaskAgent(Agent):
             + "\n"
         )
 
-        history = llama3_history_to_bash_history(self.chat_history)
+        history = llama3_history_to_bash_history(self.agent_config.chat_history)
         system_prompt = llama3_system_prompt_template_v1(command_docs)
         last_user_prompt = llama3_last_user_prompt_template_v1(
             task,
@@ -287,12 +285,12 @@ class TaskAgent(Agent):
             self.scratchpad,
         )
 
-        if len(self.chat_history) < 3:
-            messages = self.chat_history + [
+        if len(self.agent_config.chat_history) < 3:
+            messages = self.agent_config.chat_history + [
                 {"role": "user", "content": last_user_prompt}
             ]
         else:
-            messages = self.chat_history + [
+            messages = self.agent_config.chat_history + [
                 {"role": "user", "content": last_user_prompt}
             ]
 
@@ -315,7 +313,7 @@ class TaskAgent(Agent):
                 session.state.editor.files, session.state.editor.PAGE_SIZE
             )
 
-            self.chat_history.append(
+            self.agent_config.chat_history.append(
                 {"role": "user", "content": observation, "agent": self.name}
             )
 
@@ -326,12 +324,12 @@ class TaskAgent(Agent):
                 "ollama": self._prepare_ollama,
             }
 
-            if not self.args.prompt_type:
-                self.args.prompt_type = self.default_model_configs[self.args.model][
+            if not self.agent_config.prompt_type:
+                self.agent_config.prompt_type = self.default_model_configs[self.agent_config.model][
                     "prompt_type"
                 ]
 
-            messages, system_prompt = prompts[self.args.prompt_type](
+            messages, system_prompt = prompts[self.agent_config.prompt_type](
                 task, editor, session
             )
 
@@ -352,7 +350,7 @@ class TaskAgent(Agent):
                     "Agent failed to follow response format instructions"
                 )
 
-            self.chat_history.append(
+            self.agent_config.chat_history.append(
                 {
                     "role": "assistant",
                     "content": output,

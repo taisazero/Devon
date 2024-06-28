@@ -11,6 +11,7 @@ from devon_agent.agents.conversational_agent import ConversationalAgent
 
 
 from devon_agent.agents.default.agent import AgentArguments, TaskAgent
+from devon_agent.config import Config
 from devon_agent.environment import LocalEnvironment, UserEnvironment
 from devon_agent.fossil_versioning import FossilVersioning
 from devon_agent.models import _delete_session_util, _save_session_util
@@ -103,23 +104,32 @@ stateDiagram
 
 
 class Session:
-    def __init__(self, args: SessionArguments, agent, persist):
-        self.name = args.name
+    def __init__(self, config: Config):
+        self.name = config.name
+        self.config = config
+        self.persist_to_db = config.persist_to_db
+        self.logger = logging.getLogger(self.config.logger_name)
 
-        self.persist_to_db = persist
+        agent_config = self.config.agent_configs[0]
 
-        logger = logging.getLogger(__name__)
-        self.logger = logger
+        if agent_config.agent_type == "conversational":
+            self.agent = ConversationalAgent(
+                name=agent_config.name,
+                args=AgentArguments(**agent_config.config),
+                temperature=agent_config.temperature,
+                chat_history=agent_config.chat_history,
+            )
+        else:
+            raise ValueError(f"Agent type {agent_config.agent_type} not supported")
 
-        self.agent: TaskAgent = agent
+        # self.agent: TaskAgent = agent_config.agent_type
 
-        self.args = args
 
-        self.base_path = args.path
+        self.base_path = config.path
 
         self.event_log: List[Event] = []
 
-        self.get_user_input = args.user_input
+        self.get_user_input = config.user_input
 
         self.telemetry_client = Posthog()
 
@@ -127,11 +137,11 @@ class Session:
 
         self.status = "paused"
 
-        self.client = chromadb.PersistentClient(path=os.path.join(args.db_path, "vectorDB"))
+        # self.client = chromadb.PersistentClient(path=os.path.join(args.db_path, "vectorDB"))
 
-        self.db_path = args.db_path
+        self.db_path = config.db_path
 
-        local_environment = LocalEnvironment(self.args.path)
+        local_environment = LocalEnvironment(self.config.path)
         local_environment.register_tools(
             {
                 "create_file": CreateFileTool().register_post_hook(save_create_file),
@@ -165,10 +175,10 @@ class Session:
             #     })
         self.default_environment = local_environment
 
-        if self.args.headless:
+        if self.config.headless:
             self.environments = {"local": local_environment}
         else:
-            user_environment = UserEnvironment(self.args.user_input)
+            user_environment = UserEnvironment(self.config.user_input)
             user_environment.register_tools(
                 {"ask_user": AskUserTool()}
             )
@@ -182,11 +192,11 @@ class Session:
         self.state = DotDict({})
         self.state.PAGE_SIZE = 200
         self.state.task = None
-        self.args.task = None
+        self.config.task = None
 
         self.status = "paused"
 
-        self.path = self.args.path
+        self.path = self.config.path
         self.event_id = 0
         self.event_log = []
         self.agent.reset()
@@ -202,18 +212,9 @@ class Session:
 
     def to_dict(self):
         return {
-            "task": self.state.task,
-            "path": self.base_path,
-            "name": self.name,
+            "config": self.config.model_dump(),
             "event_history": [event for event in self.event_log],
             "cwd": self.environments["local"].get_cwd(),
-            "db_path": self.args.db_path,
-            "agent": {
-                "name": self.agent.name,
-                "config": self.agent.args.model_dump(),
-                "temperature": self.agent.temperature,
-                "chat_history": self.agent.chat_history,
-            },
         }
 
     @classmethod

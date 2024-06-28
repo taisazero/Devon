@@ -44,17 +44,16 @@ class ConversationalAgent(Agent):
     }
 
     def reset(self):
-        self.chat_history = []
+        self.agent_config.chat_history = []
         self.interrupt = ""
-        self.temperature = 0.0
         self.scratchpad = None
 
     def _initialize_model(self):
-        return self.default_models[self.args.model](
+        return self.default_models[self.agent_config.model](
             args=ModelArguments(
-                model_name=self.args.model,
-                temperature=self.temperature,
-                api_key=self.api_key,
+                model_name=self.agent_config.model,
+                temperature=self.agent_config.temperature,
+                api_key=self.agent_config.api_key,
             )
         )
     
@@ -96,7 +95,7 @@ class ConversationalAgent(Agent):
             + "\n"
         )
 
-        history = anthropic_history_to_bash_history(self.chat_history)
+        history = anthropic_history_to_bash_history(self.agent_config.chat_history)
         system_prompt = conversational_agent_system_prompt_template_v3(command_docs)
         last_user_prompt = conversational_agent_last_user_prompt_template_v3(
             history,
