@@ -73,7 +73,11 @@ export function SpinnerMessage({ paused = false }: { paused?: boolean }) {
             <div className="ml-5 h-[32px] flex flex-row items-center flex-1 space-y-2 overflow-hidden px-1">
                 {/* <Spinner paused={paused} /> */}
                 {/* <AtomLoader speed="fast" size="xs" /> */}
-                {!paused && <DotsSpinner size={8} paused={paused} />}
+                {paused ? (
+                    <p className="text-gray-400">(paused)</p>
+                ) : (
+                    <DotsSpinner size={8} paused={paused} />
+                )}
             </div>
         </div>
     )
