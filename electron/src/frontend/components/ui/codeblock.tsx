@@ -3,7 +3,7 @@
 import { FC, memo } from 'react'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { coldarkDark } from 'react-syntax-highlighter/dist/cjs/styles/prism'
-
+import { cn } from '@/lib/utils'
 import { useCopyToClipboard } from '@/lib/hooks/use-copy-to-clipboard'
 import { Copy, CopyCheck, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -27,7 +27,7 @@ interface SimpleCodeBlockProps {
     value: string
     fileName: string
     subtext: string
-    onClickHeader: () => void
+    // onClickHeader: () => void
 }
 
 interface languageMap {
@@ -203,7 +203,13 @@ const CodeBlock: FC<CodeBlockProps> = memo(
 CodeBlock.displayName = 'CodeBlock'
 
 const SimpleCodeBlock: FC<SimpleCodeBlockProps> = memo(
-    ({ language, value, fileName, subtext, onClickHeader }) => {
+    ({
+        language,
+        value,
+        fileName,
+        subtext,
+        // onClickHeader
+    }) => {
         const { isCopied, copyToClipboard } = useCopyToClipboard({
             timeout: 2000,
         })
@@ -220,8 +226,11 @@ const SimpleCodeBlock: FC<SimpleCodeBlockProps> = memo(
         return (
             <div className="relative w-full font-sans codeblock bg-zinc-950 rounded-md overflow-hidden border-[1px] border-outlinecolor">
                 <div
-                    className="flex items-center justify-between w-full pl-3 py-0 pr-1 bg-code-header text-zinc-100 rounded-t-md sticky top-0 z-10 hover:cursor-pointer"
-                    onClick={onClickHeader}
+                    className={cn(
+                        'flex items-center justify-between w-full pl-3 py-0 pr-1 bg-code-header text-zinc-100 rounded-t-md sticky top-0 z-10',
+                        // onClickHeader ? 'cursor-pointer' : 'cursor-default'
+                    )}
+                    // onClick={onClickHeader}
                 >
                     <div className="flex py-2">
                         {language && (

@@ -39,6 +39,9 @@ const ChatInputField = React.memo(
         const [selectedCodeSnippet, setSelectedCodeSnippet] =
             useAtom<ICodeSnippet | null>(selectedCodeSnippetAtom)
         const [codeSnippets, setCodeSnippets] = useAtom(codeSnippetsAtom)
+        const [removedSnippets, setRemovedSnippets] = useState<Set<string>>(
+            new Set()
+        )
         const prevProjectPath = useRef<string>('')
 
         const [openProjectModal, setOpenProjectModal] = useState(false)
@@ -77,7 +80,10 @@ const ChatInputField = React.memo(
         )
 
         useEffect(() => {
-            if (selectedCodeSnippet) {
+            if (
+                selectedCodeSnippet &&
+                !removedSnippets.has(selectedCodeSnippet.id)
+            ) {
                 // Check if it already exists
                 const existingSnippet = codeSnippets.find(
                     snippet => snippet.id === selectedCodeSnippet.id
@@ -104,10 +110,11 @@ const ChatInputField = React.memo(
                     }
                 }
             }
-        }, [selectedCodeSnippet, codeSnippets, input])
+        }, [selectedCodeSnippet, codeSnippets, input, removedSnippets])
 
         const handleRemoveSnippet = useCallback((id: string) => {
             setCodeSnippets(prev => prev.filter(snippet => snippet.id !== id))
+            setRemovedSnippets(prev => new Set(prev).add(id))
         }, [])
 
         const submitUserMessage = useCallback(
@@ -133,7 +140,7 @@ const ChatInputField = React.memo(
                 <CodeSnippet
                     snippets={codeSnippets}
                     onClose={handleRemoveSnippet}
-                    onClickHeader={addSnippetToInputField}
+                    // onClickHeader={addSnippetToInputField}
                 />
             ),
             [codeSnippets, handleRemoveSnippet, addSnippetToInputField]
