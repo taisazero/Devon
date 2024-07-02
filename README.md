@@ -195,11 +195,11 @@ devon-tui --help
 
 ### Past milestones
 
-- [x] **June 28, 2024** - File and code referencing, improve steerability, Claude Sonnet support [v0.0.16](https://x.com/realmcore_/status/1806770333451685942?s=46&t=vmh-a24cg2kpziooU0KxGw)
-- [x] **June 14, 2024** - Launch Electron UI [v0.0.13](https://x.com/realmcore_/status/1801776780245929999?s=46&t=vmh-a24cg2kpziooU0KxGw)
-- [x] **June 1, 2024** - [Devon V2](https://x.com/realmcore_/status/1797122891068355010?s=46&t=vmh-a24cg2kpziooU0KxGw) Beta Electron UI
-- [x] **May 19, 2024** - GPT4o support + better interface support [v0.1.7](https://x.com/realmcore_/status/1792246200172953701?s=46&t=vmh-a24cg2kpziooU0KxGw)
-- [x] **May 12, 2024** - Complete interactive agent [v0.1.0](https://x.com/realmcore_/status/1789706405680910724?s=46&t=vmh-a24cg2kpziooU0KxGw)
+- [x] **June 28, 2024** - File and code referencing, improve steerability, Claude Sonnet support v0.0.16
+- [x] **June 14, 2024** - Launch Electron UI v0.0.13
+- [x] **June 1, 2024** - Devon V2 Beta Electron UI
+- [x] **May 19, 2024** - GPT4o support + better interface support v0.1.7
+- [x] **May 12, 2024** - Complete interactive agent v0.1.0
 - [x] **May 10, 2024** - Add steerability features
 - [x] **May 8, 2024** - Beat AutoCodeRover on SWE-Bench Lite
 - [x] **Mid April, 2024** - Add repo level code search tooling
