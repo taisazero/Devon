@@ -38,10 +38,13 @@ https://github.com/entropy-research/Devon/assets/61808204/f3197a56-3d6d-479f-bc0
 To install using `pipx` + `npm`:
 
 ```bash
-# Step 1: For the backend
+# Step 1: Ensure directory where pipx stores apps is in your PATH environment variable
+pipx ensurepath
+
+# Step 2: For the backend
 pipx install devon_agent
 
-# Step 2: For the main UI (install and run)
+# Step 3: For the main UI (install and run)
 npx devon-ui
 ```
 
