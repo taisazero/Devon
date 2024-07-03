@@ -22,7 +22,7 @@ def llama3_7b_history_to_bash_history(history):
     #     "agent": self.name,
 
     bash_history = ""
-    for entry in history:
+    for entry in history[::-1][:10][::-1]:
         if entry["role"] == "user":
             result = entry["content"].strip() if entry["content"] else "" + "\n"
             bash_history += f"<result>\n{result}\n</result>"

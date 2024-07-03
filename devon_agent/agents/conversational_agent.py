@@ -129,7 +129,7 @@ class ConversationalAgent(Agent):
 
         history = [
             entry
-            for entry in self.chat_history
+            for entry in self.chat_history[::-1][:15][::-1]
             if entry["role"] == "user" or entry["role"] == "assistant"
         ]
         system_prompt = openai_conversation_agent_system_prompt_template(command_docs)

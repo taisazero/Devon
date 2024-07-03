@@ -38,7 +38,7 @@ def anthropic_history_to_bash_history(history):
     #     "agent": self.name,
 
     bash_history = ""
-    for entry in history:
+    for entry in history[::-1][:15][::-1]:
         if entry["role"] == "user":
             result = entry["content"].strip() if entry["content"] else "" + "\n"
             bash_history += f"<RESULT>\n{result}\n</RESULT>"
@@ -51,6 +51,7 @@ def anthropic_history_to_bash_history(history):
 </COMMAND>
 </YOU>
 """
+    print(bash_history)
     return bash_history
 
 
