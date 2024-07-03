@@ -130,14 +130,6 @@ const ChatInputField = ({
         sessionActorRef.send({ type: 'session.toggle' })
     }, [sessionActorRef])
 
-    const codeSnippets = (
-        <CodeSnippet
-            snippets={codeSnippets}
-            onClose={handleRemoveSnippet}
-            // onClickHeader={addSnippetToInputField}
-        />
-    )
-
     return (
         <div
             className={`w-full relative grid align-middle px-5 ${
@@ -157,8 +149,11 @@ const ChatInputField = ({
                     pauseHandler={handlePause}
                 />
             )}
-
-            {codeSnippets}
+            <CodeSnippet
+                snippets={codeSnippets}
+                onClose={handleRemoveSnippet}
+                // onClickHeader={addSnippetToInputField}
+            />
             {!viewOnly && (
                 <>
                     <form
