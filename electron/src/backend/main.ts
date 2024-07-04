@@ -38,6 +38,7 @@ portfinder.setBasePort(10000)
 let use_port = NaN
 const spawnAppWindow = async () => {
     const db_path = path.join(app.getPath('userData'))
+    console.log(db_path)
     await portfinder
         .getPortPromise()
         .then((port: number) => {
