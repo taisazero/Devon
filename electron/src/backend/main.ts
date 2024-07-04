@@ -14,7 +14,46 @@ import fs from 'fs'
 import './plugins/editor'
 
 const DEBUG_MODE = false
-const DEV_MODE = process.env.DEV_MODE ?? false
+const DEV_MODE = true ?? false
+
+const winston = require('winston')
+
+const userDataPath = app.getPath('userData')
+const logDir = path.join(userDataPath, 'logs')
+
+// Ensure log directory exists
+if (!fs.existsSync(logDir)) {
+    fs.mkdirSync(logDir, { recursive: true })
+}
+console.log(logDir)
+
+const logger = winston.createLogger({
+    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+    format: winston.format.combine(
+        winston.format.timestamp(),
+        winston.format.printf(({ level, message, timestamp }) => {
+            return `${timestamp} ${level}: ${message}`
+        })
+    ),
+    transports: [
+        new winston.transports.File({
+            filename: path.join(logDir, 'error.log'),
+            level: 'error',
+        }),
+        new winston.transports.File({
+            filename: path.join(logDir, 'combined.log'),
+        }),
+    ],
+})
+
+// If we're not in production, log to the console as well
+if (process.env.NODE_ENV !== 'production') {
+    logger.add(
+        new winston.transports.Console({
+            format: winston.format.simple(),
+        })
+    )
+}
 
 function writeToLogFile(logMessage: string) {
     if (!DEBUG_MODE) {
@@ -180,13 +219,14 @@ const controller = new AbortController()
 app.on('ready', () => {
     // For safeStorage of secrets
     if (safeStorage.isEncryptionAvailable()) {
-        console.log('Encryption is available and can be used.')
+        logger.info('Encryption is available and can be used.')
     } else {
-        console.log(
+        logger.warn(
             'Encryption is not available. Fallback mechanisms might be required.'
         )
     }
 
+    logger.info('Application is ready. Spawning app window.')
     spawnAppWindow()
 })
 
@@ -194,6 +234,7 @@ app.on('ready', () => {
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
 app.on('window-all-closed', () => {
+    logger.info('All windows closed. Quitting application.')
     // if (process.platform !== 'darwin') {
     app.quit()
     // }
