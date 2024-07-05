@@ -1,4 +1,4 @@
-#!/usr/bin/bash bash
+#!/usr/bin/env bash
 
 # check if python3  is installed
 if ! command -v python3 &> /dev/null
