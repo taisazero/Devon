@@ -1,49 +1,39 @@
-
-
-
-# import pytest
-# from devon_agent.session import Session, SessionArguments
-# from devon_agent.environment import LocalEnvironment
-
-# @pytest.fixture
-# def session_fixture():
-#     """Fixture to provide a session object with a local environment setup."""
-    
-#     args = SessionArguments(path="/test/path", user_input=None, name="test_session")
-#     env = LocalEnvironment("/test/path")
-#     session = Session(args=args, agent=None)
-#     session.default_environment = env
-#     return session
-
-
-
 import os
-from devon_agent.agents.default.agent import AgentArguments, TaskAgent
+import pathlib
+from typing import List
+import pytest
+from devon_agent.config import Config
+from devon_agent.environments.shell_environment import LocalShellEnvironment, TempDirShellEnvironment
+from devon_agent.tools.shelltool import ShellTool
 
-from devon_agent.session import Session,SessionArguments
+
+@pytest.fixture
+def files_to_copy():
+    return ["test_files"]
+
+@pytest.fixture
+def temp_dir_shell_environment(tmp_path : pathlib.Path, files_to_copy: List[str]):
+    env = TempDirShellEnvironment(path=tmp_path.as_posix())
+    env.setup(files_to_copy)
+    assert os.path.exists(os.path.join(env.path, "test_files"))
+    env = LocalShellEnvironment(path=env.path,tools={
+    "shell" : ShellTool()
+},default_tool=ShellTool())
+    return env
 
 
-def session_fixture(tmp_path):
-    agent = TaskAgent(
-        name="test",
-        args=AgentArguments(
-            model="gpt4-o",
-        ),
-        api_key=os.getenv("OPENAI_API_KEY"),
+def test_config(temp_dir_shell_environment):
+
+    config = Config(
+        name="test_config",
+        environments={
+            "temp_dir_shell_environment" : temp_dir_shell_environment
+        },
+        logger_name="test_logger",
+        default_environment="temp_dir_shell_environment",
+        db_path=".temp",
+        persist_to_db=True,
+        ignore_files=False,
+        path=temp_dir_shell_environment.path,
     )
-    session = Session(args=SessionArguments(path=tmp_path, user_input=None, name="test_session"), agent=agent,persist=False)
-    return session
-
-def test_session_lifecycle(tmp_path):
-    """Test the event loop."""
-    session = session_fixture(tmp_path)
-    session.init_state()
-    assert session.status == "paused"
-    session.start()
-    assert session.status == "running"
-    session.pause()
-    assert session.status == "paused"
-    session.start()
-    assert session.status == "running"
-    # session.terminate()
-    # assert session.status == "terminated"
+    return config

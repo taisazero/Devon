@@ -1,59 +1,25 @@
-import json
-import logging
+
+
+
+from dataclasses import dataclass
 import time
 import traceback
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Optional, Tuple, TypedDict
-
-from pydantic import BaseModel
+from typing import TYPE_CHECKING, Tuple
+import logging
 from tenacity import RetryError
 
-from devon_agent.agents.default.anthropic_prompts import (
-    anthropic_commands_to_command_docs, anthropic_history_to_bash_history,
-    anthropic_last_user_prompt_template_v3,
-    anthropic_system_prompt_template_v3, parse_response)
-from devon_agent.agents.default.codegemma_prompts import (
-    llama3_7b_commands_to_command_docs, llama3_7b_history_to_bash_history,
-    llama3_7b_last_user_prompt_template_v1, llama3_7b_parse_response,
-    llama3_7b_system_prompt_template_v1)
-from devon_agent.agents.default.llama3_prompts import (
-    llama3_commands_to_command_docs, llama3_history_to_bash_history,
-    llama3_last_user_prompt_template_v1, llama3_parse_response,
-    llama3_system_prompt_template_v1)
-from devon_agent.agents.default.openai_prompts import (
-    openai_commands_to_command_docs, openai_last_user_prompt_template_v3,
-    openai_system_prompt_template_v3)
-from devon_agent.agents.model import (AnthropicModel, GroqModel,
-                                      ModelArguments, OllamaModel, OpenAiModel)
-from devon_agent.config import AgentConfig, Config
+from devon_agent.agent import Agent
+from devon_agent.model import AnthropicModel, GroqModel, ModelArguments, OllamaModel, OpenAiModel
+from devon_agent.agents.prompts.anthropic_prompts import anthropic_commands_to_command_docs, anthropic_history_to_bash_history, anthropic_last_user_prompt_template_v3, anthropic_system_prompt_template_v3
+from devon_agent.agents.prompts.codegemma_prompts import llama3_7b_commands_to_command_docs, llama3_7b_last_user_prompt_template_v1, llama3_7b_system_prompt_template_v1
+from devon_agent.agents.prompts.llama3_prompts import llama3_commands_to_command_docs, llama3_history_to_bash_history, llama3_last_user_prompt_template_v1, llama3_parse_response, llama3_system_prompt_template_v1
+from devon_agent.agents.prompts.openai_prompts import openai_commands_to_command_docs, openai_last_user_prompt_template_v3, openai_system_prompt_template_v3
+
 from devon_agent.tools.utils import get_cwd
-from devon_agent.udiff import Hallucination
-from devon_agent.utils import LOGGER_NAME, DotDict
+from devon_agent.utils.utils import Hallucination
 
 if TYPE_CHECKING:
     from devon_agent.session import Session
-
-
-logger = logging.getLogger(LOGGER_NAME)
-
-
-class AgentArguments(BaseModel):
-    model: str
-    # api_key: Optional[str] = None
-    api_base: Optional[str] = None
-    prompt_type: Optional[str] = None
-    # temperature: float = 0.0
-
-
-@dataclass(frozen=False)
-class Agent:
-    name: str
-    global_config : Config
-    agent_config: AgentConfig
-    interrupt: str = ""
-
-    def run(self, session: "Session", observation: str = None): ...
-
 
 @dataclass
 class TaskAgent(Agent):
@@ -359,6 +325,8 @@ class TaskAgent(Agent):
                     "agent": self.name,
                 }
             )
+
+            logger = logging.getLogger(self.global_config.logger_name)
 
             logger.info(f"""
 \n\n\n\n****************\n\n

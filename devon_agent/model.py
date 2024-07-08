@@ -3,12 +3,8 @@ import os
 from dataclasses import dataclass
 from typing import Optional
 
-import litellm
 from litellm import completion
 
-# litellm.telemetry = False
-
-# litellm.set_verbose=True
 
 logger = logging.getLogger("LiteLLM")
 logger.disabled = True
@@ -28,10 +24,10 @@ class HumanModel:
     def __init__(self, args: ModelArguments):
         self.args = args
 
-    def query(self, messages: list[dict[str, str]], system_message: str = "") -> str:
+    def query(self, ask, messages: list[dict[str, str]], system_message: str = "") -> str:
         thought = ""
         print(messages[-1])
-        command = input("enter your command here")
+        command = ask("enter your command here")
         print(f"<THOUGHT>\n{thought}\n</THOUGHT>\n<COMMAND>\n{command}\n</COMMAND>")
         return f"<THOUGHT>\n{thought}\n</THOUGHT>\n<COMMAND>\n{command}\n</COMMAND>"
     
@@ -192,21 +188,3 @@ class OllamaModel:
 
         response = model_completion.choices[0].message.content.rstrip("</command>")
         return response + "</command>"
-
-
-if __name__ == "__main__":
-    from outlines import models, generate
-    from outlines.models.openai import OpenAIConfig
-    from openai import OpenAI
-
-
-    json_grammar = outlines.grammars.json
-
-    client = OpenAI()
-    config = OpenAIConfig("gpt-4o")
-    litellm.drop_params=True
-    client.chat.completions.create = litellm.acompletion
-    model = models.openai(client, config)
-    generator = generate.cfg(model, json_grammar)
-    answer = generator("What is 2+2?")
-    print(answer)

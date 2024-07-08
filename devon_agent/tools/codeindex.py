@@ -1,7 +1,6 @@
 import os
-from dataclasses import dataclass
 
-from devon_agent.retrieval.code_index import CodeIndex
+from devon_agent.tools.retrieval.code_index import CodeIndex
 from devon_agent.tool import Tool
 
 
@@ -16,7 +15,7 @@ def setup_code_index(ctx, **kwargs):
             if "codebase_path" in kwargs:
                 codebase_path = kwargs["codebase_path"]
             else:
-                codebase_path = ctx["session"].base_path
+                codebase_path = ctx["environment"].path
             if codebase_path is None:
                 raise ValueError("Codebase path is required")
 

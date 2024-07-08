@@ -37,7 +37,7 @@ class SubmitTool(Tool):
         signature: submit
         example: `submit`
         """
-        ctx["session"].event_log.append(
+        ctx["event_log"].append(
             {
                 "type": "Stop",
                 "content": "Submit",

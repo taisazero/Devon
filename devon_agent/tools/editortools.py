@@ -1,9 +1,7 @@
-from devon_agent.tool import PreTool, Tool, ToolContext
+from devon_agent.tool import Tool, ToolContext
 from devon_agent.tools.utils import (cwd_normalize_path, file_exists,
                                      make_abs_path, read_file)
-from devon_agent.utils import DotDict
-from devon_agent.vgit import (commit_files, simple_stash_and_commit_changes,
-                              stash_and_commit_changes)
+from devon_agent.utils.utils import DotDict
 
 
 def load_file_to_editor(ctx, file_path):
@@ -109,7 +107,7 @@ class OpenFileTool(Tool):
             return f"File {abs_path} opened in editor"
 
         except Exception as e:
-            ctx["session"].logger.error(
+            ctx["config"].logger.error(
                 f"Failed to open file: {file_path}. Error: {str(e)}"
             )
             return f"Failed to open file: {file_path}. Error: {str(e)}"
@@ -273,7 +271,7 @@ class DeleteFileTool(Tool):
             return f"Successfully deleted file {abs_path}"
 
         except Exception as e:
-            ctx["session"].logger.error(
+            ctx["config"].logger.error(
                 f"Failed to delete file: {file_path}. Error: {str(e)}"
             )
             return f"Failed to delete file: {file_path}. Error: {str(e)}"
@@ -396,7 +394,7 @@ class CreateFileTool(Tool):
             return f"Successfully created file {file_path}"
 
         except Exception as e:
-            ctx["session"].logger.error(
+            ctx["config"].logger.error(
                 f"Failed to create file: {file_path}. Error: {str(e)}"
             )
             # traceback.print_exc()

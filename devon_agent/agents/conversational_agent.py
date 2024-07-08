@@ -10,15 +10,14 @@ import traceback
 from typing import TYPE_CHECKING, Tuple
 
 from tenacity import RetryError
-from devon_agent.agents.default.agent import Agent
-from devon_agent.agents.default.anthropic_prompts import anthropic_commands_to_command_docs, anthropic_history_to_bash_history, anthropic_last_user_prompt_template_v3, anthropic_system_prompt_template_v3, conversational_agent_last_user_prompt_template_v3, conversational_agent_system_prompt_template_v3
-from devon_agent.agents.default.llama3_prompts import llama3_parse_response
-from devon_agent.agents.default.openai_prompts import openai_commands_to_command_docs, openai_conversation_agent_last_user_prompt_template, openai_conversation_agent_system_prompt_template, openai_last_user_prompt_template_v3, openai_system_prompt_template_v3
-from devon_agent.agents.model import AnthropicModel, ModelArguments, OpenAiModel
+from devon_agent.agent import Agent
+from devon_agent.agents.prompts.anthropic_prompts import anthropic_commands_to_command_docs, anthropic_history_to_bash_history, conversational_agent_last_user_prompt_template_v3, conversational_agent_system_prompt_template_v3
+from devon_agent.agents.prompts.llama3_prompts import llama3_parse_response
+from devon_agent.agents.prompts.openai_prompts import openai_commands_to_command_docs, openai_conversation_agent_last_user_prompt_template, openai_conversation_agent_system_prompt_template
+from devon_agent.model import AnthropicModel, ModelArguments, OpenAiModel
 
 from devon_agent.tools.utils import get_cwd
-from devon_agent.udiff import Hallucination
-from devon_agent.utils import LOGGER_NAME
+from devon_agent.utils.utils import Hallucination, LOGGER_NAME
 
 if TYPE_CHECKING:
     from devon_agent.session import Session
@@ -127,7 +126,7 @@ class ConversationalAgent(Agent):
 
         history = [
             entry
-            for entry in self.chat_history
+            for entry in self.agent_config.chat_history
             if entry["role"] == "user" or entry["role"] == "assistant"
         ]
         system_prompt = openai_conversation_agent_system_prompt_template(command_docs)
@@ -166,7 +165,7 @@ class ConversationalAgent(Agent):
                 session.state.editor.files, session.state.editor.PAGE_SIZE
             )
 
-            self.chat_history.append(
+            self.agent_config.chat_history.append(
                 {"role": "user", "content": observation, "agent": self.name}
             )
 
@@ -177,12 +176,12 @@ class ConversationalAgent(Agent):
                 # "ollama": self._prepare_ollama,
             }
 
-            if not self.args.prompt_type:
-                self.args.prompt_type = self.default_model_configs[self.args.model][
+            if not self.agent_config.prompt_type:
+                self.agent_config.prompt_type = self.default_model_configs[self.agent_config.model][
                     "prompt_type"
                 ]
 
-            messages, system_prompt = prompts[self.args.prompt_type](
+            messages, system_prompt = prompts[self.agent_config.prompt_type](
                 task, editor, session
             )
 
@@ -203,7 +202,7 @@ class ConversationalAgent(Agent):
                     "Agent failed to follow response format instructions"
                 )
 
-            self.chat_history.append(
+            self.agent_config.chat_history.append(
                 {
                     "role": "assistant",
                     "content": output,

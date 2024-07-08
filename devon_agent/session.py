@@ -5,17 +5,17 @@ import logging
 import os
 import time
 import traceback
-from dataclasses import dataclass
-from typing import Any, List, Literal, Optional
+from typing import Dict, List
 from devon_agent.agents.conversational_agent import ConversationalAgent
 
 
-from devon_agent.agents.default.agent import AgentArguments, TaskAgent
 from devon_agent.config import Config
-from devon_agent.environment import LocalEnvironment, UserEnvironment
-from devon_agent.fossil_versioning import FossilVersioning
-from devon_agent.models import _delete_session_util, _save_session_util
-from devon_agent.telemetry import Posthog, SessionStartEvent
+from devon_agent.event import EventSystem, Event, request_handler
+from devon_agent.tools.codenav import CodeGoTo, CodeSearch
+from devon_agent.tools.usertools import AskUserTool
+from devon_agent.versioning.fossil_versioning import FossilVersioning
+from devon_agent.data_models import _delete_session_util, _save_session_util
+from devon_agent.utils.telemetry import Posthog, SessionStartEvent
 from devon_agent.tool import ToolNotFoundException
 from devon_agent.tools import parse_command
 from devon_agent.tools.editorblock import EditBlockTool
@@ -29,27 +29,8 @@ from devon_agent.tools.filesearchtools import FindFileTool, GetCwdTool, SearchDi
 from devon_agent.tools.filetools import SearchFileTool, FileTreeDisplay
 from devon_agent.tools.lifecycle import NoOpTool
 from devon_agent.tools.shelltool import ShellTool
-from devon_agent.tools.usertools import AskUserTool, RespondUserTool
 from devon_agent.tools.utils import get_ignored_files, read_file
-from devon_agent.utils import DotDict, Event, decode_path
-from devon_agent.tools.codenav import CodeGoTo, CodeSearch
-
-
-import chromadb
-
-@dataclass(frozen=False)
-class SessionArguments:
-    path: str
-    # environments: List[str]
-    user_input: Any
-    name: str
-    db_path : str
-    task: Optional[str] = None
-    # config: Optional[Dict[str, Any]] = None
-    headless: Optional[bool] = False
-    versioning : Optional[Literal["git", "fossil"]] = None
-  
-
+from devon_agent.utils.utils import DotDict
 
 """
 The Event System
@@ -99,12 +80,11 @@ stateDiagram
     User --> UserRequest
     ModelResponse --> [*]: Stop
 ```
-
 """
 
 
 class Session:
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, event_log: List[Dict]):
         self.name = config.name
         self.config = config
         self.persist_to_db = config.persist_to_db
@@ -114,35 +94,17 @@ class Session:
 
         if agent_config.agent_type == "conversational":
             self.agent = ConversationalAgent(
-                name=agent_config.name,
-                args=AgentArguments(**agent_config.config),
-                temperature=agent_config.temperature,
-                chat_history=agent_config.chat_history,
+                name="ConversationalDevon",
+                global_config=self.config,
+                agent_config=agent_config,
             )
         else:
             raise ValueError(f"Agent type {agent_config.agent_type} not supported")
 
-        # self.agent: TaskAgent = agent_config.agent_type
 
+        self.environments = config.environments
 
-        self.base_path = config.path
-
-        self.event_log: List[Event] = []
-
-        self.get_user_input = config.user_input
-
-        self.telemetry_client = Posthog()
-
-        self.exclude_files = True
-
-        self.status = "paused"
-
-        # self.client = chromadb.PersistentClient(path=os.path.join(args.db_path, "vectorDB"))
-
-        self.db_path = config.db_path
-
-        local_environment = LocalEnvironment(self.config.path)
-        local_environment.register_tools(
+        self.environments["local"].register_tools(
             {
                 "create_file": CreateFileTool().register_post_hook(save_create_file),
                 "open_file": OpenFileTool(),
@@ -150,56 +112,54 @@ class Session:
                 "scroll_down": ScrollDownTool(),
                 "scroll_to_line": ScrollToLineTool(),
                 "search_file": SearchFileTool(),
-                # "edit_file": EditFileTool().register_post_hook(save_edit_file),
                 "edit": EditBlockTool(),
                 "search_dir": SearchDirTool(),
                 "find_file": FindFileTool(),
                 "get_cwd": GetCwdTool(),
                 "no_op": NoOpTool(),
-                # "submit": SubmitTool(),
                 "delete_file": DeleteFileTool().register_post_hook(save_delete_file),
                 "code_search": CodeSearch(),
                 "code_goto": CodeGoTo(),
                 "file_tree_display": FileTreeDisplay(),
             }
         )
-        local_environment.set_default_tool(ShellTool())
+        self.environments["local"].set_default_tool(ShellTool())
+        self.environments["local"].event_log = event_log
+        self.environments["user"].event_log = event_log
 
-        # for collection in self.client.list_collections():
-            # print(collection.name,collection.name.replace("_", "/")[1:],self.base_path)
-            # if decode_path(collection.name) == self.base_path:
-            #     print("added semantic search")
-            #     local_environment.register_tools({
-            #         "semantic_search": SemanticSearch(),
-            #         "respond" : RespondUserTool(),
-            #     })
-        self.default_environment = local_environment
+        self.environments["user"].register_tools(
+            {"ask_user": AskUserTool()}
+        )
 
-        if self.config.headless:
-            self.environments = {"local": local_environment}
-        else:
-            user_environment = UserEnvironment(self.config.user_input)
-            user_environment.register_tools(
-                {"ask_user": AskUserTool()}
-            )
 
-            self.environments = {
-                "local": local_environment,
-                "user": user_environment,
-            }
+        self.base_path = config.path
 
-    def init_state(self):
+        self.telemetry_client = Posthog()
+
+        self.exclude_files = config.exclude_files
+
+        self.status = "paused"
+
+        self.db_path = config.db_path
+
+        self.default_environment = self.environments["local"]
+
+        self.event_log = event_log
+
+    def init_state(self,event_log: List[Dict] = []):
         self.state = DotDict({})
         self.state.PAGE_SIZE = 200
-        self.state.task = None
+
         self.config.task = None
 
         self.status = "paused"
 
         self.path = self.config.path
         self.event_id = 0
-        self.event_log = []
+
         self.agent.reset()
+
+        self.event_log = event_log
 
         self.event_log.append(
             Event(
@@ -212,39 +172,24 @@ class Session:
 
     def to_dict(self):
         return {
-            "config": self.config.model_dump(),
-            "event_history": [event for event in self.event_log],
-            "cwd": self.environments["local"].get_cwd(),
+            "config": self.config.model_dump(mode="json",exclude={"logger"}),
+            "event_history": [event for event in self.event_system.processed_events],
         }
 
     @classmethod
-    def from_dict(cls, data, user_input, persist):
-        print(data)
+    def from_config(cls, config : Config, event_log : List[Dict]):
+        config = config
         instance = cls(
-            args=SessionArguments(
-                path=data["path"],
-                # environment=data["environment"],
-                user_input=user_input,
-                name=data["name"],
-                task=data["task"] if "task" in data else None,
-                db_path=data["db_path"] if "db_path" in data else "."
-            ),
-            agent=ConversationalAgent(
-                name=data["agent"]["name"],
-                args=AgentArguments(**data["agent"]["config"]),
-                temperature=data["agent"]["temperature"],
-                chat_history=data["agent"]["chat_history"],
-            ),
-            persist=persist,
+           config,
+           event_log
         )
 
         # instance.state = DotDict(data["state"])
         instance.state = DotDict({})
         instance.state.editor = {}
         instance.state.editor["files"] = []
-        instance.event_log = data["event_history"]
-        instance.event_id = len(data["event_history"])
-        instance.state.task = data["task"]
+        # instance.event_log = event_log
+        instance.event_id = len(event_log)
 
         # instance.environments["local"].communicate("cd " + data["cwd"])
 
@@ -291,7 +236,6 @@ class Session:
                 break
 
             if self.status == "paused":
-                # self.logger.info("Session paused, waiting for resume")
                 print("Session paused, waiting for resume")
                 time.sleep(2)
                 continue
@@ -300,14 +244,6 @@ class Session:
 
             self.logger.info(f"Event: {event}")
             self.logger.info(f"State: {self.state}")
-
-            # Collect only event name and content only in case of error
-            # telemetry_event = SessionEventEvent(
-            #     event_type=event["type"],
-            #     message="" if not event["type"] == "Error" else event["content"],
-            # )
-
-            # self.telemetry_client.capture(telemetry_event)
 
             if event["type"] == "Stop" and event["content"]["type"] != "submit":
                 self.status = "terminated"
@@ -431,7 +367,7 @@ class Session:
                             response = env.tools[toolname](
                                 {
                                     "environment": env,
-                                    "session": self,
+                                    "config": self.config,
                                     "state": self.state,
                                     "raw_command": raw_command,
                                 },
@@ -617,31 +553,15 @@ class Session:
         return docs
 
     def setup(self):
-        if self.args.headless:
-            self.state.task = self.args.headless
-        else:
-            self.state.task = self.args.task
 
-
-        if self.args.versioning == "fossil":
-            try:
-                self.versioning = FossilVersioning(self.args.path, self.args.db_path)
-                self.versioning.initialize_fossil()
-                self.versioning.commit_all_files()
-            except FileNotFoundError:
-                self.versioning.install_fossil()
-                self.versioning = FossilVersioning(self.args.path, self.args.db_path)
-                self.versioning.initialize_fossil()
-                self.versioning.commit_all_files()
-            except Exception as e:
-                print("Error setting up fossil versioning", e)
-                self.versioning = None
+        self.state.task = self.config.task
 
         self.status = "paused"
 
         for name, env in self.environments.items():
             print("Setting up env")
-            env.setup(self)
+            env.setup()
+            print(env.tools)
             for tool in env.tools.values():
                 print("Setting up tool")
                 tool.setup(
@@ -652,35 +572,12 @@ class Session:
                     }
                 )
 
-        if self.exclude_files:
+        if self.config.ignore_files:
             # check if devonignore exists, use default env
-            devonignore_path = os.path.join(self.base_path, ".devonignore")
+            devonignore_path = os.path.join(self.config.path,self.config.devon_ignore_file or  ".devonignore")
             _, rc = self.default_environment.execute("test -f " + devonignore_path)
             if rc == 0:
-                self.state.exclude_files = get_ignored_files(devonignore_path)
-
-            else:
-                # vgit
-                # gitignore_files = find_gitignore_files({
-                #     "environment" : self.default_environment,
-                #     "session" : self,
-                #     "state" : self.state,
-                # })
-                self.state.exclude_files = []
-                # vgit
-                # if gitignore_files:
-                #     for file in gitignore_files:
-                #         self.state.exclude_files += get_ignored_files(file)
-        # vgit
-        # self.event_log.append({
-        #     "type": "GitEvent",
-        #     "content" : {
-        #         "type" : "base_commit",
-        #         "commit" : get_last_commit(self.default_environment),
-        #         "files" : [],
-        #     }
-        # })
-
+                self.config.exclude_files.extend(get_ignored_files(devonignore_path))
         self.telemetry_client.capture(SessionStartEvent(self.name))
 
     def teardown(self):
@@ -702,3 +599,227 @@ class Session:
     def delete_from_db(self):
         if self.persist_to_db == True:
             asyncio.run(_delete_session_util(self.name))
+
+
+
+    # def error_handler(self, system, event):
+    #     return [Event(
+    #         user=event.user,
+    #         session_name=event.session_name,
+    #         trajectory_id=event.trajectory_id,
+    #         event_type="Stop",
+    #         sub_event="",
+    #         action="",
+    #         producer="system",
+    #         consumer="user",
+    #     )]
+    
+    # @request_handler
+    # def model_request_handler(self, system, event):
+    #     if self.state.editor and self.state.editor.files:
+    #         for file in self.state.editor.files:
+    #             self.state.editor.files[file]["lines"]= read_file({
+    #                         "environment" : self.default_environment,
+    #                         "session" : self,
+    #                         "state" : self.state,
+    #                     },
+    #                     file)
+    #     thought, action, output = self.agent.predict(
+    #         self.get_last_task(), event.content, self
+    #     )
+    #     if action == "hallucination":
+    #         raise Exception(output)
+    #     else:
+    #         return {"thought": thought, "action": action, "output": output}
+    
+    # @request_handler
+    # def tool_request_handler(self, system : EventSystem, event : Event):
+    #     tool_name, args = event.content["toolname"], event.content["args"]
+
+    #     match tool_name:
+    #         case "submit" | "exit" | "stop" | "exit_error" | "exit_api":
+    #             system.add_event(
+    #                 Event(
+    #         user=event.user,
+    #         session_name=event.session_name,
+    #         trajectory_id=event.trajectory_id,
+    #         event_type="Stop",
+    #         sub_event="",
+    #         action="",
+    #         producer="system",
+    #         consumer="user",
+    #         content={
+    #             "type": tool_name,
+    #             "message": " ".join(args),
+    #                     },
+    #                 )
+    #             )
+    #             system.pause()
+    #             return
+    #         case _:
+    #             try:
+    #                 toolname = event.content["toolname"]
+    #                 args = event.content["args"]
+    #                 raw_command = event.content["raw_command"]
+
+    #                 env = None
+
+    #                 for _env in list(self.environments.values()):
+    #                     if toolname in _env.tools:
+    #                         env = _env
+
+    #                 if not env:
+    #                     raise ToolNotFoundException(toolname, self.environments)
+
+    #                 response = env.tools[toolname](
+    #                     {
+    #                         "environment": env,
+    #                         "config": self.config,
+    #                         "state": self.state,
+    #                         "raw_command": raw_command,
+    #                     },
+    #                     *args,
+    #                 )
+
+    #                 return response
+
+
+    #             except ToolNotFoundException as e:
+    #                 if not (
+    #                     self.default_environment
+    #                     and self.default_environment.default_tool
+    #                 ):
+    #                     raise e
+
+    #                 try:
+
+    #                     system.add_event(
+    #                         Event(
+    #                             user=event.user,
+    #                             session_name=event.session_name,
+    #                             trajectory_id=event.trajectory_id,
+    #                             event_type="Shell",
+    #                             action="request",
+    #                             sub_event="",
+    #                             content=event.content["raw_command"],
+    #                             producer=self.default_environment.name,
+    #                         )
+    #                     )
+
+    #                     response = self.default_environment.default_tool(
+    #                         {
+    #                             "state": self.state,
+    #                             "environment": self.default_environment,
+    #                             "session": self,
+    #                             "raw_command": event["content"]["raw_command"],
+    #                         },
+    #                         event["content"]["toolname"],
+    #                         event["content"]["args"],
+    #                     )
+
+    #                     system.add_event(
+    #                         Event(
+    #                             user=event.user,
+    #                             session_name=event.session_name,
+    #                             trajectory_id=event.trajectory_id,
+    #                             event_type="Shell",
+    #                             action="response",
+    #                             sub_event="",
+    #                             content=response,
+    #                             producer=self.default_environment.name,
+    #                         )
+    #                     )
+                        
+    #                     return response
+                    
+    #                 except Exception as e:
+    #                     self.logger.error(traceback.format_exc())
+    #                     self.logger.error(f"Error routing tool call: {e}")
+    #                     raise Exception(f"Error calling command, command failed with: {e.args[0] if len(e.args) > 0 else 'unknown'}")
+
+    #             except Exception as e:
+    #                 self.logger.error(traceback.format_exc())
+    #                 self.logger.error(f"Error routing tool call: {e}")
+    #                 return e.args[0]
+                
+    # def interrupt_handler(self, system : EventSystem, event : Event):
+    #     if self.agent.interrupt:
+    #         self.agent.interrupt += (
+    #             "You have been interrupted, pay attention to this message "
+    #             + event["content"]
+    #         )
+    #     else:
+    #         self.agent.interrupt = event["content"]
+
+    # def task_handler(self, system : EventSystem, event : Event):
+    #     self.state.task = event.content
+    #     if self.state.task is None:
+    #         self.state.task = "Task unspecified ask user to specify task"
+    #     return [Event(
+    #         user=event.user,
+    #         session_name=event.session_name,
+    #         trajectory_id=event.trajectory_id,
+    #         event_type="Model",
+    #         sub_event="",
+    #         action="request",
+    #         producer="system",
+    #         consumer="devon",
+    #         content="",
+    #     )]
+
+
+    # def model_response_handler(self, system : EventSystem, event : Event):
+    #     content = event.content["action"]
+    #     try:
+    #         toolname, args = parse_command(content)
+    #         return [Event(
+    #             user=event.user,
+    #             session_name=event.session_name,
+    #             trajectory_id=event.trajectory_id,
+    #             event_type="Tool",
+    #             sub_event="",
+    #             action="request",
+    #             producer="system",
+    #             consumer="devon",
+    #             content={
+    #                     "toolname": toolname,
+    #                     "args": args,
+    #                     "raw_command": content,
+    #                 },
+    #         )]
+
+    #     except ValueError as e:
+    #         return [Event(
+    #             user=event.user,
+    #             session_name=event.session_name,
+    #             trajectory_id=event.trajectory_id,
+    #             event_type="Tool",
+    #             sub_event="",
+    #             action="response",
+    #             producer="system",
+    #             content=e.args[0]
+    #         )]
+
+    #     except Exception as e:
+    #         return [Event(
+    #             user=event.user,
+    #             session_name=event.session_name,
+    #             trajectory_id=event.trajectory_id,
+    #             event_type="Error",
+    #             sub_event="",
+    #             action="",
+    #             producer="system",
+    #             content=str(e),
+    #         )]
+
+    # def tool_response_handler(self, system : EventSystem, event : Event):
+    #     return [Event(
+    #         user=event.user,
+    #         session_name=event.session_name,
+    #         trajectory_id=event.trajectory_id,
+    #         event_type="Model",
+    #         sub_event="",
+    #         action="request",
+    #         producer=event.producer,
+    #         content=event.content,
+    #     )]

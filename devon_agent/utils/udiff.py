@@ -46,8 +46,6 @@ def log_failed_diff(diff, file_content, src_file, tgt_file):
     data_logger.info(f"</FAIL>")
 
 
-class Hallucination(Exception):
-    pass
 
 
 class HunkLine(BaseModel):

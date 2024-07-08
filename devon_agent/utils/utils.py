@@ -50,3 +50,8 @@ class Event(TypedDict):
     content: Any
     producer: str | None
     consumer: str | None
+
+
+
+class Hallucination(Exception):
+    pass
