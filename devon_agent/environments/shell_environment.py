@@ -101,12 +101,12 @@ class LocalShellEnvironment(EnvironmentModule):
             "path": self.path,
             "cwd": self.get_cwd(),
             "old_dir": self.old_dir,
-            "state": self.state,
+            # "state": self.state,
         }
 
     def load(self, data):
         self.path = data["path"]
-        self.state = data["state"]
+        # self.state = data["state"]
         self.old_dir = data["old_dir"]
         if not self.process:
             pass

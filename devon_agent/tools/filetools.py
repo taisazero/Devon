@@ -325,7 +325,7 @@ class ReadFileTool(Tool):
         """
         try:
             # Check if file exists to avoid reading from non-existent files
-            result, _ = ctx["environment"].communicate(f"cat '{file_path}'")
+            result, _ = ctx["environment"].execute(f"cat '{file_path}'")
             return result
         except Exception as e:
             ctx["logger"].error(f"Failed to read file: {file_path}. Error: {str(e)}")
@@ -398,7 +398,7 @@ class SearchFileTool(Tool):
 
         try:
             # Check if file exists to avoid reading from non-existent files
-            content, _ = ctx["environment"].communicate(f"cat '{file_path}'")
+            content, _ = ctx["environment"].execute(f"cat '{file_path}'")
         except Exception as e:
             ctx["config"].logger.error(
                 f"Failed to read file: {file_path}. Error: {str(e)}"

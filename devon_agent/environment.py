@@ -12,7 +12,7 @@ class EnvironmentModule(BaseModel, ABC):
     default_tool: Tool = Field(default=None)
     tools: Dict[str, Tool] = Field(default_factory=dict)
     event_log: List[Dict] = Field(default_factory=list)
-    state: Dict = Field(default_factory=dict)
+    # state: Dict = Field(default_factory=dict)
 
     def setup(self, **kwargs): ...
 

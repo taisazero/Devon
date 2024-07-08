@@ -10,7 +10,7 @@ from devon_agent.agents.conversational_agent import ConversationalAgent
 
 
 from devon_agent.config import Config
-from devon_agent.event import Event
+from devon_agent.utils.utils import Event
 from devon_agent.tools.codenav import CodeGoTo, CodeSearch
 from devon_agent.tools.usertools import AskUserTool
 from devon_agent.data_models import _delete_session_util, _save_session_util
@@ -160,6 +160,8 @@ class Session:
         self.agent.reset()
 
         self.event_log = event_log
+        for env in self.environments.values():
+            env.event_log = event_log
 
         self.event_log.append(
             Event(
@@ -173,7 +175,7 @@ class Session:
     def to_dict(self):
         return {
             "config": self.config.model_dump(mode="json", exclude={"logger"}),
-            "event_history": [event for event in self.event_system.processed_events],
+            "event_history": self.event_log,
         }
 
     @classmethod

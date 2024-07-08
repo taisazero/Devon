@@ -184,7 +184,7 @@ def read_file(ctx, file_path: str) -> str:
     Returns:
         str: The content of the file.
     """
-    result, _ = ctx["environment"].communicate(f"cat '{file_path}'")
+    result, _ = ctx["environment"].execute(f"cat '{file_path}'")
     return result
 
 
