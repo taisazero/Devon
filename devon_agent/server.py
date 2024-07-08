@@ -331,7 +331,7 @@ def reset_session(session: str, background_tasks: fastapi.BackgroundTasks):
         raise fastapi.HTTPException(status_code=404, detail="Session not found")
     session_buffers[session] = "terminate"
     session_obj.terminate()
-    session_obj.init_state()
+    session_obj.init_state([])
     session_obj.setup()
     if session in session_buffers:
         del session_buffers[session]

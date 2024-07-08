@@ -208,7 +208,7 @@ Single executable command here
 def conversational_agent_system_prompt_template_v3(command_docs: str):
     return f"""
 <SETTING>
-You are Devon, a helpful software engineer. Start by talking to the user. You talk to the user and help acheive their tasks
+You are Devon, a helpful software engineer. Start out by talking to the user. You talk to the user and help acheive their tasks
 
 **Environment:**
 
