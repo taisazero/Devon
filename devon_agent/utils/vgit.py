@@ -35,10 +35,9 @@ Teardown
 - store branch name, base commit, base branch
 """
 
-import fnmatch
 import os
 
-from devon_agent.environment import EnvironmentModule, LocalEnvironment
+from devon_agent.environment import EnvironmentModule
 from devon_agent.tool import ToolContext
 
 
@@ -311,11 +310,11 @@ def commit_files(env: EnvironmentModule, files, commit_message):
 
 def delete_last_commit(env: EnvironmentModule):
     # soft reset latest commit
-    env.execute(f"git reset --soft HEAD~1")
+    env.execute("git reset --soft HEAD~1")
 
 
 def get_diff_last_commit(env: EnvironmentModule, files):
-    return env.execute(f"git diff HEAD --" + " ".join(files))[0]
+    return env.execute("git diff HEAD --" + " ".join(files))[0]
 
 
 # import difflib

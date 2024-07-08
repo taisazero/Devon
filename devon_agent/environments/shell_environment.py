@@ -1,20 +1,16 @@
-
-
 import os
 import shutil
 import subprocess
 import tempfile
 import traceback
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, List
 from pydantic import Field
 from devon_agent.environment import EnvironmentModule
 
 
-
-
 if TYPE_CHECKING:
-    from devon_agent.session import Session
-    from devon_agent.tool import Tool
+    pass
+
 
 class LocalShellEnvironment(EnvironmentModule):
     path: str
@@ -28,7 +24,7 @@ class LocalShellEnvironment(EnvironmentModule):
     def name(self):
         return "local"
 
-    def setup(self,  **kwargs):
+    def setup(self, **kwargs):
         self.old_dir = os.getcwd()
         os.chdir(self.path)
 
@@ -48,7 +44,6 @@ class LocalShellEnvironment(EnvironmentModule):
     def get_cwd(self):
         return self.execute("pwd")[0]
 
-
     def execute(self, input: str, timeout_duration=25):
         try:
             self.event_log.append(
@@ -63,7 +58,7 @@ class LocalShellEnvironment(EnvironmentModule):
             self.process.stdin.write(input + "\n")
             self.process.stdin.write('echo "\n$?"\n')
             self.process.stdin.write("echo 'EOL'\n")
-            self.process.stdin.write(f"echo 'EOL' >&2\n")
+            self.process.stdin.write("echo 'EOL' >&2\n")
             self.process.stdin.flush()
 
             output = ""
@@ -100,17 +95,16 @@ class LocalShellEnvironment(EnvironmentModule):
     def __exit__(self, exc_type, exc_value, traceback):
         self.teardown(exc_type, exc_value, traceback)
 
-    
     def save(self):
-       return {
-           "type": "LocalShellEnvironment",
-           "path": self.path,
-           "cwd": self.get_cwd(),
-           "old_dir": self.old_dir,
-           "state": self.state
-       }
-    
-    def load(self,data):
+        return {
+            "type": "LocalShellEnvironment",
+            "path": self.path,
+            "cwd": self.get_cwd(),
+            "old_dir": self.old_dir,
+            "state": self.state,
+        }
+
+    def load(self, data):
         self.path = data["path"]
         self.state = data["state"]
         self.old_dir = data["old_dir"]
@@ -127,13 +121,9 @@ class LocalShellEnvironment(EnvironmentModule):
 
 
 class TempDirShellEnvironment(LocalShellEnvironment):
-    path: str = Field(default_factory=lambda : tempfile.TemporaryDirectory().name)
+    path: str = Field(default_factory=lambda: tempfile.TemporaryDirectory().name)
 
-    def setup(self,files_to_cp: List[str],**kwargs):
+    def setup(self, files_to_cp: List[str], **kwargs):
         for src in files_to_cp:
-            shutil.copy(src,self.path)
+            shutil.copy(src, self.path)
         super().setup(**kwargs)
-
-    
-
-    

@@ -6,6 +6,7 @@ from typing import List, Optional
 from pydantic import BaseModel
 
 from devon_agent.utils import LOGGER_NAME
+from devon_agent.utils.utils import Hallucination
 
 logger = logging.getLogger(LOGGER_NAME)
 DATA_LOGGER_NAME = "udiff_data"
@@ -13,39 +14,37 @@ data_logger = logging.getLogger(DATA_LOGGER_NAME)
 
 
 def log_successful_diff(diff, file_content, src_file, tgt_file):
-    data_logger.info(f"<SUCCESS>")
-    data_logger.info(f"<DIFF>")
+    data_logger.info("<SUCCESS>")
+    data_logger.info("<DIFF>")
     data_logger.info(f"{diff}")
-    data_logger.info(f"</DIFF>")
-    data_logger.info(f"<FILECONTENT>")
+    data_logger.info("</DIFF>")
+    data_logger.info("<FILECONTENT>")
     data_logger.info(f"{file_content}")
-    data_logger.info(f"</FILECONTENT>")
-    data_logger.info(f"<SRCFILE>")
+    data_logger.info("</FILECONTENT>")
+    data_logger.info("<SRCFILE>")
     data_logger.info(f"{src_file}")
-    data_logger.info(f"</SRCFILE>")
-    data_logger.info(f"<TGTFILE>")
+    data_logger.info("</SRCFILE>")
+    data_logger.info("<TGTFILE>")
     data_logger.info(f"{tgt_file}")
-    data_logger.info(f"</TGTFILE>")
-    data_logger.info(f"</SUCCESS>")
+    data_logger.info("</TGTFILE>")
+    data_logger.info("</SUCCESS>")
 
 
 def log_failed_diff(diff, file_content, src_file, tgt_file):
-    data_logger.info(f"<FAIL>")
-    data_logger.info(f"<DIFF>")
+    data_logger.info("<FAIL>")
+    data_logger.info("<DIFF>")
     data_logger.info(f"{diff}")
-    data_logger.info(f"</DIFF>")
-    data_logger.info(f"<FILECONTENT>")
+    data_logger.info("</DIFF>")
+    data_logger.info("<FILECONTENT>")
     data_logger.info(f"{file_content}")
-    data_logger.info(f"</FILECONTENT>")
-    data_logger.info(f"<SRC FILE>")
+    data_logger.info("</FILECONTENT>")
+    data_logger.info("<SRC FILE>")
     data_logger.info(f"{src_file}")
-    data_logger.info(f"</SRCFILE>")
-    data_logger.info(f"<TGTFILE>")
+    data_logger.info("</SRCFILE>")
+    data_logger.info("<TGTFILE>")
     data_logger.info(f"{tgt_file}")
-    data_logger.info(f"</TGTFILE>")
-    data_logger.info(f"</FAIL>")
-
-
+    data_logger.info("</TGTFILE>")
+    data_logger.info("</FAIL>")
 
 
 class HunkLine(BaseModel):
@@ -623,7 +622,7 @@ def apply_indent(
     # print(stop_code_fence_end)
 
     start_code_fence = src_lines[start_code_fence_start : start_code_fence_end + 1]
-    stop_code_fence = src_lines[stop_code_fence_start : stop_code_fence_end + 1]
+    # stop_code_fence = src_lines[stop_code_fence_start : stop_code_fence_end + 1]
 
     relative_indents, indent_size = get_relative_indents(new_lines)
 
@@ -763,9 +762,6 @@ def apply_context_diff(file_content: str, file_diff: FileContextDiff) -> str:
             #     src_lines, new_lines, src_start, begin_end, stop_start, src_end
             # )
 
-
-
-            
             # applied_code = apply_indent_to_new_lines(src_lines, src_start, src_end, new_lines)
             applied_code = new_lines
 

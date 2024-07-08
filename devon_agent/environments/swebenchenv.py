@@ -15,8 +15,7 @@ from subprocess import PIPE, STDOUT
 from typing import Dict, Optional, Tuple
 
 import docker
-from swebench import (MAP_VERSION_TO_INSTALL, get_environment_yml,
-                      get_requirements)
+from swebench import MAP_VERSION_TO_INSTALL, get_environment_yml, get_requirements
 
 from devon_agent.environment import EnvironmentModule
 from devon_agent.tool import Tool
@@ -58,7 +57,7 @@ def copy_file_to_container(container, contents, container_path):
             os.fsync(temp_file.fileno())
 
         # Create a TAR archive in memory containing the temporary file
-        with tempfile.NamedTemporaryFile() as temp_tar:
+        with tempfile.NamedTemporaryFile():
             with open(temp_file_name, "rb") as temp_file:
                 # Prepare the TAR archive
                 with BytesIO() as tar_stream:
@@ -298,7 +297,6 @@ def get_container(
         return _get_non_persistent_container(ctr_name, image_name)
 
 
-
 @dataclass(frozen=False)
 class SWEEnvEnvironment(EnvironmentModule):
     logger: logging.Logger
@@ -316,7 +314,7 @@ class SWEEnvEnvironment(EnvironmentModule):
                 self.container.terminate()
             except KeyboardInterrupt:
                 raise
-            except:
+            except Exception:
                 pass
 
         if self.container_name is None:
@@ -382,7 +380,6 @@ class SWEEnvEnvironment(EnvironmentModule):
     ) -> str:
         # Add \n, stdin write, flush => execute commant
         try:
-            returncode = None
             cmd = input if input.endswith("\n") else input + "\n"
             self.container.stdin.write(cmd)
             time.sleep(0.1)
@@ -455,7 +452,7 @@ class SWEEnvEnvironment(EnvironmentModule):
             self.communicate(input="exit")
         except KeyboardInterrupt:
             raise
-        except:
+        except Exception:
             pass
         self.container.terminate()
         if self.persistent:
@@ -469,7 +466,7 @@ class SWEEnvEnvironment(EnvironmentModule):
                 self.container_obj.remove(force=True)
             except KeyboardInterrupt:
                 raise
-            except:
+            except Exception:
                 pass
             self.logger.info("Agent container stopped")
 
@@ -609,7 +606,7 @@ class SWEEnvEnvironment(EnvironmentModule):
         self.communicate("cd /")
 
         base_commit = record["base_commit"]
-        query = record["problem_statement"]
+        # query = record["problem_statement"]
         folders = self.communicate(input="ls")[0].split("\n")
         print(folders)
         repo_name = record["repo"].replace("/", "__")
@@ -628,7 +625,7 @@ class SWEEnvEnvironment(EnvironmentModule):
                     raise RuntimeError("Failed to clone repository from mirror" + error)
                 # self.logger.info(f"{repo_name} not found in container, cloning...")
             else:
-                logger.info(f"Trying to clone from non-mirror...")
+                logger.info("Trying to clone from non-mirror...")
                 _, rc = self.communicate(
                     input=f"git clone https://{self.token}@github.com/{record['repo']}.git {repo_name}",
                     # error_msg="Failed to clone repository from non-mirror",
@@ -679,7 +676,7 @@ class SWEEnvEnvironment(EnvironmentModule):
         arch = self.communicate("uname -m")[0].strip().lower()
         if system == "linux" and arch == "x86_64":
             self.communicate(
-                f"apt update; apt install build-essential -y",
+                "apt update; apt install build-essential -y",
                 timeout_duration=LONG_TIMEOUT,
             )
 

@@ -1,6 +1,10 @@
 from devon_agent.tool import Tool, ToolContext
-from devon_agent.tools.utils import (cwd_normalize_path, file_exists,
-                                     make_abs_path, read_file)
+from devon_agent.tools.utils import (
+    cwd_normalize_path,
+    file_exists,
+    make_abs_path,
+    read_file,
+)
 from devon_agent.utils.utils import DotDict
 
 
@@ -203,9 +207,6 @@ class DeleteFileTool(Tool):
 
     def cleanup(self, ctx):
         pass
-
-    def supported_formats(self):
-        return ["docstring", "manpage"]
 
     def documentation(self, format="docstring"):
         match format:

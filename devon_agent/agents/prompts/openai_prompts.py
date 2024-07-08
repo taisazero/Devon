@@ -184,7 +184,10 @@ def openai_conversation_agent_system_prompt_template(command_docs):
   You're free to use any other bash commands you want (e.g. find, grep, cat, ls, cd) in addition to the special commands listed above.
   However, the environment does NOT support interactive session commands (e.g. python, vim), so please do not invoke them."""
 
-def openai_conversation_agent_last_user_prompt_template(user_message, editor, cwd, root_dir, scratchpad):
+
+def openai_conversation_agent_last_user_prompt_template(
+    user_message, editor, cwd, root_dir, scratchpad
+):
     return f"""
   EDITOR:
   {editor}

@@ -1,15 +1,10 @@
-
-
-
-
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Callable, Dict
+from typing import TYPE_CHECKING, Callable
 
 from devon_agent.environment import EnvironmentModule
 
 
 if TYPE_CHECKING:
-    from devon_agent.tool import Tool
+    pass
 
 
 class UserEnvironment(EnvironmentModule):
@@ -25,7 +20,6 @@ class UserEnvironment(EnvironmentModule):
     def teardown(self, **kwargs):
         pass
 
-    
     def execute(self, input: str, timeout_duration=25):
         self.event_log.append(
             {
@@ -45,15 +39,15 @@ class UserEnvironment(EnvironmentModule):
             }
         )
         return response
-    
+
     def save(self):
         return {
             "type": "UserEnvironment",
         }
-    
-    def load(self,data, user_func):
+
+    def load(self, data, user_func):
         self.user_func = user_func
-    
+
     @classmethod
     def from_data(cls, data, user_func):
         return cls(user_func=user_func)

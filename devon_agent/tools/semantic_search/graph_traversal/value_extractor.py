@@ -1,10 +1,16 @@
 from collections import deque
 
+
 def process_node(graph, node):
     node_data = graph.nodes[node]
     code = node_data.get("text", "")
     if code == "":
-        print("code is empty", node_data.get("signature"), node_data.get("type"), node_data.get("file_path"))
+        print(
+            "code is empty",
+            node_data.get("signature"),
+            node_data.get("type"),
+            node_data.get("file_path"),
+        )
     doc = node_data.get("doc", "")
     if doc == "":
         print("doc is empty", node_data.get("signature"), node_data.get("type"))
@@ -20,12 +26,15 @@ def process_node(graph, node):
         "leaf": node_data.get("leaf", ""),
     }
 
-    if metadata == None:
+    if metadata is None:
         metadata = {}
 
     return node, doc, metadata, code
 
-def extract_chromadb_values(graph, edge_types=["FUNCTION_DEFINITION", "CLASS_DEFINITION", "CONTAINS"]):
+
+def extract_chromadb_values(
+    graph, edge_types=["FUNCTION_DEFINITION", "CLASS_DEFINITION", "CONTAINS"]
+):
     root_node = graph.graph["root_node_id"]
 
     queue = deque([root_node])
@@ -49,7 +58,11 @@ def extract_chromadb_values(graph, edge_types=["FUNCTION_DEFINITION", "CLASS_DEF
                     codes.append(code)
             except ValueError as e:
                 print(f"Error processing node {node}: {str(e)}")
-            child_nodes = [target for _, target, data in graph.out_edges(node, data=True) if data['type'] in edge_types]
+            child_nodes = [
+                target
+                for _, target, data in graph.out_edges(node, data=True)
+                if data["type"] in edge_types
+            ]
             queue.extend(child_nodes)
 
     return node_ids, docs, metadatas, codes

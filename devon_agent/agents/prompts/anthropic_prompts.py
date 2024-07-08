@@ -249,8 +249,9 @@ A single executable command goes here, this can include bash commands, just no i
 </RESPONSE FORMAT>
 """
 
+
 def conversational_agent_last_user_prompt_template_v3(
-   history, editor, cwd, root_dir, scratchpad
+    history, editor, cwd, root_dir, scratchpad
 ):
     return f"""
 <SETTING>

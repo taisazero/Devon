@@ -1,8 +1,3 @@
-
-
-
-
-
 from dataclasses import dataclass
 import datetime
 import hashlib
@@ -16,6 +11,7 @@ from devon_agent.environment import EnvironmentModule
 from devon_agent.environments.swebenchenv import get_container, read_with_timeout
 
 import docker
+
 
 @dataclass(frozen=False)
 class DockerEnvironment(EnvironmentModule):
@@ -31,7 +27,7 @@ class DockerEnvironment(EnvironmentModule):
                 self.container.terminate()
             except KeyboardInterrupt:
                 raise
-            except:
+            except Exception:
                 pass
 
         if self.container_name is None:
@@ -56,7 +52,6 @@ class DockerEnvironment(EnvironmentModule):
             raise e
         # ... why does this need to exist. the container already exists above...
         self.container_obj = client.containers.get(self.container_name)
-
 
     # They use commands because python tools wouldn't work without some sort of tool proxy
     def _communicate(
@@ -142,7 +137,7 @@ class DockerEnvironment(EnvironmentModule):
             self.communicate(input="exit")
         except KeyboardInterrupt:
             raise
-        except:
+        except Exception:
             pass
         self.container.terminate()
         if self.persistent:
@@ -156,6 +151,6 @@ class DockerEnvironment(EnvironmentModule):
                 self.container_obj.remove(force=True)
             except KeyboardInterrupt:
                 raise
-            except:
+            except Exception:
                 pass
             self.logger.info("Agent container stopped")

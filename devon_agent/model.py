@@ -24,13 +24,16 @@ class HumanModel:
     def __init__(self, args: ModelArguments):
         self.args = args
 
-    def query(self, ask, messages: list[dict[str, str]], system_message: str = "") -> str:
+    def query(
+        self, ask, messages: list[dict[str, str]], system_message: str = ""
+    ) -> str:
         thought = ""
         print(messages[-1])
         command = ask("enter your command here")
         print(f"<THOUGHT>\n{thought}\n</THOUGHT>\n<COMMAND>\n{command}\n</COMMAND>")
         return f"<THOUGHT>\n{thought}\n</THOUGHT>\n<COMMAND>\n{command}\n</COMMAND>"
-    
+
+
 class AnthropicModel:
     MODELS = {
         "claude-3-5-sonnet-20240620": {

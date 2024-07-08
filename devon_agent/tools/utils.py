@@ -246,4 +246,3 @@ def _list_files_recursive(ctx, files: list[str]) -> dict:
         "file_tree": file_tree,
         "files_content": files_content,
     }
-

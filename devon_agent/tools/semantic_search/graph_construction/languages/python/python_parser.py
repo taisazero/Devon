@@ -4,7 +4,6 @@ import tree_sitter_languages
 from devon_agent.semantic_search.graph_construction.core.base_parser import BaseParser
 
 
-
 class PythonParser(BaseParser):
     def __init__(self):
         super().__init__("python", "*")
@@ -26,7 +25,9 @@ class PythonParser(BaseParser):
         # Make sure to find in the same directory as the root
         project_root = os.sep.join(project_root.split(os.sep)[:-1])
         # Try to find the module by traversing up towards the root until the module path is found or root is reached
-        while current_dir.startswith(project_root) and (current_dir != "" or project_root != ""):
+        while current_dir.startswith(project_root) and (
+            current_dir != "" or project_root != ""
+        ):
             possible_path = os.path.join(current_dir, *components)
             # Check for a direct module or package
             if os.path.exists(possible_path + ".py") or self.is_package(possible_path):
@@ -35,18 +36,26 @@ class PythonParser(BaseParser):
             current_dir = os.path.dirname(current_dir)
         return None
 
-    def resolve_relative_import_path(self, import_statement, current_file_path, project_root):
+    def resolve_relative_import_path(
+        self, import_statement, current_file_path, project_root
+    ):
         if import_statement.startswith(".."):
             import_statement = import_statement[2:]
             current_file_path = os.sep.join(current_file_path.split(os.sep)[:-1])
         elif import_statement.startswith("."):
             import_statement = import_statement[1:]
         else:
-            return self.find_module_path(import_statement, current_file_path, project_root)
+            return self.find_module_path(
+                import_statement, current_file_path, project_root
+            )
 
-        return self.resolve_relative_import_path(import_statement, current_file_path, project_root)
+        return self.resolve_relative_import_path(
+            import_statement, current_file_path, project_root
+        )
 
-    def resolve_import_path(self, import_statement, current_file_directory, project_root):
+    def resolve_import_path(
+        self, import_statement, current_file_directory, project_root
+    ):
         """
         Resolve the absolute path of an import statement.
         import_statement: The imported module as a string (e.g., 'os', 'my_package.my_module').
@@ -55,11 +64,17 @@ class PythonParser(BaseParser):
         """
         # Handling relative imports
         if import_statement.startswith("."):
-            current_file_directory = os.sep.join(current_file_directory.split(os.sep)[:-1])
-            return self.resolve_relative_import_path(import_statement, current_file_directory, project_root)
+            current_file_directory = os.sep.join(
+                current_file_directory.split(os.sep)[:-1]
+            )
+            return self.resolve_relative_import_path(
+                import_statement, current_file_directory, project_root
+            )
         else:
             # Handling absolute imports
-            return self.find_module_path(import_statement, current_file_directory, project_root)
+            return self.find_module_path(
+                import_statement, current_file_directory, project_root
+            )
 
     def skip_directory(self, directory: str) -> bool:
         return directory == "__pycache__"
@@ -91,7 +106,9 @@ class PythonParser(BaseParser):
                 from_statement = import_statements[0]
                 from_text = from_statement.text.decode()
                 for import_statement in import_statements[1:]:
-                    import_path = self.resolve_import_path(from_text, file_path, root_path)
+                    import_path = self.resolve_import_path(
+                        from_text, file_path, root_path
+                    )
                     if not import_path:
                         continue
                     new_import_path = import_path + "." + import_statement.text.decode()
@@ -114,7 +131,9 @@ class PythonParser(BaseParser):
                                 if child.type == "string":
                                     for string_child in child.children:
                                         if string_child.type == "string_content":
-                                            child_path = temp_imports.get(string_child.text.decode())
+                                            child_path = temp_imports.get(
+                                                string_child.text.decode()
+                                            )
                                             if child_path:
                                                 imports[directory].append(child_path)
 

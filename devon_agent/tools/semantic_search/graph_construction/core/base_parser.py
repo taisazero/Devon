@@ -1,5 +1,8 @@
 from abc import ABC, abstractmethod
-from devon_agent.semantic_search.graph_construction.utils import format_nodes, tree_parser
+from devon_agent.semantic_search.graph_construction.utils import (
+    format_nodes,
+    tree_parser,
+)
 from pathlib import Path
 
 import tree_sitter_languages
@@ -7,7 +10,6 @@ from llama_index.core import SimpleDirectoryReader
 from llama_index.core.schema import BaseNode, Document, NodeRelationship
 from llama_index.core.text_splitter import CodeSplitter
 from llama_index.packs.code_hierarchy import CodeHierarchyNodeParser
-
 
 
 class BaseParser(ABC):
@@ -48,7 +50,9 @@ class BaseParser(ABC):
         code = CodeHierarchyNodeParser(
             language=self.language,
             chunk_min_characters=3,
-            code_splitter=CodeSplitter(language=self.language, max_chars=10000, chunk_lines=10),
+            code_splitter=CodeSplitter(
+                language=self.language, max_chars=10000, chunk_lines=10
+            ),
         )
         try:
             split_nodes = code.get_nodes_from_documents(documents)
@@ -61,7 +65,14 @@ class BaseParser(ABC):
         assignment_dict = {}
 
         file_node, file_relations = self.__process_node__(
-            split_nodes.pop(0), file_path, "", visited_nodes, global_imports, assignment_dict, documents[0], level
+            split_nodes.pop(0),
+            file_path,
+            "",
+            visited_nodes,
+            global_imports,
+            assignment_dict,
+            documents[0],
+            level,
         )
         node_list.append(file_node)
         edges_list.extend(file_relations)
@@ -81,7 +92,9 @@ class BaseParser(ABC):
             node_list.append(processed_node)
             edges_list.extend(relationships)
 
-        imports = self._get_imports(str(path), node_list[0]["attributes"]["node_id"], root_path)
+        imports = self._get_imports(
+            str(path), node_list[0]["attributes"]["node_id"], root_path
+        )
 
         return node_list, edges_list, imports
 
@@ -104,41 +117,63 @@ class BaseParser(ABC):
     ):
         no_extension_path = self._remove_extensions(file_path)
         relationships = []
-        scope = node.metadata["inclusive_scopes"][-1] if node.metadata["inclusive_scopes"] else None
+        scope = (
+            node.metadata["inclusive_scopes"][-1]
+            if node.metadata["inclusive_scopes"]
+            else None
+        )
         type_node = scope["type"] if scope else "file"
         parent_level = level
         leaf = False
 
         if type_node == "function_definition":
-            function_calls = tree_parser.get_function_calls(node, assignment_dict, self.language)
-            processed_node = format_nodes.format_function_node(node, scope, function_calls, file_node_id)
+            function_calls = tree_parser.get_function_calls(
+                node, assignment_dict, self.language
+            )
+            processed_node = format_nodes.format_function_node(
+                node, scope, function_calls, file_node_id
+            )
         elif type_node == "class_definition":
             inheritances = tree_parser.get_inheritances(node, self.language)
-            processed_node = format_nodes.format_class_node(node, scope, file_node_id, inheritances)
+            processed_node = format_nodes.format_class_node(
+                node, scope, file_node_id, inheritances
+            )
         else:
-            function_calls = tree_parser.get_function_calls(node, assignment_dict, self.language)
-            processed_node = format_nodes.format_file_node(node, file_path, function_calls)
+            function_calls = tree_parser.get_function_calls(
+                node, assignment_dict, self.language
+            )
+            processed_node = format_nodes.format_file_node(
+                node, file_path, function_calls
+            )
         for relation in node.relationships.items():
             if relation[0] == NodeRelationship.CHILD:
                 if len(relation[1]) == 0:
                     leaf = True
                 for child in relation[1]:
                     relation_type = (
-                        child.metadata["inclusive_scopes"][-1]["type"] if child.metadata["inclusive_scopes"] else ""
+                        child.metadata["inclusive_scopes"][-1]["type"]
+                        if child.metadata["inclusive_scopes"]
+                        else ""
                     )
                     relationships.append(
                         {
                             "sourceId": node.node_id,
                             "targetId": child.node_id,
-                            "type": self.RELATIONS_TYPES_MAP.get(relation_type, "UNKNOWN"),
+                            "type": self.RELATIONS_TYPES_MAP.get(
+                                relation_type, "UNKNOWN"
+                            ),
                         }
                     )
             elif relation[0] == NodeRelationship.PARENT:
                 if relation[1]:
                     parent_path = (
-                        visited_nodes.get(relation[1].node_id, {}).get("path", no_extension_path).replace("/", ".")
+                        visited_nodes.get(relation[1].node_id, {})
+                        .get("path", no_extension_path)
+                        .replace("/", ".")
                     )
-                    parent_level = visited_nodes.get(relation[1].node_id, {}).get("level", level)
+                    parent_level = visited_nodes.get(relation[1].node_id, {}).get(
+                        "level", level
+                    )
 
                     node_path = f"{parent_path}.{processed_node['attributes']['name']}"
                 else:
@@ -152,7 +187,6 @@ class BaseParser(ABC):
         processed_node["attributes"]["file_path"] = file_path
         processed_node["attributes"]["level"] = parent_level + 1
         processed_node["attributes"]["leaf"] = leaf
-
 
         processed_node["type"] = type_node
 
@@ -179,7 +213,9 @@ class BaseParser(ABC):
                 from_text = from_statement.text.decode()
                 for import_statement in import_statements[1:]:
                     if import_statement.text.decode() == self.wildcard:
-                        imports["_*wildcard*_"]["path"].append(self.resolve_import_path(from_text, path, root_path))
+                        imports["_*wildcard*_"]["path"].append(
+                            self.resolve_import_path(from_text, path, root_path)
+                        )
                     imports[import_statement.text.decode()] = {
                         "path": self.resolve_import_path(from_text, path, root_path),
                         "alias": "",

@@ -3,14 +3,15 @@ from typing import Any, Dict, Optional, Set
 
 import posthog
 
-logger = logging.getLogger(__name__)
 
 import os
 import uuid
 from abc import abstractmethod
 from enum import Enum
 from pathlib import Path
-from typing import Any, ClassVar, Dict
+from typing import ClassVar
+
+logger = logging.getLogger(__name__)
 
 
 class ServerContext(Enum):

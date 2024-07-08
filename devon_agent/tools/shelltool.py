@@ -1,9 +1,6 @@
-import os
 from typing import List
 
 from devon_agent.tool import Tool, ToolContext
-from devon_agent.tools.utils import (_capture_window, cwd_normalize_path,
-                                     file_exists, make_abs_path)
 
 
 class ShellTool(Tool):

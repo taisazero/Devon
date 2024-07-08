@@ -30,7 +30,7 @@ from pydantic import BaseModel, Field
 
 if TYPE_CHECKING:
     from devon_agent.environment import EnvironmentModule
-    from devon_agent.config import Config       
+    from devon_agent.config import Config
 
 
 class ToolContext(TypedDict):
@@ -44,7 +44,7 @@ PreTool = Callable[[ToolContext], None]
 PostTool = Callable[[ToolContext, Any], None]
 
 
-class Tool(BaseModel,ABC):
+class Tool(BaseModel, ABC):
     pre_funcs: list[PreTool] = Field(default=[])
     post_funcs: list[PostTool] = Field(default=[])
 

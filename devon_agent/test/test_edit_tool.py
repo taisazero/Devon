@@ -1,5 +1,3 @@
-from devon_agent.tools.edittools import EditFileTool
-
 command = """edit_file
 <<<
 --- translator.py
@@ -33,11 +31,6 @@ command = """edit_file
 # edit_tool = EditFileTool()
 
 
-
-
-
-
-
 # def test_edit_tool(test_config):
 #     # command = ""
 #     ctx = {
@@ -46,5 +39,3 @@ command = """edit_file
 #         "state": {},
 #         "raw_command": command,
 #     }
-
-

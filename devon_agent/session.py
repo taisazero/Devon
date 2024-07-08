@@ -10,23 +10,27 @@ from devon_agent.agents.conversational_agent import ConversationalAgent
 
 
 from devon_agent.config import Config
-from devon_agent.event import EventSystem, Event, request_handler
+from devon_agent.event import Event
 from devon_agent.tools.codenav import CodeGoTo, CodeSearch
 from devon_agent.tools.usertools import AskUserTool
-from devon_agent.versioning.fossil_versioning import FossilVersioning
 from devon_agent.data_models import _delete_session_util, _save_session_util
 from devon_agent.utils.telemetry import Posthog, SessionStartEvent
 from devon_agent.tool import ToolNotFoundException
 from devon_agent.tools import parse_command
 from devon_agent.tools.editorblock import EditBlockTool
-from devon_agent.tools.editortools import (CreateFileTool, DeleteFileTool,
-                                           OpenFileTool, ScrollDownTool,
-                                           ScrollToLineTool, ScrollUpTool,
-                                           save_create_file, save_delete_file)
+from devon_agent.tools.editortools import (
+    CreateFileTool,
+    DeleteFileTool,
+    OpenFileTool,
+    ScrollDownTool,
+    ScrollToLineTool,
+    ScrollUpTool,
+    save_create_file,
+    save_delete_file,
+)
 from devon_agent.tools.filesearchtools import FindFileTool, GetCwdTool, SearchDirTool
 from devon_agent.tools.filetools import SearchFileTool
-from devon_agent.tools.filesearchtools import FindFileTool, GetCwdTool, SearchDirTool
-from devon_agent.tools.filetools import SearchFileTool, FileTreeDisplay
+from devon_agent.tools.filetools import FileTreeDisplay
 from devon_agent.tools.lifecycle import NoOpTool
 from devon_agent.tools.shelltool import ShellTool
 from devon_agent.tools.utils import get_ignored_files, read_file
@@ -101,7 +105,6 @@ class Session:
         else:
             raise ValueError(f"Agent type {agent_config.agent_type} not supported")
 
-
         self.environments = config.environments
 
         self.environments["local"].register_tools(
@@ -127,10 +130,7 @@ class Session:
         self.environments["local"].event_log = event_log
         self.environments["user"].event_log = event_log
 
-        self.environments["user"].register_tools(
-            {"ask_user": AskUserTool()}
-        )
-
+        self.environments["user"].register_tools({"ask_user": AskUserTool()})
 
         self.base_path = config.path
 
@@ -146,7 +146,7 @@ class Session:
 
         self.event_log = event_log
 
-    def init_state(self,event_log: List[Dict] = []):
+    def init_state(self, event_log: List[Dict] = []):
         self.state = DotDict({})
         self.state.PAGE_SIZE = 200
 
@@ -172,17 +172,14 @@ class Session:
 
     def to_dict(self):
         return {
-            "config": self.config.model_dump(mode="json",exclude={"logger"}),
+            "config": self.config.model_dump(mode="json", exclude={"logger"}),
             "event_history": [event for event in self.event_system.processed_events],
         }
 
     @classmethod
-    def from_config(cls, config : Config, event_log : List[Dict]):
+    def from_config(cls, config: Config, event_log: List[Dict]):
         config = config
-        instance = cls(
-           config,
-           event_log
-        )
+        instance = cls(config, event_log)
 
         # instance.state = DotDict(data["state"])
         instance.state = DotDict({})
@@ -270,7 +267,7 @@ class Session:
 
     def step_event(self, event):
         new_events = []
-        print("event",event)
+        print("event", event)
         match event["type"]:
             case "Error":
                 new_events.append(
@@ -303,12 +300,14 @@ class Session:
                 self.persist()
                 if self.state.editor and self.state.editor.files:
                     for file in self.state.editor.files:
-                        self.state.editor.files[file]["lines"]= read_file({
-                            "environment" : self.default_environment,
-                            "session" : self,
-                            "state" : self.state,
-                        },
-                        file)
+                        self.state.editor.files[file]["lines"] = read_file(
+                            {
+                                "environment": self.default_environment,
+                                "session": self,
+                                "state": self.state,
+                            },
+                            file,
+                        )
                 thought, action, output = self.agent.predict(
                     self.get_last_task(), event["content"], self
                 )
@@ -391,13 +390,14 @@ class Session:
                                 raise e
 
                             try:
-
-                                new_events.append({
-                                    "type": "ShellRequest",
-                                    "content": event["content"]["raw_command"],
-                                    "producer": self.default_environment.name,
-                                    "consumer": event["producer"],
-                                })
+                                new_events.append(
+                                    {
+                                        "type": "ShellRequest",
+                                        "content": event["content"]["raw_command"],
+                                        "producer": self.default_environment.name,
+                                        "consumer": event["producer"],
+                                    }
+                                )
 
                                 response = self.default_environment.default_tool(
                                     {
@@ -409,13 +409,15 @@ class Session:
                                     event["content"]["toolname"],
                                     event["content"]["args"],
                                 )
-                                
-                                new_events.append({
-                                    "type": "ShellResponse",
-                                    "content": response,
-                                    "producer": self.default_environment.name,
-                                    "consumer": event["producer"],
-                                })
+
+                                new_events.append(
+                                    {
+                                        "type": "ShellResponse",
+                                        "content": response,
+                                        "producer": self.default_environment.name,
+                                        "consumer": event["producer"],
+                                    }
+                                )
 
                                 new_events.append(
                                     {
@@ -453,7 +455,6 @@ class Session:
                 # self.versioning.commit_all_files("commit")
                 # Sync the editor state
 
-                
                 new_events.append(
                     {
                         "type": "ModelRequest",
@@ -553,7 +554,6 @@ class Session:
         return docs
 
     def setup(self):
-
         self.state.task = self.config.task
 
         self.status = "paused"
@@ -574,7 +574,9 @@ class Session:
 
         if self.config.ignore_files:
             # check if devonignore exists, use default env
-            devonignore_path = os.path.join(self.config.path,self.config.devon_ignore_file or  ".devonignore")
+            devonignore_path = os.path.join(
+                self.config.path, self.config.devon_ignore_file or ".devonignore"
+            )
             _, rc = self.default_environment.execute("test -f " + devonignore_path)
             if rc == 0:
                 self.config.exclude_files.extend(get_ignored_files(devonignore_path))
@@ -593,14 +595,12 @@ class Session:
                 )
 
     def persist(self):
-        if self.persist_to_db == True:
+        if self.persist_to_db:
             asyncio.run(_save_session_util(self.name, self.to_dict()))
 
     def delete_from_db(self):
-        if self.persist_to_db == True:
+        if self.persist_to_db:
             asyncio.run(_delete_session_util(self.name))
-
-
 
     # def error_handler(self, system, event):
     #     return [Event(
@@ -613,7 +613,7 @@ class Session:
     #         producer="system",
     #         consumer="user",
     #     )]
-    
+
     # @request_handler
     # def model_request_handler(self, system, event):
     #     if self.state.editor and self.state.editor.files:
@@ -631,7 +631,7 @@ class Session:
     #         raise Exception(output)
     #     else:
     #         return {"thought": thought, "action": action, "output": output}
-    
+
     # @request_handler
     # def tool_request_handler(self, system : EventSystem, event : Event):
     #     tool_name, args = event.content["toolname"], event.content["args"]
@@ -683,7 +683,6 @@ class Session:
 
     #                 return response
 
-
     #             except ToolNotFoundException as e:
     #                 if not (
     #                     self.default_environment
@@ -729,9 +728,9 @@ class Session:
     #                             producer=self.default_environment.name,
     #                         )
     #                     )
-                        
+
     #                     return response
-                    
+
     #                 except Exception as e:
     #                     self.logger.error(traceback.format_exc())
     #                     self.logger.error(f"Error routing tool call: {e}")
@@ -741,7 +740,7 @@ class Session:
     #                 self.logger.error(traceback.format_exc())
     #                 self.logger.error(f"Error routing tool call: {e}")
     #                 return e.args[0]
-                
+
     # def interrupt_handler(self, system : EventSystem, event : Event):
     #     if self.agent.interrupt:
     #         self.agent.interrupt += (
@@ -766,7 +765,6 @@ class Session:
     #         consumer="devon",
     #         content="",
     #     )]
-
 
     # def model_response_handler(self, system : EventSystem, event : Event):
     #     content = event.content["action"]

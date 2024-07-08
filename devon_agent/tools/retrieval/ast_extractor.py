@@ -125,7 +125,7 @@ def extract_info_from_ast(graph, ast_tree, file_path):
                         graph.nodes[current_node]["dependencies"]["imports"].append(
                             imported_module
                         )
-                    except:
+                    except Exception:
                         pass
                     # graph.nodes[current_node]["dependencies"]["imports"].append(imported_module)
                 # else:

@@ -1,7 +1,4 @@
-import re
-
 import pytest
-from pytest import raises
 
 from devon_agent.tools import parse_commands
 

@@ -6,7 +6,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.future import select
 from sqlalchemy.orm import sessionmaker
 
-    
+
 def sqlite_url(db_path):
     return "sqlite+aiosqlite:///" + db_path
 

@@ -1,18 +1,16 @@
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Dict, List, Tuple, Protocol
+from typing import TYPE_CHECKING, Dict, List, Tuple
 
 from pydantic import BaseModel, Field
 from abc import ABC
 from devon_agent.tool import Tool
 
 if TYPE_CHECKING:
-    from devon_agent.session import Session
     from devon_agent.tool import Tool
 
 
-class EnvironmentModule(BaseModel,ABC):
-    default_tool : Tool = Field(default=None)
-    tools : Dict[str, Tool] = Field(default_factory=dict)
+class EnvironmentModule(BaseModel, ABC):
+    default_tool: Tool = Field(default=None)
+    tools: Dict[str, Tool] = Field(default_factory=dict)
     event_log: List[Dict] = Field(default_factory=list)
     state: Dict = Field(default_factory=dict)
 
@@ -36,7 +34,6 @@ class EnvironmentModule(BaseModel,ABC):
 
     def set_default_tool(self, tool: "Tool"):
         self.default_tool = tool
-
 
     """
     in session, if tool in env.tools, then call tool with env in context

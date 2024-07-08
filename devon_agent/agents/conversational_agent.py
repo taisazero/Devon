@@ -1,9 +1,3 @@
-
-
-
-
-
-
 import logging
 import time
 import traceback
@@ -11,9 +5,18 @@ from typing import TYPE_CHECKING, Tuple
 
 from tenacity import RetryError
 from devon_agent.agent import Agent
-from devon_agent.agents.prompts.anthropic_prompts import anthropic_commands_to_command_docs, anthropic_history_to_bash_history, conversational_agent_last_user_prompt_template_v3, conversational_agent_system_prompt_template_v3
+from devon_agent.agents.prompts.anthropic_prompts import (
+    anthropic_commands_to_command_docs,
+    anthropic_history_to_bash_history,
+    conversational_agent_last_user_prompt_template_v3,
+    conversational_agent_system_prompt_template_v3,
+)
 from devon_agent.agents.prompts.llama3_prompts import llama3_parse_response
-from devon_agent.agents.prompts.openai_prompts import openai_commands_to_command_docs, openai_conversation_agent_last_user_prompt_template, openai_conversation_agent_system_prompt_template
+from devon_agent.agents.prompts.openai_prompts import (
+    openai_commands_to_command_docs,
+    openai_conversation_agent_last_user_prompt_template,
+    openai_conversation_agent_system_prompt_template,
+)
 from devon_agent.model import AnthropicModel, ModelArguments, OpenAiModel
 
 from devon_agent.tools.utils import get_cwd
@@ -55,7 +58,7 @@ class ConversationalAgent(Agent):
                 api_key=self.agent_config.api_key,
             )
         )
-    
+
     def _format_editor_entry(self, k, v, PAGE_SIZE=50):
         path = k
         page = v["page"]
@@ -79,12 +82,12 @@ class ConversationalAgent(Agent):
 {window_lines}
 ************************************
 """
-    
+
     def _convert_editor_to_view(self, editor, PAGE_SIZE=50):
         return "\n".join(
             [self._format_editor_entry(k, v, PAGE_SIZE) for k, v in editor.items()]
         )
-    
+
     def _prepare_anthropic(self, task, editor, session):
         command_docs = (
             "Custom Commands Documentation:\n"
@@ -112,7 +115,7 @@ class ConversationalAgent(Agent):
 
         messages = [{"role": "user", "content": last_user_prompt}]
         return messages, system_prompt
-    
+
     def _prepare_openai(self, task, editor, session):
         time.sleep(3)
 
@@ -146,7 +149,6 @@ class ConversationalAgent(Agent):
 
         messages = history + [{"role": "user", "content": last_user_prompt}]
         return messages, system_prompt
-    
 
     def predict(
         self,
@@ -177,9 +179,9 @@ class ConversationalAgent(Agent):
             }
 
             if not self.agent_config.prompt_type:
-                self.agent_config.prompt_type = self.default_model_configs[self.agent_config.model][
-                    "prompt_type"
-                ]
+                self.agent_config.prompt_type = self.default_model_configs[
+                    self.agent_config.model
+                ]["prompt_type"]
 
             messages, system_prompt = prompts[self.agent_config.prompt_type](
                 task, editor, session
@@ -228,7 +230,7 @@ SCRATCHPAD: {scratchpad}
             return thought, action, output
         except KeyboardInterrupt:
             raise
-        except Hallucination as e:
+        except Hallucination:
             return "hallucination", "hallucination", "Incorrect response format"
         except RuntimeError as e:
             session.event_log.append(
@@ -276,5 +278,3 @@ SCRATCHPAD: {scratchpad}
                 "exit_error",
                 f"exit due to exception: {e}",
             )
-
-

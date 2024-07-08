@@ -1,9 +1,13 @@
-import os
-
 from devon_agent.tool import Tool, ToolContext
-from devon_agent.tools.utils import _capture_window, cwd_normalize_path, make_abs_path, file_exists
+from devon_agent.tools.utils import (
+    _capture_window,
+    cwd_normalize_path,
+    make_abs_path,
+    file_exists,
+)
 from devon_agent.tools.retrieval.file_tree.file_tree_tool import FileTreeTool
 from pydantic import Field
+
 
 class DeleteFileTool(Tool):
     @property
@@ -343,9 +347,6 @@ class SearchFileTool(Tool):
     def cleanup(self, ctx):
         pass
 
-    def supported_formats(self):
-        return ["docstring", "manpage"]
-
     def documentation(self, format="docstring"):
         match format:
             case "docstring":
@@ -423,22 +424,20 @@ class SearchFileTool(Tool):
         return result
 
 
-
 class FileTreeDisplay(Tool):
-    fileTreeTool : FileTreeTool = Field(default=None)
+    fileTreeTool: FileTreeTool = Field(default=None)
 
     class Config:
         arbitrary_types_allowed = True
 
-
     @property
     def name(self):
         return "file_tree_display"
-    
+
     @property
     def supported_formats(self):
         return ["docstring", "manpage"]
-    
+
     def setup(self, ctx):
         root_dir = ctx["environment"].path
         self.fileTreeTool = FileTreeTool(root_dir=root_dir)
@@ -446,9 +445,6 @@ class FileTreeDisplay(Tool):
 
     def cleanup(self, ctx):
         pass
-
-    def supported_formats(self):
-        return ["docstring", "manpage"]
 
     def documentation(self, format="docstring"):
         match format:
@@ -502,8 +498,12 @@ class FileTreeDisplay(Tool):
             if dir_path is None:
                 dir_path = self.fileTreeTool.root_dir
 
-            result_list, result_tree = self.fileTreeTool.get_large_tree(dir_path, 500, 20)
+            result_list, result_tree = self.fileTreeTool.get_large_tree(
+                dir_path, 500, 20
+            )
             return result_tree
         except Exception as e:
-            ctx["config"].logger.error(f"Failed to display file tree for directory: {dir_path}. Error: {str(e)}")
+            ctx["config"].logger.error(
+                f"Failed to display file tree for directory: {dir_path}. Error: {str(e)}"
+            )
             return f"Failed to display file tree for directory: {dir_path}. Error: {str(e)}"

@@ -33,7 +33,12 @@ def server(port, db_path):
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
-    config = uvicorn.Config(app, host="0.0.0.0", port=port,reload=True,)
+    config = uvicorn.Config(
+        app,
+        host="0.0.0.0",
+        port=port,
+        reload=True,
+    )
     uvicorn_server = uvicorn.Server(config)
 
     uvicorn_server.run()

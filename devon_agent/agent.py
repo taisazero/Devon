@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 @dataclass(frozen=False)
 class Agent:
     name: str
-    global_config : Config
+    global_config: Config
     agent_config: AgentConfig
     interrupt: str = ""
 
@@ -30,4 +30,3 @@ DEFAULT_MODELS = {
     "llama-3-70b": GroqModel,
     "ollama/deepseek-coder:6.7b": OllamaModel,
 }
-

@@ -5,7 +5,6 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from time import sleep
 from typing import Any, Dict, List, Optional
-from devon_agent.agents.conversational_agent import ConversationalAgent
 # from devon_agent.semantic_search.code_graph_manager import CodeGraphManager
 
 import fastapi
@@ -17,12 +16,9 @@ from sqlalchemy.orm import sessionmaker
 from devon_agent.config import AgentConfig, Config
 from devon_agent.utils.config_utils import hydrate_config
 from devon_agent.environments.shell_environment import LocalShellEnvironment
-from devon_agent.data_models import (SingletonEngine, init_db, load_data,
-                                set_db_engine)
+from devon_agent.data_models import SingletonEngine, init_db, load_data, set_db_engine
 from devon_agent.environments.user_environment import UserEnvironment
 from devon_agent.session import Session
-from devon_agent.tools.codenav import CodeGoTo, CodeSearch
-from devon_agent.tools.usertools import AskUserTool
 from devon_agent.utils.utils import LOGGER_NAME
 
 
@@ -89,7 +85,10 @@ async def lifespan(app: fastapi.FastAPI):
             app.db_session = db_session
             data = await load_data(db_session)
             data = {
-                k: Session.from_config(hydrate_config(v["config"], lambda: get_user_input(k)),v["event_history"])
+                k: Session.from_config(
+                    hydrate_config(v["config"], lambda: get_user_input(k)),
+                    v["event_history"],
+                )
                 for (k, v) in data.items()
             }
             # Remove None values from data
@@ -124,19 +123,19 @@ def read_root():
 # @app.get("/indexes")
 # def get_indexes():
 #     client = chromadb.PersistentClient(path=os.path.join(app.db_path, "vectorDB"))
-    
+
 #     # Get completed indexes from ChromaDB
 #     completed_indexes = [
 #         decode_path(collection.name)
 #         for collection in client.list_collections()
 #     ]
-    
+
 #     # Decode the keys from index_tasks
 #     in_progress_indexes = [unquote(key).replace("%2F", "/") for key in index_tasks.keys()]
-    
+
 #     # Combine completed indexes with in-progress indexes
 #     all_indexes = set(completed_indexes + in_progress_indexes)
-    
+
 #     # Create a list of dictionaries with index information
 #     index_info = []
 #     for index in all_indexes:
@@ -147,7 +146,7 @@ def read_root():
 #             "path": index,
 #             "status": status
 #         })
-    
+
 #     return index_info
 
 # index_tasks = {}
@@ -179,7 +178,6 @@ def read_root():
 #         return index_tasks[index]
 
 
-
 # @app.delete("/indexes/{index}")
 # def delete_index(index: str):
 #     vectorDB_path = os.path.join(app.db_path, "vectorDB")
@@ -192,6 +190,7 @@ def read_root():
 #         print(e)
 #         return "error"
 #     return "done"
+
 
 @app.get("/sessions")
 def get_sessions():
@@ -223,7 +222,7 @@ def create_session(
 
     user_environment = UserEnvironment(user_func=lambda: get_user_input(session))
 
-    db_path = app.db_path if hasattr(app, 'db_path') else "."
+    db_path = app.db_path if hasattr(app, "db_path") else "."
 
     sessions[session] = Session(
         config=Config(
@@ -233,13 +232,20 @@ def create_session(
             db_path=db_path,
             persist_to_db=app.persist,
             versioning="git",
-            environments={"local":local_environment,"user":user_environment},
+            environments={"local": local_environment, "user": user_environment},
             default_environment="local",
-            agent_configs=[AgentConfig(agent_name="Devon", temperature=0.0, model=config["model"], agent_type="conversational")],
+            agent_configs=[
+                AgentConfig(
+                    agent_name="Devon",
+                    temperature=0.0,
+                    model=config["model"],
+                    agent_type="conversational",
+                )
+            ],
             ignore_files=True,
             devon_ignore_file=".devonignore",
         ),
-        event_log=[]
+        event_log=[],
     )
 
     sessions[session].init_state()

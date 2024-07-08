@@ -4,10 +4,9 @@ from difflib import SequenceMatcher
 from devon_agent.tool import Tool, ToolContext
 
 # from .editblock_prompts import EditBlockPrompts
-import re
-from difflib import SequenceMatcher
 
 from devon_agent.tools.utils import make_abs_path, read_file, write_file
+
 
 class EditBlockTool(Tool):
     @property
@@ -169,21 +168,21 @@ mathweb/flask/app.py
 """
 
     def function(self, context: ToolContext, *args, **kwargs):
-        print("raw_command",context.get('raw_command', ''))
-        raw_command = context.get('raw_command', '')
+        print("raw_command", context.get("raw_command", ""))
+        raw_command = context.get("raw_command", "")
         edit_content = self._extract_edit_content(raw_command)
         if not edit_content:
             return "Error: No edit content provided"
-        print("edit_content",edit_content)
+        print("edit_content", edit_content)
         edits = list(self.find_original_update_blocks(edit_content))
         results = self.apply_edits(context, edits)
 
         return self._format_results(results)
 
     def _extract_edit_content(self, raw_command: str) -> str:
-        print("checking if found",raw_command)
+        print("checking if found", raw_command)
         if raw_command.strip().startswith("edit"):
-            print("edit command",raw_command)
+            print("edit command", raw_command)
             return raw_command.strip()[5:].strip()
         return ""
 
@@ -192,7 +191,9 @@ mathweb/flask/app.py
         DIVIDER = "======="
         UPDATED = ">>>>>>> REPLACE"
         separators = "|".join([HEAD, DIVIDER, UPDATED])
-        split_re = re.compile(r"^((?:" + separators + r")[ ]*\n)", re.MULTILINE | re.DOTALL)
+        split_re = re.compile(
+            r"^((?:" + separators + r")[ ]*\n)", re.MULTILINE | re.DOTALL
+        )
 
         pieces = re.split(split_re, content)
         pieces.reverse()
@@ -221,26 +222,32 @@ mathweb/flask/app.py
                 divider_marker = pieces.pop()
                 processed.append(divider_marker)
                 if divider_marker.strip() != DIVIDER:
-                    raise ValueError(f"Expected `{DIVIDER}` not {divider_marker.strip()}")
+                    raise ValueError(
+                        f"Expected `{DIVIDER}` not {divider_marker.strip()}"
+                    )
 
                 updated_text = pieces.pop()
                 processed.append(updated_text)
                 updated_marker = pieces.pop()
                 processed.append(updated_marker)
                 if updated_marker.strip() != UPDATED:
-                    raise ValueError(f"Expected `{UPDATED}` not `{updated_marker.strip()}")
+                    raise ValueError(
+                        f"Expected `{UPDATED}` not `{updated_marker.strip()}"
+                    )
 
                 yield filename, original_text, updated_text
         except Exception as e:
             processed = "".join(processed)
-            raise ValueError(f"{processed}\n^^^ Error parsing SEARCH/REPLACE block: {str(e)}")
+            raise ValueError(
+                f"{processed}\n^^^ Error parsing SEARCH/REPLACE block: {str(e)}"
+            )
 
     def find_filename(self, lines):
         lines.reverse()
         lines = lines[:3]
         for line in lines:
-            filename = line.strip().rstrip(':')
-            if filename and not filename.startswith('```'):
+            filename = line.strip().rstrip(":")
+            if filename and not filename.startswith("```"):
                 return filename
 
     def apply_edits(self, context: ToolContext, edits):
@@ -254,20 +261,24 @@ mathweb/flask/app.py
 
             file_path = make_abs_path(context, filename)
 
-            file_exists = (
-                context["environment"]
-                .execute(f"test -e {file_path} && echo 'exists'")[0]
-                .strip()
-                == "exists"
-            )
+            # file_exists = (
+            #     context["environment"]
+            #     .execute(f"test -e {file_path} && echo 'exists'")[0]
+            #     .strip()
+            #     == "exists"
+            # )
             content = read_file(context, file_path=file_path)
             new_content = self.replace_most_similar_chunk(content, original, updated)
-            
+
             if new_content == content:
-                results.append({'status': 'error', 'message': f"No changes made in {filename}"})
+                results.append(
+                    {"status": "error", "message": f"No changes made in {filename}"}
+                )
             else:
-                write_file(context,file_path, new_content)
-                results.append({'status': 'success', 'message': f"Successfully edited {filename}"})
+                write_file(context, file_path, new_content)
+                results.append(
+                    {"status": "success", "message": f"Successfully edited {filename}"}
+                )
                 # context.state['edit_history'].append({
                 #     'filename': filename,
                 #     'old_content': content,
@@ -290,14 +301,18 @@ mathweb/flask/app.py
             if res:
                 return "\n".join(res)
 
-        return self.replace_closest_edit_distance(whole_lines, part, part_lines, replace_lines)
+        return self.replace_closest_edit_distance(
+            whole_lines, part, part_lines, replace_lines
+        )
 
     def perfect_or_whitespace(self, whole_lines, part_lines, replace_lines):
         res = self.perfect_replace(whole_lines, part_lines, replace_lines)
         if res:
             return res
 
-        return self.replace_part_with_missing_leading_whitespace(whole_lines, part_lines, replace_lines)
+        return self.replace_part_with_missing_leading_whitespace(
+            whole_lines, part_lines, replace_lines
+        )
 
     def perfect_replace(self, whole_lines, part_lines, replace_lines):
         part_tup = tuple(part_lines)
@@ -308,7 +323,9 @@ mathweb/flask/app.py
             if part_tup == whole_tup:
                 return whole_lines[:i] + replace_lines + whole_lines[i + part_len :]
 
-    def replace_part_with_missing_leading_whitespace(self, whole_lines, part_lines, replace_lines):
+    def replace_part_with_missing_leading_whitespace(
+        self, whole_lines, part_lines, replace_lines
+    ):
         leading = [len(p) - len(p.lstrip()) for p in part_lines if p.strip()] + [
             len(p) - len(p.lstrip()) for p in replace_lines if p.strip()
         ]
@@ -326,15 +343,22 @@ mathweb/flask/app.py
             )
 
             if add_leading is not None:
-                replace_lines = [add_leading + rline if rline.strip() else rline for rline in replace_lines]
-                return whole_lines[:i] + replace_lines + whole_lines[i + num_part_lines :]
+                replace_lines = [
+                    add_leading + rline if rline.strip() else rline
+                    for rline in replace_lines
+                ]
+                return (
+                    whole_lines[:i] + replace_lines + whole_lines[i + num_part_lines :]
+                )
 
         return None
 
     def match_but_for_leading_whitespace(self, whole_lines, part_lines):
         num = len(whole_lines)
 
-        if not all(whole_lines[i].lstrip() == part_lines[i].lstrip() for i in range(num)):
+        if not all(
+            whole_lines[i].lstrip() == part_lines[i].lstrip() for i in range(num)
+        ):
             return
 
         add = set(
@@ -345,7 +369,9 @@ mathweb/flask/app.py
 
         return add.pop() if len(add) == 1 else None
 
-    def replace_closest_edit_distance(self, whole_lines, part, part_lines, replace_lines):
+    def replace_closest_edit_distance(
+        self, whole_lines, part, part_lines, replace_lines
+    ):
         similarity_thresh = 0.8
         max_similarity = 0
         most_similar_chunk_start = -1
@@ -377,11 +403,12 @@ mathweb/flask/app.py
     def _format_results(self, results):
         output = []
         for result in results:
-            if result['status'] == 'success':
+            if result["status"] == "success":
                 output.append(f"✅ {result['message']}")
             else:
                 output.append(f"❌ {result['message']}")
         return "\n".join(output)
+
 
 # Example usage:
 # edit_tool = EditFileTool()

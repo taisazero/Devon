@@ -1,15 +1,14 @@
 import logging
-from typing import Any, Dict, List, Literal, Optional
+from typing import Dict, List, Literal, Optional
 from pydantic import BaseModel, computed_field, field_serializer, Field
 
 from devon_agent.environment import EnvironmentModule
 
 
-
 class AgentConfig(BaseModel):
-    model: str    
-    agent_name : str
-    agent_type : str
+    model: str
+    agent_name: str
+    agent_type: str
     api_base: Optional[str] = None
     prompt_type: Optional[str] = None
     api_key: Optional[str] = None
@@ -19,28 +18,28 @@ class AgentConfig(BaseModel):
 
 class Config(BaseModel):
     name: str
-    logger_name : str
+    logger_name: str
     path: str
-    environments: Dict[str,EnvironmentModule]
+    environments: Dict[str, EnvironmentModule]
     default_environment: str
     name: str
-    db_path : str
+    db_path: str
 
-    agent_configs : List[AgentConfig]
+    agent_configs: List[AgentConfig]
     task: Optional[str] = None
-    versioning : Optional[Literal["git", "fossil"]] = None
+    versioning: Optional[Literal["git", "fossil"]] = None
     persist_to_db: bool = True
-    ignore_files : Optional[bool]
-    exclude_files : Optional[List[str]] = Field(default_factory=list)
-    devon_ignore_file : Optional[str]
+    ignore_files: Optional[bool]
+    exclude_files: Optional[List[str]] = Field(default_factory=list)
+    devon_ignore_file: Optional[str]
 
     class Config:
         arbitrary_types_allowed = True
 
     @field_serializer("environments")
     def serialize_environments(self, v):
-        return {k:e.save() for k,e in v.items()}
-    
+        return {k: e.save() for k, e in v.items()}
+
     @computed_field
     @property
     def logger(self) -> logging.Logger:

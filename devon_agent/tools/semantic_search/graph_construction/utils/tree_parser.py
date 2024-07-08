@@ -57,7 +57,9 @@ def decompose_function_call(call_node: Node, language: Language, decomposed_call
     for decompose_node, type in decompose_call:
         if type == "nested_object":
             nested_object = True
-            decomposed_calls = decompose_function_call(decompose_node, language, decomposed_calls)
+            decomposed_calls = decompose_function_call(
+                decompose_node, language, decomposed_calls
+            )
         elif (type == "object" or type == "method") and nested_object:
             continue
         else:
@@ -74,7 +76,9 @@ def get_function_calls(node: Node, assignments_dict: dict, language: str) -> lis
     tree = parser.parse(bytes(code_text, "utf-8"))
     language = tree_sitter_languages.get_language(language)
 
-    assignment_query = language.query("""(assignment left: _ @variable right: _ @expression)""")
+    assignment_query = language.query(
+        """(assignment left: _ @variable right: _ @expression)"""
+    )
 
     assignments = assignment_query.captures(tree.root_node)
 
@@ -85,7 +89,9 @@ def get_function_calls(node: Node, assignments_dict: dict, language: str) -> lis
             if "self." in variable_identifier:
                 for scope in node.metadata["inclusive_scopes"]:
                     if scope["type"] == "class_definition":
-                        variable_identifier = scope["name"] + "." + variable_identifier.split("self.")[1]
+                        variable_identifier = (
+                            scope["name"] + "." + variable_identifier.split("self.")[1]
+                        )
                         break
             continue
 
@@ -120,7 +126,11 @@ def get_function_calls(node: Node, assignments_dict: dict, language: str) -> lis
                         break
 
             if assignments_dict.get(join_call):
-                function_calls.append(assignments_dict[join_call] + "." + ".".join(decomposed_call[index + 1 :]))
+                function_calls.append(
+                    assignments_dict[join_call]
+                    + "."
+                    + ".".join(decomposed_call[index + 1 :])
+                )
                 called_from_assignment = True
                 break
 

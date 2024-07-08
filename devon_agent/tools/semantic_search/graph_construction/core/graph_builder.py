@@ -1,16 +1,15 @@
-
 import os
-import uuid
 import pickle
 
 import networkx as nx
 from devon_agent.semantic_search.graph_construction.utils import format_nodes
 from devon_agent.semantic_search.graph_construction.languages.python.python_parser import (
-    PythonParser)
+    PythonParser,
+)
 
 
 class GraphConstructor:
-    def __init__(self, language = "python"):
+    def __init__(self, language="python"):
         self.graph = nx.DiGraph()  # Create a directed graph
         self.directories_map = {}
         self.visited_nodes = {}
@@ -43,7 +42,6 @@ class GraphConstructor:
         # Retrieve the root node ID from the loaded graph's graph attributes
         self.root_node_id = self.graph.graph.get("root_node_id")
 
-    
     def set_root_node(self, root_node_id):
         self.root_node_id = root_node_id
         self.graph.graph["root_node_id"] = root_node_id
@@ -102,12 +100,16 @@ class GraphConstructor:
                     line = line.strip()
                     if line and not line.startswith("#"):
                         normalized_path = os.path.normpath(line)
-                        absolute_path = os.path.abspath(os.path.join(path, normalized_path))
+                        absolute_path = os.path.abspath(
+                            os.path.join(path, normalized_path)
+                        )
                         ignored_paths.add(absolute_path)
                         print(absolute_path)
 
         for entry in os.scandir(path):
-            if (entry.name in ["legacy", "test"] and self.skip_tests) or entry.name.startswith("."):
+            if (
+                entry.name in ["legacy", "test"] and self.skip_tests
+            ) or entry.name.startswith("."):
                 continue
 
             # Check if the entry path matches any ignored path
@@ -118,12 +120,14 @@ class GraphConstructor:
                 if entry.name.endswith(".py") or entry.name.endswith(".js"):
                     entry_name = entry.name.split(".")[0]
                     try:
-                        processed_nodes, relations, file_imports = self.parser.parse_file(
-                            entry.path,
-                            self.root,
-                            visited_nodes=self.visited_nodes,
-                            global_imports=self.global_imports,
-                            level=level,
+                        processed_nodes, relations, file_imports = (
+                            self.parser.parse_file(
+                                entry.path,
+                                self.root,
+                                visited_nodes=self.visited_nodes,
+                                global_imports=self.global_imports,
+                                level=level,
+                            )
                         )
                     except Exception as e:
                         print(f"Error {entry.path}")
@@ -173,20 +177,30 @@ class GraphConstructor:
                 if self.parser.skip_directory(entry.name):
                     continue
                 nodes, relationships, imports = self._scan_directory(
-                    entry.path, nodes, relationships, imports, directory_node_id, level + 1, ignored_paths
+                    entry.path,
+                    nodes,
+                    relationships,
+                    imports,
+                    directory_node_id,
+                    level + 1,
+                    ignored_paths,
                 )
-        return nodes, relationships, imports 
+        return nodes, relationships, imports
 
     def build_graph(self, path):
         self.clear_graph()
-        
+
         nodes, relationships, imports = self._scan_directory(path)
-        
+
         for node in nodes:
             node["attributes"]["type"] = node["type"]
             self.graph.add_node(node["attributes"]["node_id"], **node["attributes"])
         for relationship in relationships:
-            self.graph.add_edge(relationship["sourceId"], relationship["targetId"], type=relationship["type"])
+            self.graph.add_edge(
+                relationship["sourceId"],
+                relationship["targetId"],
+                type=relationship["type"],
+            )
 
     def clear_graph(self):
         self.graph.clear()
@@ -196,9 +210,6 @@ class GraphConstructor:
         self.global_imports = {}
         self.import_aliases = {}
         self.graph.graph["root_node_id"] = None
-
-
-
 
     # def _relate_wildcard_imports(self, file_node_id: str, imports_list: list):
     #     import_edges = []
@@ -302,7 +313,6 @@ class GraphConstructor:
     #         directory = self.__get_directory(node_attrs, function_call, imports)
     #         target_object = self.global_imports.get(directory)
 
-
     #         if target_object:
     #             target_object_type = target_object["type"]
     #             if target_object_type == "FUNCTION" or target_object_type == "FILE":
@@ -365,4 +375,4 @@ class GraphConstructor:
     #         if inherits:
     #             inheritances_relations = self.__relate_inheritances(node_attrs, inherits, imports)
     #             for relation in inheritances_relations:
-    #                 self.graph.add_edge(relation["sourceId"], relation["targetId"], type=relation["type"])   
+    #                 self.graph.add_edge(relation["sourceId"], relation["targetId"], type=relation["type"])
