@@ -2,6 +2,7 @@ import signal
 import sys
 import click
 from devon_agent.server import app
+from devon_agent.__version__ import __version__
 
 @click.group(invoke_without_command=True)
 @click.option('--version', is_flag=True, help="Show the version and exit.")
