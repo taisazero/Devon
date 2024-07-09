@@ -5,7 +5,6 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from time import sleep
 from typing import Any, Dict, List, Optional
-from devon_agent.agents.conversational_agent import ConversationalAgent
 # from devon_agent.semantic_search.code_graph_manager import CodeGraphManager
 
 import fastapi
@@ -14,15 +13,14 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
+from devon_agent.config import AgentConfig, Config
+from devon_agent.utils.config_utils import hydrate_config
+from devon_agent.environments.shell_environment import LocalShellEnvironment
+from devon_agent.data_models import SingletonEngine, init_db, load_data, set_db_engine
+from devon_agent.environments.user_environment import UserEnvironment
+from devon_agent.session import Session
+from devon_agent.utils.utils import LOGGER_NAME
 
-from devon_agent.agents.default.agent import AgentArguments, TaskAgent
-from devon_agent.models import (SingletonEngine, init_db, load_data,
-                                set_db_engine)
-from devon_agent.session import Session, SessionArguments
-# import chromadb
-
-from devon_agent.utils import decode_path, encode_path
-from urllib.parse import unquote
 
 # API
 # SESSION
@@ -87,13 +85,15 @@ async def lifespan(app: fastapi.FastAPI):
             app.db_session = db_session
             data = await load_data(db_session)
             data = {
-                k: Session.from_dict(v, lambda: get_user_input(k), persist=True)
+                k: Session.from_config(
+                    hydrate_config(v["config"], lambda: get_user_input(k)),
+                    v["event_history"],
+                )
                 for (k, v) in data.items()
             }
+            # Remove None values from data
+            data = {k: v for k, v in data.items() if v is not None}
             sessions = data
-            # for k, v in sessions.items():
-                # v.setup()
-                # background_tasks.add_task(v.run_event_loop)
 
     yield
 
@@ -123,19 +123,19 @@ def read_root():
 # @app.get("/indexes")
 # def get_indexes():
 #     client = chromadb.PersistentClient(path=os.path.join(app.db_path, "vectorDB"))
-    
+
 #     # Get completed indexes from ChromaDB
 #     completed_indexes = [
 #         decode_path(collection.name)
 #         for collection in client.list_collections()
 #     ]
-    
+
 #     # Decode the keys from index_tasks
 #     in_progress_indexes = [unquote(key).replace("%2F", "/") for key in index_tasks.keys()]
-    
+
 #     # Combine completed indexes with in-progress indexes
 #     all_indexes = set(completed_indexes + in_progress_indexes)
-    
+
 #     # Create a list of dictionaries with index information
 #     index_info = []
 #     for index in all_indexes:
@@ -146,7 +146,7 @@ def read_root():
 #             "path": index,
 #             "status": status
 #         })
-    
+
 #     return index_info
 
 # index_tasks = {}
@@ -178,7 +178,6 @@ def read_root():
 #         return index_tasks[index]
 
 
-
 # @app.delete("/indexes/{index}")
 # def delete_index(index: str):
 #     vectorDB_path = os.path.join(app.db_path, "vectorDB")
@@ -191,6 +190,7 @@ def read_root():
 #         print(e)
 #         return "error"
 #     return "done"
+
 
 @app.get("/sessions")
 def get_sessions():
@@ -206,7 +206,7 @@ def get_sessions():
 def create_session(
     session: str,
     path: str,
-    config: AgentArguments,
+    config: Dict[str, Any],
     background_tasks: fastapi.BackgroundTasks,
 ):
     if not os.path.exists(path):
@@ -217,15 +217,35 @@ def create_session(
             status_code=400, detail=f"Session with id {session} already exists"
         )
 
-    agent = ConversationalAgent(name="Devon", temperature=0.0, args=config)
+    local_environment = LocalShellEnvironment(path=path)
+    print(local_environment.tools)
+
+    user_environment = UserEnvironment(user_func=lambda: get_user_input(session))
+
+    db_path = app.db_path if hasattr(app, "db_path") else "."
 
     sessions[session] = Session(
-        SessionArguments(
-            path, user_input=lambda: get_user_input(session), name=session,db_path=app.db_path if app.db_path else ".",        versioning="fossil"
+        config=Config(
+            name=session,
+            path=path,
+            logger_name=LOGGER_NAME,
+            db_path=db_path,
+            persist_to_db=app.persist,
+            versioning="git",
+            environments={"local": local_environment, "user": user_environment},
+            default_environment="local",
+            agent_configs=[
+                AgentConfig(
+                    agent_name="Devon",
+                    temperature=0.0,
+                    model=config["model"],
+                    agent_type="conversational",
+                )
+            ],
+            ignore_files=True,
+            devon_ignore_file=".devonignore",
         ),
-        agent,
-        app.persist,
-
+        event_log=[],
     )
 
     sessions[session].init_state()
@@ -260,7 +280,7 @@ def start_session(
         raise fastapi.HTTPException(status_code=404, detail="Session not found")
 
     session_obj = sessions.get(session)
-    session_obj.agent.api_key = api_key
+    session_obj.config.agent_configs[0].api_key = api_key
     if session not in running_sessions:
         session_obj.setup()
         background_tasks.add_task(sessions[session].run_event_loop)
@@ -311,7 +331,7 @@ def reset_session(session: str, background_tasks: fastapi.BackgroundTasks):
         raise fastapi.HTTPException(status_code=404, detail="Session not found")
     session_buffers[session] = "terminate"
     session_obj.terminate()
-    session_obj.init_state()
+    session_obj.init_state([])
     session_obj.setup()
     if session in session_buffers:
         del session_buffers[session]

@@ -3,11 +3,15 @@ import os
 from devon_agent.tool import Tool, ToolContext
 import code_nav_devon
 import tempfile
+from pydantic import Field
 
 
 class CodeSearch(Tool):
-    def __init__(self):
-        self.temp_file_path = None
+    base_path: str = Field(default=None)
+    temp_dir: tempfile.TemporaryDirectory = Field(default=None)
+
+    class Config:
+        arbitrary_types_allowed = True
 
     @property
     def name(self):
@@ -18,10 +22,9 @@ class CodeSearch(Tool):
         return ["docstring", "manpage"]
 
     def setup(self, ctx):
-        self.base_path = ctx["session"].base_path
+        self.base_path = ctx["environment"].path
 
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.temp_dir_path = self.temp_dir.name
 
     def cleanup(self, ctx):
         # Clean up the temporary directory
@@ -70,17 +73,23 @@ class CodeSearch(Tool):
         """
         try:
             # Run the text_search function
-            output = code_nav_devon.text_search(self.base_path, self.temp_dir_path, text, True)
+            output = code_nav_devon.text_search(
+                self.base_path, self.temp_dir.name, text, True
+            )
             return output
         except Exception as e:
-            ctx["session"].logger.error(f"Search failed for text: {text}. Error: {str(e)}")
+            ctx["config"].logger.error(
+                f"Search failed for text: {text}. Error: {str(e)}"
+            )
             return f"Search failed for text: {text}. Error: {str(e)}"
-        
 
 
 class CodeGoTo(Tool):
-    def __init__(self):
-        self.temp_file_path = None
+    base_path: str = Field(default=None)
+    temp_dir: tempfile.TemporaryDirectory = Field(default=None)
+
+    class Config:
+        arbitrary_types_allowed = True
 
     @property
     def name(self):
@@ -91,17 +100,15 @@ class CodeGoTo(Tool):
         return ["docstring", "manpage"]
 
     def setup(self, ctx):
-        self.base_path = ctx["session"].base_path
+        self.base_path = ctx["environment"].path
 
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.temp_dir_path = self.temp_dir.name
 
     def cleanup(self, ctx):
         # Clean up the temporary directory
         if self.temp_dir:
             self.temp_dir.cleanup()
             self.temp_dir = None
-
 
     def documentation(self, format="docstring"):
         match format:
@@ -143,7 +150,9 @@ class CodeGoTo(Tool):
             case _:
                 raise ValueError(f"Invalid format: {format}")
 
-    def function(self, ctx: ToolContext, file_path: str, line_number: int, symbol_string: str) -> str:
+    def function(
+        self, ctx: ToolContext, file_path: str, line_number: int, symbol_string: str
+    ) -> str:
         """
         command_name: code_goto
         description: Navigates to the specified symbol's definition or reference within the code base
@@ -152,20 +161,20 @@ class CodeGoTo(Tool):
         example: `code_goto "example.py" 42 "my_function"`
         """
         try:
-
-
             # to tell the agent whether fuzzy search was enabled
             fuzzy_search_text = ""
 
             line_number = int(line_number)
             abs_file_path = os.path.abspath(os.path.normpath(file_path))
-            with open(abs_file_path, 'r') as file:
+            with open(abs_file_path, "r") as file:
                 lines = file.readlines()
 
             if int(line_number) - 1 >= len(lines):
-                raise ValueError(f"Line number {line_number} is out of range in file {file_path}")
-            
-            base_path = ctx["session"].base_path
+                raise ValueError(
+                    f"Line number {line_number} is out of range in file {file_path}"
+                )
+
+            base_path = ctx["environment"].path
 
             # Check the specified line for the symbol
             line_content = lines[line_number - 1]
@@ -197,15 +206,25 @@ class CodeGoTo(Tool):
 
                 # If symbol is not found, raise an error
                 if start_index == -1:
-                    raise ValueError(f"Symbol '{symbol_string}' not found in line {line_number} or within ±2 lines of it in file {file_path}")
+                    raise ValueError(
+                        f"Symbol '{symbol_string}' not found in line {line_number} or within ±2 lines of it in file {file_path}"
+                    )
 
             # Run the go_to function
-            output = code_nav_devon.go_to(base_path, self.temp_dir_path, abs_file_path, line_number, start_index, end_index)
+            output = code_nav_devon.go_to(
+                base_path,
+                self.temp_dir.name,
+                abs_file_path,
+                line_number,
+                start_index,
+                end_index,
+            )
             return fuzzy_search_text + output
         except Exception as e:
-            ctx["session"].logger.error(f"Navigation failed for symbol: {symbol_string} at line: {line_number} in file: {file_path}. Error: {str(e)}")
+            ctx["config"].logger.error(
+                f"Navigation failed for symbol: {symbol_string} at line: {line_number} in file: {file_path}. Error: {str(e)}"
+            )
             return f"Navigation failed for symbol: {symbol_string} at line: {line_number} in file: {file_path}. Error: {str(e)}"
-
 
 
 # Create a temporary directory
@@ -223,4 +242,3 @@ class CodeGoTo(Tool):
 #     # Manually delete the temporary directory and its contents
 #     temp_dir.cleanup()
 #     temp_dir = None
-    

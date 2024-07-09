@@ -104,13 +104,13 @@ class SetTaskTool(Tool):
             input="what is my next task?"
         )
         return context["session"].state.task
-    
+
 
 class RespondUserTool(Tool):
     @property
     def name(self):
         return "RespondUserTool"
-    
+
     def setup(self, context: ToolContext):
         pass
 
@@ -119,7 +119,6 @@ class RespondUserTool(Tool):
 
     def supported_formats(self):
         return ["docstring", "manpage"]
-
 
     def documentation(self, format="docstring"):
         match format:
@@ -146,7 +145,7 @@ class RespondUserTool(Tool):
                 """
             case _:
                 raise ValueError(f"Invalid format: {format}")
-            
+
     def function(self, context: ToolContext, response: str, **kwargs):
         """
         command_name: respond

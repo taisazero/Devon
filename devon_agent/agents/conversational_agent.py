@@ -1,9 +1,3 @@
-
-
-
-
-
-
 import logging
 import time
 import traceback
@@ -11,21 +5,50 @@ from typing import TYPE_CHECKING, Tuple
 import litellm
 
 from tenacity import RetryError
-from devon_agent.agents.default.agent import Agent
-from devon_agent.agents.default.anthropic_prompts import anthropic_commands_to_command_docs, anthropic_history_to_bash_history, anthropic_last_user_prompt_template_v3, anthropic_system_prompt_template_v3, conversational_agent_last_user_prompt_template_v3, conversational_agent_system_prompt_template_v3
-from devon_agent.agents.default.llama3_prompts import llama3_parse_response
-from devon_agent.agents.default.openai_prompts import openai_commands_to_command_docs, openai_conversation_agent_last_user_prompt_template, openai_conversation_agent_system_prompt_template, openai_last_user_prompt_template_v3, openai_system_prompt_template_v3
-from devon_agent.agents.model import AnthropicModel, ModelArguments, OpenAiModel
+from devon_agent.agent import Agent
+from devon_agent.agents.prompts.anthropic_prompts import (
+    anthropic_commands_to_command_docs,
+    anthropic_history_to_bash_history,
+    conversational_agent_last_user_prompt_template_v3,
+    conversational_agent_system_prompt_template_v3,
+)
+from devon_agent.agents.prompts.openai_prompts import (
+    openai_commands_to_command_docs,
+    openai_conversation_agent_last_user_prompt_template,
+    openai_conversation_agent_system_prompt_template,
+)
+from devon_agent.model import AnthropicModel, ModelArguments, OpenAiModel
 
 from devon_agent.tools.utils import get_cwd
-from devon_agent.udiff import Hallucination
-from devon_agent.utils import LOGGER_NAME
+from devon_agent.utils.utils import Hallucination, LOGGER_NAME
 
 if TYPE_CHECKING:
     from devon_agent.session import Session
 
 logger = logging.getLogger(LOGGER_NAME)
 
+
+def parse_response(response):
+    if "<thought>" in response:
+        thought = response.split("<thought>")[1].split("</thought>")[0]
+        action = response.split("<command>")[1].split("</command>")[0]
+        scratchpad = None
+        if "<scratchpad>" in response:
+            scratchpad = response.split("<scratchpad>")[1].split("</scratchpad>")[0]
+        commit_message = None
+        if "<COMMIT_MESSAGE>" in response:
+            commit_message = response.split("<COMMIT_MESSAGE>")[1].split("</COMMIT_MESSAGE>")[0]
+    else:
+        thought = response.split("<THOUGHT>")[1].split("</THOUGHT>")[0]
+        action = response.split("<COMMAND>")[1].split("</COMMAND>")[0]
+        scratchpad = None
+        if "<SCRATCHPAD>" in response:
+            scratchpad = response.split("<SCRATCHPAD>")[1].split("</SCRATCHPAD>")[0]
+        commit_message = None
+        if "<COMMIT_MESSAGE>" in response:
+            commit_message = response.split("<COMMIT_MESSAGE>")[1].split("</COMMIT_MESSAGE>")[0]
+
+    return thought, action, scratchpad, commit_message
 
 class ConversationalAgent(Agent):
     scratchpad: str = None
@@ -45,20 +68,19 @@ class ConversationalAgent(Agent):
     }
 
     def reset(self):
-        self.chat_history = []
+        self.agent_config.chat_history = []
         self.interrupt = ""
-        self.temperature = 0.0
         self.scratchpad = None
 
     def _initialize_model(self):
-        return self.default_models[self.args.model](
+        return self.default_models[self.agent_config.model](
             args=ModelArguments(
-                model_name=self.args.model,
-                temperature=self.temperature,
-                api_key=self.api_key,
+                model_name=self.agent_config.model,
+                temperature=self.agent_config.temperature,
+                api_key=self.agent_config.api_key,
             )
         )
-    
+
     def _format_editor_entry(self, k, v, PAGE_SIZE=50):
         path = k
         page = v["page"]
@@ -82,12 +104,12 @@ class ConversationalAgent(Agent):
 {window_lines}
 ************************************
 """
-    
+
     def _convert_editor_to_view(self, editor, PAGE_SIZE=50):
         return "\n".join(
             [self._format_editor_entry(k, v, PAGE_SIZE) for k, v in editor.items()]
         )
-    
+
     def _prepare_anthropic(self, task, editor, session):
         command_docs = (
             "Custom Commands Documentation:\n"
@@ -97,7 +119,7 @@ class ConversationalAgent(Agent):
             + "\n"
         )
 
-        history = anthropic_history_to_bash_history(self.chat_history)
+        history = anthropic_history_to_bash_history(self.agent_config.chat_history)
         system_prompt = conversational_agent_system_prompt_template_v3(command_docs)
         last_user_prompt = conversational_agent_last_user_prompt_template_v3(
             history,
@@ -115,7 +137,7 @@ class ConversationalAgent(Agent):
 
         messages = [{"role": "user", "content": last_user_prompt}]
         return messages, system_prompt
-    
+
     def _prepare_openai(self, task, editor, session):
         time.sleep(3)
 
@@ -129,7 +151,7 @@ class ConversationalAgent(Agent):
 
         history = [
             entry
-            for entry in self.chat_history[::-1][:15][::-1]
+            for entry in self.agent_config.chat_history
             if entry["role"] == "user" or entry["role"] == "assistant"
         ]
         system_prompt = openai_conversation_agent_system_prompt_template(command_docs)
@@ -149,14 +171,13 @@ class ConversationalAgent(Agent):
 
         messages = history + [{"role": "user", "content": last_user_prompt}]
         return messages, system_prompt
-    
 
     def predict(
         self,
         task: str,
         observation: str,
         session: "Session",
-    ) -> Tuple[str, str, str]:
+    ) -> Tuple[str, str, str, str]:
         self.current_model = self._initialize_model()
 
         if self.interrupt:
@@ -168,7 +189,7 @@ class ConversationalAgent(Agent):
                 session.state.editor.files, session.state.editor.PAGE_SIZE
             )
 
-            self.chat_history.append(
+            self.agent_config.chat_history.append(
                 {"role": "user", "content": observation, "agent": self.name}
             )
 
@@ -179,12 +200,12 @@ class ConversationalAgent(Agent):
                 # "ollama": self._prepare_ollama,
             }
 
-            if not self.args.prompt_type:
-                self.args.prompt_type = self.default_model_configs[self.args.model][
-                    "prompt_type"
-                ]
+            if not self.agent_config.prompt_type:
+                self.agent_config.prompt_type = self.default_model_configs[
+                    self.agent_config.model
+                ]["prompt_type"]
 
-            messages, system_prompt = prompts[self.args.prompt_type](
+            messages, system_prompt = prompts[self.agent_config.prompt_type](
                 task, editor, session
             )
             output = None
@@ -220,9 +241,11 @@ class ConversationalAgent(Agent):
             action = None
 
             try:
-                thought, action, scratchpad = llama3_parse_response(output)
+                thought, action, scratchpad, commit_message = parse_response(output)
                 if scratchpad:
                     self.scratchpad = scratchpad
+                if commit_message:
+                    print("COMMIT MESSAGE: ", commit_message)
             except Exception:
                 raise Hallucination(f"Multiple actions found in response: {output}")
 
@@ -231,7 +254,7 @@ class ConversationalAgent(Agent):
                     "Agent failed to follow response format instructions"
                 )
 
-            self.chat_history.append(
+            self.agent_config.chat_history.append(
                 {
                     "role": "assistant",
                     "content": output,
@@ -252,13 +275,15 @@ ACTION: {action}
 OBSERVATION: {observation}
 
 SCRATCHPAD: {scratchpad}
+
+COMMIT MESSAGE: {commit_message}
 \n\n****************\n\n\n\n""")
 
-            return thought, action, output
+            return thought, action, output, commit_message
         except KeyboardInterrupt:
             raise
-        except Hallucination as e:
-            return "hallucination", "hallucination", "Incorrect response format"
+        except Hallucination:
+            return "hallucination", "hallucination", "Incorrect response format",""
         except RuntimeError as e:
             session.event_log.append(
                 {
@@ -273,6 +298,7 @@ SCRATCHPAD: {scratchpad}
                 f"Exit due to runtime error: {e}",
                 "exit_error",
                 f"exit due to runtime error: {e}",
+                ""
             )
         except RetryError as e:
             session.event_log.append(
@@ -288,6 +314,7 @@ SCRATCHPAD: {scratchpad}
                 f"Exit due to retry error: {e}",
                 "exit_api",
                 f"exit due to retry error: {e}",
+                ""
             )
         except Exception as e:
             session.event_log.append(
@@ -304,6 +331,5 @@ SCRATCHPAD: {scratchpad}
                 f"Exit due to exception: {e}",
                 "exit_error",
                 f"exit due to exception: {e}",
+                ""
             )
-
-
