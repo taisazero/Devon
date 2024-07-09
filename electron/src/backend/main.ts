@@ -147,7 +147,6 @@ ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}
 
 const spawnAppWindow = async () => {
     const db_path = path.join(app.getPath('userData'))
-
     await portfinder
         .getPortPromise()
         .then((port: number) => {

@@ -1,9 +1,6 @@
-import os
 from typing import List
 
 from devon_agent.tool import Tool, ToolContext
-from devon_agent.tools.utils import (_capture_window, cwd_normalize_path,
-                                     file_exists, make_abs_path)
 
 
 class ShellTool(Tool):
@@ -34,7 +31,7 @@ class ShellTool(Tool):
         """
         Default tool for shell environments to execute in the environment
         """
-        output, rc = ctx["environment"].communicate(fn_name + " " + " ".join(args))
+        output, rc = ctx["environment"].execute(fn_name + " " + " ".join(args))
         if rc != 0:
             raise Exception(output)
         return output

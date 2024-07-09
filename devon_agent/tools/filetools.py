@@ -1,8 +1,9 @@
-import os
+from pydantic import Field
 
 from devon_agent.tool import Tool, ToolContext
-from devon_agent.tools.utils import _capture_window, cwd_normalize_path, make_abs_path, file_exists
-from devon_agent.retrieval.file_tree.file_tree_tool import FileTreeTool
+from devon_agent.tools.retrieval.file_tree.file_tree_tool import FileTreeTool
+from devon_agent.tools.utils import (_capture_window, cwd_normalize_path,
+                                     file_exists, make_abs_path)
 
 
 class DeleteFileTool(Tool):
@@ -81,7 +82,7 @@ class DeleteFileTool(Tool):
             return f"Successfully deleted file {abs_path}"
 
         except Exception as e:
-            ctx["session"].logger.error(
+            ctx["config"].logger.error(
                 f"Failed to delete file: {abs_path}. Error: {str(e)}"
             )
             return f"Failed to delete file: {abs_path}. Error: {str(e)}"
@@ -321,7 +322,7 @@ class ReadFileTool(Tool):
         """
         try:
             # Check if file exists to avoid reading from non-existent files
-            result, _ = ctx["environment"].communicate(f"cat '{file_path}'")
+            result, _ = ctx["environment"].execute(f"cat '{file_path}'")
             return result
         except Exception as e:
             ctx["logger"].error(f"Failed to read file: {file_path}. Error: {str(e)}")
@@ -342,9 +343,6 @@ class SearchFileTool(Tool):
 
     def cleanup(self, ctx):
         pass
-
-    def supported_formats(self):
-        return ["docstring", "manpage"]
 
     def documentation(self, format="docstring"):
         match format:
@@ -397,9 +395,9 @@ class SearchFileTool(Tool):
 
         try:
             # Check if file exists to avoid reading from non-existent files
-            content, _ = ctx["environment"].communicate(f"cat '{file_path}'")
+            content, _ = ctx["environment"].execute(f"cat '{file_path}'")
         except Exception as e:
-            ctx["session"].logger.error(
+            ctx["config"].logger.error(
                 f"Failed to read file: {file_path}. Error: {str(e)}"
             )
             return f"Failed to read file: {file_path}. Error: {str(e)}"
@@ -423,27 +421,27 @@ class SearchFileTool(Tool):
         return result
 
 
-
 class FileTreeDisplay(Tool):
+    fileTreeTool: FileTreeTool = Field(default=None)
+
+    class Config:
+        arbitrary_types_allowed = True
 
     @property
     def name(self):
         return "file_tree_display"
-    
+
     @property
     def supported_formats(self):
         return ["docstring", "manpage"]
-    
+
     def setup(self, ctx):
-        root_dir = ctx["session"].base_path
+        root_dir = ctx["environment"].path
         self.fileTreeTool = FileTreeTool(root_dir=root_dir)
         pass
 
     def cleanup(self, ctx):
         pass
-
-    def supported_formats(self):
-        return ["docstring", "manpage"]
 
     def documentation(self, format="docstring"):
         match format:
@@ -497,8 +495,12 @@ class FileTreeDisplay(Tool):
             if dir_path is None:
                 dir_path = self.fileTreeTool.root_dir
 
-            result_list, result_tree = self.fileTreeTool.get_large_tree(dir_path, 500, 20)
+            result_list, result_tree = self.fileTreeTool.get_large_tree(
+                dir_path, 500, 20
+            )
             return result_tree
         except Exception as e:
-            ctx["session"].logger.error(f"Failed to display file tree for directory: {dir_path}. Error: {str(e)}")
+            ctx["config"].logger.error(
+                f"Failed to display file tree for directory: {dir_path}. Error: {str(e)}"
+            )
             return f"Failed to display file tree for directory: {dir_path}. Error: {str(e)}"

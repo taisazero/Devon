@@ -24,28 +24,29 @@ Tools are often passed to llms as prompts or function calling. Every tool should
 """
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, TypedDict
 
-from devon_agent.event import Event
+from pydantic import BaseModel, Field
 
 if TYPE_CHECKING:
+    from devon_agent.config import Config
     from devon_agent.environment import EnvironmentModule
-    from devon_agent.session import Session
 
 
-class ToolContext(ABC):
+class ToolContext(TypedDict):
     state: Any
     environment: "EnvironmentModule"
-    session: "Session"
+    config: "Config"
+    event_log: list
 
 
 PreTool = Callable[[ToolContext], None]
 PostTool = Callable[[ToolContext, Any], None]
 
 
-class Tool(ABC):
-    pre_funcs: list[PreTool] = []
-    post_funcs: list[PostTool] = []
+class Tool(BaseModel, ABC):
+    pre_funcs: list[PreTool] = Field(default=[])
+    post_funcs: list[PostTool] = Field(default=[])
 
     @property
     @abstractmethod

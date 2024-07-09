@@ -60,11 +60,11 @@ def make_abs_path(ctx: ToolContext, fpath: str) -> str:
         str: The absolute path of the file.
     """
 
-    if ctx["session"].state.exclude_files:
-        if fpath in ctx["session"].state.exclude_files:
+    if ctx["config"].ignore_files:
+        if fpath in ctx["config"].exclude_files:
             return "You are not allowed to change this file"
 
-    return normalize_path(fpath, ctx["session"].base_path)
+    return normalize_path(fpath, ctx["environment"].path)
 
 
 def get_cwd(ctx) -> str:
@@ -135,12 +135,12 @@ def write_file(ctx, file_path: str, content: str = "") -> str:
 
         ctx["state"].editor.files[abs_path]["lines"] = content
         msg = f"Successfully wrote to file {abs_path}"
-        ctx["session"].logger.info(msg)
+        ctx["config"].logger.info(msg)
 
         return msg
 
     except Exception as e:
-        ctx["session"].logger.error(
+        ctx["config"].logger.error(
             f"Failed to write to file: {abs_path}. Error: {str(e)}"
         )
         raise Exception(f"Failed to write to file: {abs_path}. Error: {str(e)}")
@@ -184,7 +184,7 @@ def read_file(ctx, file_path: str) -> str:
     Returns:
         str: The content of the file.
     """
-    result, _ = ctx["environment"].communicate(f"cat '{file_path}'")
+    result, _ = ctx["environment"].execute(f"cat '{file_path}'")
     return result
 
 
@@ -213,7 +213,7 @@ def check_lint_entry_in_list(a, b_set):
 
 
 def _list_files_recursive(ctx, files: list[str]) -> dict:
-    base_path = ctx["session"].base_path
+    base_path = ctx["environment"].path
     result = ctx["environment"].execute(f"find /{base_path} -type f")
     all_files = result[0].split("\n") if result[0] else []
 
