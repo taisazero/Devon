@@ -1,23 +1,26 @@
 import signal
 import sys
-
 import click
-
 from devon_agent.server import app
+from devon_agent.__version__ import __version__
 
-if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
-    print("running in a PyInstaller bundle")
-else:
-    print("running in a normal Python process")
-
-
-@click.group()
-def cli():
+@click.group(invoke_without_command=True)
+@click.option('--version', is_flag=True, help="Show the version and exit.")
+@click.pass_context
+def cli(ctx, version):
     """Devon Agent CLI application."""
-    pass
+    if version:
+        click.echo(f"{__version__}")
+        ctx.exit()
+    elif ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
+    else:
+        if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+            click.echo("running in a PyInstaller bundle")
+        else:
+            click.echo("running in a normal Python process")
 
-
-@click.command()
+@cli.command()
 @click.option("--port", default=8000, help="Port number for the server.")
 @click.option("--db_path", default=None, help="Path to the database.")
 def server(port, db_path):
@@ -44,7 +47,6 @@ def server(port, db_path):
     uvicorn_server.run()
 
     # uvicorn.run(app, host="0.0.0.0", port=port)
-
 
 cli.add_command(server)
 
