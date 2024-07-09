@@ -46,7 +46,8 @@ function showErrorDialog(title: string, details?: string) {
 
 const createLogger = (service: string) => {
     return winston.createLogger({
-        level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+        // level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+        level: 'debug',
         format: winston.format.combine(
             winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
             winston.format.errors({ stack: true }),
@@ -111,18 +112,18 @@ function clearLogFiles() {
     mainLogger.info('Log files cleared on startup.')
 }
 
-if (process.env.NODE_ENV !== 'production') {
+// if (process.env.NODE_ENV !== 'production') {
     mainLogger.add(new winston.transports.Console())
     serverLogger.add(new winston.transports.Console())
-}
+// }
 
-if (process.env.NODE_ENV !== 'production') {
+// if (process.env.NODE_ENV !== 'production') {
     mainLogger.add(
         new winston.transports.Console({
             format: winston.format.simple(),
         })
     )
-}
+// }
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require('electron-squirrel-startup')) {
