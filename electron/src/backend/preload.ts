@@ -7,28 +7,28 @@
 // through a bundler but that feels like an overkill
 const { contextBridge, ipcRenderer } = require('electron')
 
-type Channel =
-    | 'ping'
-    | 'get-file-path'
-    | 'file-path-response'
-    | 'encrypt-data'
-    | 'decrypt-data'
-    | 'save-data'
-    | 'load-data'
-    | 'check-has-encrypted-data'
-    | 'delete-encrypted-data'
-    | 'server-port'
-    | 'spawn-devon-agent'
-    | 'get-port'
-    | 'get-port-response'
-    | 'server-error'
-    | 'watch-dir' // For editor
-    | 'editor-file-changed' // For editor
-    | 'editor-add-open-file' // For editor
-    | 'unsubscribe' // For editor
+type Channel = // Used for:
+
+        | 'ping' // N/A
+        | 'server-error' // Displaying backend errors in UI
+        | 'open-logs-directory' // Logging with winston
+        | 'get-file-path' // Folder picker
+        | 'file-path-response' // Folder picker
+        | 'encrypt-data' // Storing keys in safe storage
+        | 'decrypt-data' // Storing keys in safe storage
+        | 'save-data' // Storing keys in safe storage
+        | 'load-data' // Storing keys in safe storage
+        | 'check-has-encrypted-data' // Storing keys in safe storage
+        | 'delete-encrypted-data' // Storing keys in safe storage
+        | 'get-port' // Getting backend url
+        | 'get-port-response' // Getting backend url
+        | 'watch-dir' // Code editor
+        | 'editor-file-changed' // Code editor
+        | 'editor-add-open-file' // Code editor
+        | 'unsubscribe' // Code editor
 
 const channels: { send: Channel[]; invoke: Channel[]; receive: Channel[] } = {
-    send: ['get-file-path', 'ping', 'server-port', 'get-port', 'unsubscribe'],
+    send: ['get-file-path', 'ping', 'get-port', 'unsubscribe'],
     invoke: [
         'ping',
         'get-file-path',
@@ -38,17 +38,15 @@ const channels: { send: Channel[]; invoke: Channel[]; receive: Channel[] } = {
         'load-data',
         'delete-encrypted-data',
         'check-has-encrypted-data',
-        'spawn-devon-agent',
         'watch-dir',
         'editor-add-open-file',
+        'open-logs-directory',
     ],
     receive: [
-        'file-path-response',
-        'server-port',
-        'get-port-response',
         'server-error',
+        'file-path-response',
+        'get-port-response',
         'editor-file-changed',
-
     ],
 }
 

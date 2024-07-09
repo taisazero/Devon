@@ -6,9 +6,10 @@ import {
     globalShortcut,
     ipcMain,
     safeStorage,
+    shell,
 } from 'electron'
 import path from 'path'
-import { ChildProcess, spawn } from 'child_process'
+import { ChildProcess, spawn, spawnSync } from 'child_process'
 import portfinder from 'portfinder'
 import fs from 'fs'
 import './plugins/editor'
@@ -25,46 +26,101 @@ const logDir = path.join(userDataPath, 'logs')
 if (!fs.existsSync(logDir)) {
     fs.mkdirSync(logDir, { recursive: true })
 }
-console.log(logDir)
 
-const logger = winston.createLogger({
-    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-    format: winston.format.combine(
-        winston.format.timestamp(),
-        winston.format.printf(({ level, message, timestamp }) => {
-            return `${timestamp} ${level}: ${message}`
+function showErrorDialog(title: string, details?: string) {
+    dialog
+        .showMessageBox({
+            type: 'error',
+            message: title,
+            // title: 'Uncaught Exception:',
+            detail: details,
+            buttons: ['View Logs'],
+            noLink: true,
         })
-    ),
-    transports: [
-        new winston.transports.File({
-            filename: path.join(logDir, 'error.log'),
-            level: 'error',
-        }),
-        new winston.transports.File({
-            filename: path.join(logDir, 'combined.log'),
-        }),
-    ],
-})
+        .then(result => {
+            if (result.response === 0) {
+                shell.openPath(logDir)
+            }
+        })
+}
 
-// If we're not in production, log to the console as well
+const createLogger = (service: string) => {
+    return winston.createLogger({
+        level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+        format: winston.format.combine(
+            winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+            winston.format.errors({ stack: true }),
+            winston.format.printf(({ level, message, timestamp, service }) => {
+                return `${timestamp} [${service}] ${level}: ${message}`
+            })
+        ),
+        defaultMeta: { service },
+        transports: [
+            new winston.transports.File({
+                filename: path.join(logDir, 'error.log'),
+                level: 'error',
+            }),
+            new winston.transports.File({
+                filename: path.join(logDir, 'devon.log'),
+            }),
+        ],
+    })
+}
+
+function checkBackendExists() {
+    // Check if devon_agent exists and get its version synchronously
+    try {
+        const result = spawnSync('devon_agent', ['--version'])
+        if (result.error) {
+            throw result.error
+        }
+        const version = result.stdout.toString().trim()
+        mainLogger.info(`devon_agent v${version}`)
+    } catch (error) {
+        mainLogger.error(
+            'Failed to get devon_agent version. Please make sure you `pipx install devon_agent`:',
+            error
+        )
+        // Handle the error (e.g., show a dialog, prevent app from continuing)
+        showErrorDialog(
+            'devon_agent not found or failed to run. Please check your installation.',
+            'Make sure you have devon_agent installed. To install, run:\npipx install devon_agent'
+        )
+        app.quit()
+        return
+    }
+}
+
+const mainLogger = createLogger('devon')
+const serverLogger = createLogger('devon-agent')
+
+const appVersion = app.getVersion()
+mainLogger.info('Application started.')
+mainLogger.info(
+    `devon-ui ${appVersion ? 'v' + appVersion : '(version not found)'}`
+)
+checkBackendExists()
+
+function clearLogFiles() {
+    const logFiles = ['error.log', 'devon.log']
+    logFiles.forEach(file => {
+        const logPath = path.join(logDir, file)
+        fs.writeFileSync(logPath, '', { flag: 'w' })
+    })
+    mainLogger.info('Log files cleared on startup.')
+}
+
 if (process.env.NODE_ENV !== 'production') {
-    logger.add(
+    mainLogger.add(new winston.transports.Console())
+    serverLogger.add(new winston.transports.Console())
+}
+
+if (process.env.NODE_ENV !== 'production') {
+    mainLogger.add(
         new winston.transports.Console({
             format: winston.format.simple(),
         })
     )
-}
-
-function writeToLogFile(logMessage: string) {
-    if (!DEBUG_MODE) {
-        return
-    }
-    // TODO edit the path to the log file if we actually want to use this
-    const logFilePath = path.join('/Users/*****/', 'app.log')
-    const timestamp = new Date().toISOString()
-    const formattedMessage = `${timestamp} - ${logMessage}\n`
-
-    fs.appendFileSync(logFilePath, formattedMessage)
 }
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
@@ -75,8 +131,23 @@ if (require('electron-squirrel-startup')) {
 let serverProcess: ChildProcess
 portfinder.setBasePort(10000)
 let use_port = NaN
+
+process.on('uncaughtException', error => {
+    // Create a detailed error message
+    const detailedError = `
+${error.message}
+${error.stack}
+${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}
+    `.trim()
+
+    mainLogger.error(`Uncaught Exception in main process: ${detailedError}`)
+
+    showErrorDialog(`Exception: ${error.message}`, error.stack)
+})
+
 const spawnAppWindow = async () => {
     const db_path = path.join(app.getPath('userData'))
+
     await portfinder
         .getPortPromise()
         .then((port: number) => {
@@ -89,7 +160,6 @@ const spawnAppWindow = async () => {
             //   agent_path = path.join(process.resourcesPath, "devon_agent")
             // }
             // fs.chmodSync(agent_path, '755');
-            console.log(db_path)
             serverProcess = spawn(
                 'devon_agent',
                 [
@@ -112,26 +182,35 @@ const spawnAppWindow = async () => {
                 }
             )
 
-            serverProcess.stdout?.on('data', (data: unknown) => {
-                writeToLogFile(`Server: ${data}`)
-                console.log(`Server: ${data}`)
+            serverProcess.stdout?.on('data', (data: string) => {
+                const message = data.toString().trim()
+                if (message.startsWith('INFO:')) {
+                    serverLogger.info(message.substring(5).trim())
+                }
             })
 
-            serverProcess.stderr?.on('data', (data: unknown) => {
-                writeToLogFile(`Server Error: ${data}`)
-                console.error(`Server Error: ${data}`)
-                if (appWindow) {
-                    appWindow.webContents.send('server-error', data.toString())
+            serverProcess.stderr?.on('data', (data: string) => {
+                const message = data.toString().trim()
+                if (message.startsWith('INFO:')) {
+                    serverLogger.info(message.substring(5).trim())
+                } else {
+                    serverLogger.error(message)
+                    if (appWindow) {
+                        // Displaying server errors in ui
+                        appWindow.webContents.send(
+                            'server-error',
+                            data.toString()
+                        )
+                    }
                 }
             })
 
             serverProcess.on('close', (code: unknown) => {
-                console.log(`Server process exited with code ${code}`)
+                mainLogger.info(`Server process exited with code ${code}`)
             })
         })
         .catch(error => {
-            writeToLogFile(`Failed to find a free port: ${error}`)
-            console.error('Failed to find a free port:', error)
+            mainLogger.error('Failed to find a free port:', error)
             return { success: false, message: 'Failed to find a free port.' }
         })
 
@@ -217,16 +296,18 @@ const controller = new AbortController()
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.on('ready', () => {
+    clearLogFiles() // Clear logs on startup
+
     // For safeStorage of secrets
     if (safeStorage.isEncryptionAvailable()) {
-        logger.info('Encryption is available and can be used.')
+        mainLogger.info('Encryption is available and can be used.')
     } else {
-        logger.warn(
+        mainLogger.warn(
             'Encryption is not available. Fallback mechanisms might be required.'
         )
     }
 
-    logger.info('Application is ready. Spawning app window.')
+    mainLogger.info('Application is ready. Spawning app window.')
     spawnAppWindow()
 })
 
@@ -234,7 +315,7 @@ app.on('ready', () => {
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
 app.on('window-all-closed', () => {
-    logger.info('All windows closed. Quitting application.')
+    mainLogger.info('All windows closed. Quitting application.')
     // if (process.platform !== 'darwin') {
     app.quit()
     // }
@@ -244,9 +325,11 @@ app.on('browser-window-focus', function () {
     if (!DEV_MODE) {
         globalShortcut.register('CommandOrControl+R', () => {
             console.log('CommandOrControl+R is pressed: Shortcut Disabled')
+            mainLogger.debug('CommandOrControl+R is pressed: Shortcut Disabled')
         })
         globalShortcut.register('F5', () => {
             console.log('F5 is pressed: Shortcut Disabled')
+            mainLogger.debug('F5 is pressed: Shortcut Disabled')
         })
     }
 })
@@ -264,23 +347,27 @@ app.on('activate', () => {
     }
 })
 
-app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-        app.quit()
-    }
-})
+// app.on('window-all-closed', () => {
+//     if (process.platform !== 'darwin') {
+//         app.quit()
+//     }
+// })
 
 app.on('before-quit', () => {
+    if (!serverProcess) {
+        mainLogger.info('No server process found. Quitting application.')
+        return
+    }
     if (serverProcess.pid) {
-        console.log('Killing server process with pid', serverProcess.pid)
+        mainLogger.info('Killing server process with pid:', serverProcess.pid)
         process.kill(serverProcess.pid, 'SIGTERM')
     }
     serverProcess.kill(9) // Make sure to kill the server process when the app is closing
 
     if (serverProcess.killed) {
-        console.log('Server process was successfully killed.')
+        mainLogger.info('Server process was successfully killed.')
     } else {
-        console.log('Failed to kill the server process.')
+        mainLogger.warn('Failed to kill the server process.')
     }
 })
 
@@ -293,6 +380,10 @@ app.on('before-quit', () => {
 ipcMain.handle('ping', () => {
     console.log('PONG!')
     return 'pong'
+})
+
+ipcMain.handle('open-logs-directory', () => {
+    shell.openPath(logDir)
 })
 
 ipcMain.on('get-port', event => {
@@ -312,7 +403,10 @@ ipcMain.on('get-file-path', event => {
             }
         })
         .catch(err => {
-            console.error('Failed to open dialog:', err)
+            mainLogger.error(
+                '(IPC Event get-file-path) Failed to open dialog:',
+                err
+            )
             event.reply('file-path-response', 'error')
         })
 })
@@ -323,7 +417,10 @@ ipcMain.handle('encrypt-data', async (event, plainText) => {
         const encrypted = safeStorage.encryptString(plainText)
         return encrypted.toString('hex') // send as string to render process
     } catch (error) {
-        console.error('Encryption failed:', error)
+        mainLogger.error(
+            '(IPC Event encrypt-data) Failed to encrypt data:',
+            error
+        )
         throw error
     }
 })
@@ -334,7 +431,10 @@ ipcMain.handle('decrypt-data', async (event, encryptedHex) => {
         const decrypted = safeStorage.decryptString(encryptedBuffer)
         return decrypted
     } catch (error) {
-        console.error('Decryption failed:', error)
+        mainLogger.error(
+            '(IPC Event decrypt-data) Failed to decrypt data:',
+            error
+        )
         throw error
     }
 })
@@ -350,7 +450,10 @@ ipcMain.handle('save-data', async (event, plainText) => {
             fs.writeFileSync(filePath, encrypted)
             return { success: true }
         } catch (error) {
-            console.error('Failed to save encrypted data:', error)
+            mainLogger.error(
+                '(IPC Event save-data) Failed to save encrypted data:',
+                error
+            )
             return { success: false, message: 'Failed to save encrypted data' }
         }
     } else {
@@ -372,7 +475,10 @@ ipcMain.handle('load-data', async () => {
             return { success: false, message: 'Decryption not available' }
         }
     } catch (error) {
-        console.error('Failed to read encrypted data:', error)
+        mainLogger.error(
+            '(IPC Event load-data) Failed to read encrypted data:',
+            error
+        )
         return { success: false, message: 'Failed to read encrypted data' }
     }
 })
@@ -388,7 +494,7 @@ ipcMain.handle('check-has-encrypted-data', async () => {
         }
     } catch (error) {
         // This just means the file doesn't exist
-        // console.error('Failed to get encrypted data:', error)
+        // logger.error('(IPC Event check-has-encrypted-data) Failed to get encrypted data:', error)
         return { success: false, message: 'Failed to get encrypted data' }
     }
 })
@@ -407,10 +513,10 @@ ipcMain.handle('delete-encrypted-data', async () => {
             return { success: false, message: 'File does not exist.' }
         }
     } catch (error) {
-        console.error('Failed to delete encrypted data:', error)
+        mainLogger.error(
+            '(IPC Event delete-encrypted-data) Failed to delete encrypted data:',
+            error
+        )
         return { success: false, message: 'Failed to delete encrypted data.' }
     }
 })
-
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and import them here.

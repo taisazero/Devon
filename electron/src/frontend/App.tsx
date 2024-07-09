@@ -29,6 +29,17 @@ function App() {
                         <BackendUrlProvider>
                             <AppHeader />
                             <main className="mt-[54px] flex flex-row w-full">
+                                <button
+                                className="absolute top-4 right-0 z-10 p-4 text-sm text-neutral-500 hover:text-white duration-200"
+                                    onClick={() =>
+                                        window.api.invoke(
+                                            'open-logs-directory',
+                                            null
+                                        )
+                                    }
+                                >
+                                    Open Logs
+                                </button>
                                 <Page />
                             </main>
                         </BackendUrlProvider>

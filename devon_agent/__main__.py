@@ -10,20 +10,25 @@ from devon_agent.agents.default.agent import AgentArguments, TaskAgent
 from devon_agent.server import app, get_user_input
 from devon_agent.session import Session, SessionArguments
 from devon_agent.utils import Event
+from devon_agent.__version__ import __version__
 
-if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
-    print("running in a PyInstaller bundle")
-else:
-    print("running in a normal Python process")
-
-
-@click.group()
-def cli():
+@click.group(invoke_without_command=True)
+@click.option('--version', is_flag=True, help="Show the version and exit.")
+@click.pass_context
+def cli(ctx, version):
     """Devon Agent CLI application."""
-    pass
+    if version:
+        click.echo(f"{__version__}")
+        ctx.exit()
+    elif ctx.invoked_subcommand is None:
+        click.echo(ctx.get_help())
+    else:
+        if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+            click.echo("running in a PyInstaller bundle")
+        else:
+            click.echo("running in a normal Python process")
 
-
-@click.command()
+@cli.command()
 @click.option("--port", default=8000, help="Port number for the server.")
 @click.option("--db_path", default=None, help="Path to the database.")
 def server(port, db_path):
@@ -47,7 +52,7 @@ def server(port, db_path):
     # uvicorn.run(app, host="0.0.0.0", port=port)
 
 
-@click.command()
+@cli.command()
 @click.option("--model", required=False, default=None, help="Model for authentication.")
 @click.option(
     "--api_key", required=False, default=None, help="API key for authentication."
@@ -110,10 +115,6 @@ def headless(model, api_key, prompt_type, api_base, headless):
     )
 
     session.run_event_loop()
-
-
-cli.add_command(server)
-cli.add_command(headless)
 
 
 def main():
