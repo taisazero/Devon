@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from devon_agent.model import AnthropicModel, GroqModel, OllamaModel, OpenAiModel
 from devon_agent.config import AgentConfig, Config
-
+from devon_agent.model import (AnthropicModel, GroqModel, OllamaModel,
+                               OpenAiModel)
 
 if TYPE_CHECKING:
     from devon_agent.session import Session

@@ -15,7 +15,8 @@ from subprocess import PIPE, STDOUT
 from typing import Dict, Optional, Tuple
 
 import docker
-from swebench import MAP_VERSION_TO_INSTALL, get_environment_yml, get_requirements
+from swebench import (MAP_VERSION_TO_INSTALL, get_environment_yml,
+                      get_requirements)
 
 from devon_agent.environment import EnvironmentModule
 from devon_agent.tool import Tool

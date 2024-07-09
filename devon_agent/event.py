@@ -1,9 +1,9 @@
-from collections import deque
 import json
+from collections import deque
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple
+
 from devon_agent.agent import Agent
 from devon_agent.environment import EnvironmentModule
-
 
 """
 event type schema : [user].[session_name].[trajectory_id].[event_type].[consumer_id?].[sub_event].[action].[producer]

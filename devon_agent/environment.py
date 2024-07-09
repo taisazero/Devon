@@ -1,7 +1,8 @@
+from abc import ABC
 from typing import TYPE_CHECKING, Dict, List, Tuple
 
 from pydantic import BaseModel, Field
-from abc import ABC
+
 from devon_agent.tool import Tool
 
 if TYPE_CHECKING:

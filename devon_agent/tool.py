@@ -25,12 +25,12 @@ Tools are often passed to llms as prompts or function calling. Every tool should
 
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Callable, TypedDict
+
 from pydantic import BaseModel, Field
 
-
 if TYPE_CHECKING:
-    from devon_agent.environment import EnvironmentModule
     from devon_agent.config import Config
+    from devon_agent.environment import EnvironmentModule
 
 
 class ToolContext(TypedDict):

@@ -1,10 +1,6 @@
 from devon_agent.tool import Tool, ToolContext
-from devon_agent.tools.utils import (
-    cwd_normalize_path,
-    file_exists,
-    make_abs_path,
-    read_file,
-)
+from devon_agent.tools.utils import (cwd_normalize_path, file_exists,
+                                     make_abs_path, read_file)
 from devon_agent.utils.utils import DotDict
 
 

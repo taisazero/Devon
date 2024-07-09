@@ -1,8 +1,8 @@
-from dotenv import load_dotenv
-import os
-from litellm import acompletion
 import asyncio
+import os
 
+from dotenv import load_dotenv
+from litellm import acompletion
 
 # Load environment variables from .env file
 load_dotenv()

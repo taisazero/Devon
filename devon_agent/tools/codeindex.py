@@ -1,7 +1,7 @@
 import os
 
-from devon_agent.tools.retrieval.code_index import CodeIndex
 from devon_agent.tool import Tool
+from devon_agent.tools.retrieval.code_index import CodeIndex
 
 
 def setup_code_index(ctx, **kwargs):

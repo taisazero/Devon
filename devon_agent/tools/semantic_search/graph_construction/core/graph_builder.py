@@ -2,10 +2,10 @@ import os
 import pickle
 
 import networkx as nx
+
+from devon_agent.semantic_search.graph_construction.languages.python.python_parser import \
+    PythonParser
 from devon_agent.semantic_search.graph_construction.utils import format_nodes
-from devon_agent.semantic_search.graph_construction.languages.python.python_parser import (
-    PythonParser,
-)
 
 
 class GraphConstructor:

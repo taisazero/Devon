@@ -2,12 +2,8 @@ import json
 import os
 
 from devon_agent.tool import Tool, ToolContext
-from devon_agent.tools.utils import (
-    _list_files_recursive,
-    cwd_normalize_path,
-    get_cwd,
-    make_abs_path,
-)
+from devon_agent.tools.utils import (_list_files_recursive, cwd_normalize_path,
+                                     get_cwd, make_abs_path)
 
 
 class SearchDirTool(Tool):

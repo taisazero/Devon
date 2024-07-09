@@ -5,7 +5,6 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from time import sleep
 from typing import Any, Dict, List, Optional
-# from devon_agent.semantic_search.code_graph_manager import CodeGraphManager
 
 import fastapi
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,13 +12,18 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
+
 from devon_agent.config import AgentConfig, Config
-from devon_agent.utils.config_utils import hydrate_config
+from devon_agent.data_models import (SingletonEngine, init_db, load_data,
+                                     set_db_engine)
 from devon_agent.environments.shell_environment import LocalShellEnvironment
-from devon_agent.data_models import SingletonEngine, init_db, load_data, set_db_engine
 from devon_agent.environments.user_environment import UserEnvironment
 from devon_agent.session import Session
+from devon_agent.utils.config_utils import hydrate_config
 from devon_agent.utils.utils import LOGGER_NAME
+
+# from devon_agent.semantic_search.code_graph_manager import CodeGraphManager
+
 
 
 # API

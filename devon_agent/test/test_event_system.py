@@ -1,6 +1,8 @@
-import pytest
-from devon_agent.event import EventSystem, Event, EnvironmentModule, Agent
 from unittest.mock import patch
+
+import pytest
+
+from devon_agent.event import Agent, EnvironmentModule, Event, EventSystem
 
 
 @pytest.fixture

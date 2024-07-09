@@ -1,7 +1,9 @@
 import os
 
 import tree_sitter_languages
-from devon_agent.semantic_search.graph_construction.core.base_parser import BaseParser
+
+from devon_agent.semantic_search.graph_construction.core.base_parser import \
+    BaseParser
 
 
 class PythonParser(BaseParser):

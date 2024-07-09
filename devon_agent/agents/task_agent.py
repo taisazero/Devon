@@ -1,42 +1,28 @@
-from dataclasses import dataclass
+import logging
 import time
 import traceback
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Tuple
-import logging
+
 from tenacity import RetryError
 
 from devon_agent.agent import Agent
-from devon_agent.model import (
-    AnthropicModel,
-    GroqModel,
-    ModelArguments,
-    OllamaModel,
-    OpenAiModel,
-)
 from devon_agent.agents.prompts.anthropic_prompts import (
-    anthropic_commands_to_command_docs,
-    anthropic_history_to_bash_history,
+    anthropic_commands_to_command_docs, anthropic_history_to_bash_history,
     anthropic_last_user_prompt_template_v3,
-    anthropic_system_prompt_template_v3,
-)
+    anthropic_system_prompt_template_v3)
 from devon_agent.agents.prompts.codegemma_prompts import (
-    llama3_7b_commands_to_command_docs,
-    llama3_7b_last_user_prompt_template_v1,
-    llama3_7b_system_prompt_template_v1,
-)
+    llama3_7b_commands_to_command_docs, llama3_7b_last_user_prompt_template_v1,
+    llama3_7b_system_prompt_template_v1)
 from devon_agent.agents.prompts.llama3_prompts import (
-    llama3_commands_to_command_docs,
-    llama3_history_to_bash_history,
-    llama3_last_user_prompt_template_v1,
-    llama3_parse_response,
-    llama3_system_prompt_template_v1,
-)
+    llama3_commands_to_command_docs, llama3_history_to_bash_history,
+    llama3_last_user_prompt_template_v1, llama3_parse_response,
+    llama3_system_prompt_template_v1)
 from devon_agent.agents.prompts.openai_prompts import (
-    openai_commands_to_command_docs,
-    openai_last_user_prompt_template_v3,
-    openai_system_prompt_template_v3,
-)
-
+    openai_commands_to_command_docs, openai_last_user_prompt_template_v3,
+    openai_system_prompt_template_v3)
+from devon_agent.model import (AnthropicModel, GroqModel, ModelArguments,
+                               OllamaModel, OpenAiModel)
 from devon_agent.tools.utils import get_cwd
 from devon_agent.utils.utils import Hallucination
 

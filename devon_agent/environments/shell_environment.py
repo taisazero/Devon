@@ -4,9 +4,10 @@ import subprocess
 import tempfile
 import traceback
 from typing import TYPE_CHECKING, List
-from pydantic import Field
-from devon_agent.environment import EnvironmentModule
 
+from pydantic import Field
+
+from devon_agent.environment import EnvironmentModule
 
 if TYPE_CHECKING:
     pass

@@ -2,25 +2,22 @@ import logging
 import time
 import traceback
 from typing import TYPE_CHECKING, Tuple
-import litellm
 
+import litellm
 from tenacity import RetryError
+
 from devon_agent.agent import Agent
 from devon_agent.agents.prompts.anthropic_prompts import (
-    anthropic_commands_to_command_docs,
-    anthropic_history_to_bash_history,
+    anthropic_commands_to_command_docs, anthropic_history_to_bash_history,
     conversational_agent_last_user_prompt_template_v3,
-    conversational_agent_system_prompt_template_v3,
-)
+    conversational_agent_system_prompt_template_v3)
 from devon_agent.agents.prompts.openai_prompts import (
     openai_commands_to_command_docs,
     openai_conversation_agent_last_user_prompt_template,
-    openai_conversation_agent_system_prompt_template,
-)
+    openai_conversation_agent_system_prompt_template)
 from devon_agent.model import AnthropicModel, ModelArguments, OpenAiModel
-
 from devon_agent.tools.utils import get_cwd
-from devon_agent.utils.utils import Hallucination, LOGGER_NAME
+from devon_agent.utils.utils import LOGGER_NAME, Hallucination
 
 if TYPE_CHECKING:
     from devon_agent.session import Session

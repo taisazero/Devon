@@ -6,35 +6,27 @@ import os
 import time
 import traceback
 from typing import Dict, List
+
 from devon_agent.agents.conversational_agent import ConversationalAgent
-
-
 from devon_agent.config import Config
-from devon_agent.utils.utils import Event
-from devon_agent.tools.codenav import CodeGoTo, CodeSearch
-from devon_agent.tools.usertools import AskUserTool
 from devon_agent.data_models import _delete_session_util, _save_session_util
-from devon_agent.utils.telemetry import Posthog, SessionStartEvent
 from devon_agent.tool import ToolNotFoundException
 from devon_agent.tools import parse_command
+from devon_agent.tools.codenav import CodeGoTo, CodeSearch
 from devon_agent.tools.editorblock import EditBlockTool
-from devon_agent.tools.editortools import (
-    CreateFileTool,
-    DeleteFileTool,
-    OpenFileTool,
-    ScrollDownTool,
-    ScrollToLineTool,
-    ScrollUpTool,
-    save_create_file,
-    save_delete_file,
-)
-from devon_agent.tools.filesearchtools import FindFileTool, GetCwdTool, SearchDirTool
-from devon_agent.tools.filetools import SearchFileTool
-from devon_agent.tools.filetools import FileTreeDisplay
+from devon_agent.tools.editortools import (CreateFileTool, DeleteFileTool,
+                                           OpenFileTool, ScrollDownTool,
+                                           ScrollToLineTool, ScrollUpTool,
+                                           save_create_file, save_delete_file)
+from devon_agent.tools.filesearchtools import (FindFileTool, GetCwdTool,
+                                               SearchDirTool)
+from devon_agent.tools.filetools import FileTreeDisplay, SearchFileTool
 from devon_agent.tools.lifecycle import NoOpTool
 from devon_agent.tools.shelltool import ShellTool
+from devon_agent.tools.usertools import AskUserTool
 from devon_agent.tools.utils import get_ignored_files, read_file
-from devon_agent.utils.utils import DotDict
+from devon_agent.utils.telemetry import Posthog, SessionStartEvent
+from devon_agent.utils.utils import DotDict, Event
 from devon_agent.versioning.git_versioning import GitVersioning
 
 

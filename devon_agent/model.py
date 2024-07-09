@@ -5,7 +5,6 @@ from typing import Optional
 
 from litellm import completion
 
-
 logger = logging.getLogger("LiteLLM")
 logger.disabled = True
 

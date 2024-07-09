@@ -1,16 +1,17 @@
-from dataclasses import dataclass
 import datetime
 import hashlib
 import logging
 import os
 import time
 import traceback
+from dataclasses import dataclass
 from typing import Optional
 
-from devon_agent.environment import EnvironmentModule
-from devon_agent.environments.swebenchenv import get_container, read_with_timeout
-
 import docker
+
+from devon_agent.environment import EnvironmentModule
+from devon_agent.environments.swebenchenv import (get_container,
+                                                  read_with_timeout)
 
 
 @dataclass(frozen=False)

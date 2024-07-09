@@ -2,7 +2,6 @@ from typing import TYPE_CHECKING, Callable
 
 from devon_agent.environment import EnvironmentModule
 
-
 if TYPE_CHECKING:
     pass
 
