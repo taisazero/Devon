@@ -15,9 +15,43 @@ function App() {
         // Set up the IPC receive listener
         window.api.receive('server-error', handleServerError)
 
+        window.addEventListener('error', (event: ErrorEvent) => {
+            const serializedError = {
+                type: 'Error',
+                name: event.error?.name || 'Error',
+                message: event.message,
+                stack: event.error?.stack,
+                filename: event.filename,
+                lineno: event.lineno,
+                colno: event.colno,
+            }
+            window.api.send(
+                'log-error',
+                JSON.stringify(serializedError, null, 2)
+            )
+        })
+
+        window.addEventListener(
+            'unhandledrejection',
+            (event: PromiseRejectionEvent) => {
+                const serializedError = {
+                    type: 'UnhandledPromiseRejection',
+                    name: event.reason?.name || 'UnhandledPromiseRejection',
+                    message: event.reason?.message || String(event.reason),
+                    stack: event.reason?.stack,
+                }
+                window.api.send(
+                    'log-error',
+                    JSON.stringify(serializedError, null, 2)
+                )
+            }
+        )
+
         // Clean up the listener on unmount
         return () => {
             window.api.removeAllListeners('server-error')
+            window.api.removeAllListeners('error')
+            window.api.removeAllListeners('unhandledrejection')
         }
     }, [])
 
@@ -29,17 +63,6 @@ function App() {
                         <BackendUrlProvider>
                             <AppHeader />
                             <main className="mt-[54px] flex flex-row w-full">
-                                <button
-                                className="absolute top-4 right-0 z-10 p-4 text-sm text-neutral-500 hover:text-white duration-200"
-                                    onClick={() =>
-                                        window.api.invoke(
-                                            'open-logs-directory',
-                                            null
-                                        )
-                                    }
-                                >
-                                    Open Logs
-                                </button>
                                 <Page />
                             </main>
                         </BackendUrlProvider>

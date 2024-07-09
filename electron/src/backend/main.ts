@@ -93,6 +93,7 @@ function checkBackendExists() {
 
 const mainLogger = createLogger('devon')
 const serverLogger = createLogger('devon-agent')
+const rendererLogger = createLogger('devon-ui')
 
 const appVersion = app.getVersion()
 mainLogger.info('Application started.')
@@ -380,6 +381,10 @@ app.on('before-quit', () => {
 ipcMain.handle('ping', () => {
     console.log('PONG!')
     return 'pong'
+})
+
+ipcMain.on('log-error', (event, error) => {
+    rendererLogger.error(error)
 })
 
 ipcMain.handle('open-logs-directory', () => {

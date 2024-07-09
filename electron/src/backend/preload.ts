@@ -11,6 +11,7 @@ type Channel = // Used for:
 
         | 'ping' // N/A
         | 'server-error' // Displaying backend errors in UI
+        | 'log-error' // Logging with winston
         | 'open-logs-directory' // Logging with winston
         | 'get-file-path' // Folder picker
         | 'file-path-response' // Folder picker
@@ -28,7 +29,7 @@ type Channel = // Used for:
         | 'unsubscribe' // Code editor
 
 const channels: { send: Channel[]; invoke: Channel[]; receive: Channel[] } = {
-    send: ['get-file-path', 'ping', 'get-port', 'unsubscribe'],
+    send: ['get-file-path', 'ping', 'get-port', 'unsubscribe', 'log-error'],
     invoke: [
         'ping',
         'get-file-path',
