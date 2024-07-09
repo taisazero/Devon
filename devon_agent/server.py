@@ -84,13 +84,17 @@ async def lifespan(app: fastapi.FastAPI):
         async with AsyncSessionLocal() as db_session:
             app.db_session = db_session
             data = await load_data(db_session)
-            data = {
-                k: Session.from_config(
-                    hydrate_config(v["config"], lambda: get_user_input(k)),
-                    v["event_history"],
-                )
-                for (k, v) in data.items()
-            }
+            try:
+                data = {
+                    k: Session.from_config(
+                        hydrate_config(v["config"], lambda: get_user_input(k)),
+                        v["event_history"],
+                    )
+                    for (k, v) in data.items()
+                }
+            except Exception as e:
+                print(e)
+                data = {}
             # Remove None values from data
             data = {k: v for k, v in data.items() if v is not None}
             sessions = data

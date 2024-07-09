@@ -90,10 +90,13 @@ class GitVersioning:
     def merge_branch(self, branch_name):
         subprocess.run(["git", "merge", branch_name], cwd=self.project_path, check=True)
 
-    def create_and_checkout_branch(self, branch_name):
-        subprocess.run(
-            ["git", "checkout", "-b", branch_name], cwd=self.project_path, check=True
-        )
+    def check_branch_exists(self, branch_name):
+        return subprocess.run(["git", "branch", "--list", branch_name], cwd=self.project_path, check=True)
+
+    def create_if_not_exists_and_checkout_branch(self, branch_name):
+        if not self.check_branch_exists(branch_name):
+            self.create_branch(branch_name)
+        self.checkout_branch(branch_name)
         print(f"Created and checked out new branch: {branch_name}")
 
     def delete_branch(self, branch_name):

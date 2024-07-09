@@ -102,25 +102,7 @@ class Session:
     def init_state(self, event_log: List[Dict] = []):
         self.state = DotDict({})
         self.state.PAGE_SIZE = 200
-        self.versioning.initialize_git()
-        if not self.config.versioning_metadata:
-            self.config.versioning_metadata = {}
-        if "old_branch" not in self.config.versioning_metadata:
-            self.config.versioning_metadata["old_branch"] = {}
-            self.config.versioning_metadata["old_branch"] = self.versioning.get_branch()
 
-
-        if self.config.versioning_metadata["old_branch"] !=self.versioning.get_branch_name():
-            try:
-                self.versioning.create_and_checkout_branch(self.versioning.get_branch_name())
-                self.config.versioning_metadata["current_branch"] = self.versioning.get_branch_name()
-            except Exception as e:
-                self.logger.error(f"Error creating branch: {e}")
-
-        try:
-            self.versioning.commit_all_files("initial commit")
-        except Exception as e:
-            self.logger.error(f"Error committing files: {e}")
 
         self.config.task = None
 
@@ -582,6 +564,26 @@ class Session:
                         "state": self.state,
                     }
                 )
+
+        self.versioning.initialize_git()
+        if not self.config.versioning_metadata:
+            self.config.versioning_metadata = {}
+        if "old_branch" not in self.config.versioning_metadata:
+            self.config.versioning_metadata["old_branch"] = {}
+            self.config.versioning_metadata["old_branch"] = self.versioning.get_branch()
+
+
+        if self.config.versioning_metadata["old_branch"] !=self.versioning.get_branch_name():
+            try:
+                self.versioning.create_if_not_exists_and_checkout_branch(self.versioning.get_branch_name())
+                self.config.versioning_metadata["current_branch"] = self.versioning.get_branch_name()
+            except Exception as e:
+                self.logger.error(f"Error creating branch: {e}")
+
+        try:
+            self.versioning.commit_all_files("initial commit")
+        except Exception as e:
+            self.logger.error(f"Error committing files: {e}")
 
         if self.config.ignore_files:
             # check if devonignore exists, use default env
