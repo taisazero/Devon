@@ -197,12 +197,13 @@ export const eventHandlingLogic = fromTransition(
                 }
             }
             case 'GitEvent': {
+                const commitMessage = event.content?.message?.trim()
                 if (event.content.type === 'base_commit') {
                     return {
                         ...state,
                         gitData: {
-                            base_commit: event.content.commit,
-                            commits: [event.content.commit],
+                            base_commit: commitMessage,
+                            commits: [commitMessage],
                         },
                     }
                 } else if (event.content.type === 'commit') {
@@ -212,7 +213,7 @@ export const eventHandlingLogic = fromTransition(
                             base_commit: state.gitData.base_commit,
                             commits: [
                                 ...state.gitData.commits,
-                                event.content.commit,
+                                commitMessage,
                             ],
                         },
                     }
@@ -220,7 +221,7 @@ export const eventHandlingLogic = fromTransition(
                     return {
                         ...state,
                         gitData: {
-                            base_commit: event.content.commit,
+                            base_commit: commitMessage,
                             commits: state.gitData.commits.slice(
                                 0,
                                 state.gitData.commits.indexOf(

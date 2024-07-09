@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/resizable'
 import EditorPanel from '@/panels/editor/editor-panel'
 import { SessionMachineContext } from '@/contexts/session-machine-context'
+import TimelinePanel from '@/panels/timeline/timeline-panel'
 
 export default function Landing({
     smHealthCheckDone,
@@ -91,6 +92,10 @@ export default function Landing({
     return (
         <>
             <div className="w-full flex flex-row">
+                <div className="w-1/3">
+                    <TimelinePanel />
+                </div>
+
                 <ResizablePanelGroup direction="horizontal">
                     <ResizablePanel
                         className={`flex flex-col w-full relative justify-center`}

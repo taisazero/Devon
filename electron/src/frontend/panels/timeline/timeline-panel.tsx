@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, RefObject } from 'react'
+import { SessionMachineContext } from '@/contexts/session-machine-context'
 
 type SubStepType = {
     id: number
@@ -13,7 +14,7 @@ type StepType = {
     subSteps: SubStepType[]
 }
 
-const steps: StepType[] = [
+const exampleSteps: StepType[] = [
     {
         id: 1,
         label: 'Initialize the project',
@@ -80,12 +81,26 @@ const steps: StepType[] = [
     },
 ]
 
+// const steps: StepType[] = exampleSteps
+
 const TimelinePanel: React.FC = () => {
     const [activeStep, setActiveStep] = useState(0)
     const [subStepFinished, setSubStepFinished] = useState(false)
+    const commits = SessionMachineContext.useSelector(
+        state => state.context.serverEventContext.gitData.commits
+    )
+
+    const steps: StepType[] = commits.map((commit, index) => {
+        return {
+            id: index,
+            label: commit,
+            // subtitle: commit.author,
+            subSteps: [],
+        }
+    })
 
     useEffect(() => {
-        if (activeStep < steps.length) {
+        if (activeStep < steps.length - 1) {
             const timer = setTimeout(() => {
                 if (
                     subStepFinished ||
@@ -97,7 +112,7 @@ const TimelinePanel: React.FC = () => {
             }, 2000)
             return () => clearTimeout(timer)
         }
-    }, [activeStep, subStepFinished])
+    }, [activeStep, subStepFinished, steps.length])
 
     return (
         <div className="flex flex-col h-full w-full px-5 mt-10">
@@ -110,6 +125,7 @@ const TimelinePanel: React.FC = () => {
                             index={index}
                             activeStep={activeStep}
                             setSubStepFinished={setSubStepFinished}
+                            stepsLength={steps.length}
                         />
                     ))}
                 </div>
@@ -123,7 +139,8 @@ const Step: React.FC<{
     index: number
     activeStep: number
     setSubStepFinished: (value: boolean) => void
-}> = ({ step, index, activeStep, setSubStepFinished }) => {
+    stepsLength: number
+}> = ({ step, index, activeStep, setSubStepFinished, stepsLength }) => {
     const [subStepActiveIndex, setSubStepActiveIndex] = useState(-1)
     const [connectorHeight, setConnectorHeight] = useState(0)
     const contentRef: RefObject<HTMLDivElement> = useRef(null)
@@ -188,18 +205,21 @@ const Step: React.FC<{
         <div className="flex flex-row">
             <div className="relative flex-start">
                 <div
-                    className={`z-10 flex items-center justify-center w-6 h-6 bg-white rounded-full ${activeStep >= index ? 'opacity-100' : 'opacity-0'} transition-opacity duration-1000`}
+                    className={`z-10 flex items-center justify-center w-6 h-6 bg-white rounded-full ${
+                        activeStep >= index ? 'opacity-100' : 'opacity-0'
+                    } transition-opacity duration-1000`}
                 >
-                    {index === 0 && (
+                    {activeStep === index ? (
                         <div className="w-3 h-3 bg-primary rounded-full"></div>
-                    )}
-                    {index !== 0 && (
+                    ) : (
                         <div className="w-2 h-2 bg-white rounded-full"></div>
                     )}
                 </div>
-                {index < steps.length - 1 && (
+                {index < stepsLength - 1 && (
                     <div
-                        className={`absolute w-px ${activeStep > index ? 'h-full' : 'h-0'} bg-white top-6 left-1/2 transform -translate-x-1/2 transition-all duration-1000`}
+                        className={`absolute w-px ${
+                            activeStep > index ? 'h-full' : 'h-0'
+                        } bg-white top-6 left-1/2 transform -translate-x-1/2 transition-all duration-1000`}
                     ></div>
                 )}
                 {step.subSteps.length > 0 && subStepActiveIndex >= 0 && (
@@ -219,7 +239,9 @@ const Step: React.FC<{
                 )}
             </div>
             <div
-                className={`flex items-center ml-5 mb-3 ${activeStep >= index ? 'opacity-100' : 'opacity-0'} transition-opacity duration-1000 delay-800`}
+                className={`flex items-center ml-5 mb-3 ${
+                    activeStep >= index ? 'opacity-100' : 'opacity-0'
+                } transition-opacity duration-1000 delay-800`}
             >
                 <div className="flex flex-col">
                     <div ref={contentRef} className="flex flex-col">
@@ -262,12 +284,16 @@ const SubStep: React.FC<{
         <div className="relative flex flex-col pb-3">
             <div className="flex">
                 <div
-                    className={`z-10 flex items-center justify-center w-4 h-4 bg-gray-400 rounded-full translate-y-1 ${active ? 'opacity-100' : 'opacity-0'} transition-opacity duration-1000`}
+                    className={`z-10 flex items-center justify-center w-4 h-4 bg-gray-400 rounded-full translate-y-1 ${
+                        active ? 'opacity-100' : 'opacity-0'
+                    } transition-opacity duration-1000`}
                 >
                     <div className="w-2 h-2 bg-white rounded-full"></div>
                 </div>
                 <div
-                    className={`ml-3 ${active ? 'opacity-100' : 'opacity-0'} transition-opacity duration-1000 delay-800`}
+                    className={`ml-3 ${
+                        active ? 'opacity-100' : 'opacity-0'
+                    } transition-opacity duration-1000 delay-800`}
                 >
                     <span className="text-white">{subStep.label}</span>
                     <span className="block mt-1 text-gray-400">
@@ -277,7 +303,9 @@ const SubStep: React.FC<{
             </div>
             {showLine && (
                 <div
-                    className={`absolute w-px ${active ? 'h-full' : 'h-0'} bg-gray-400 left-2 transform translate-y-3 -translate-x-1/2 transition-all duration-1000 delay-800`}
+                    className={`absolute w-px ${
+                        active ? 'h-full' : 'h-0'
+                    } bg-gray-400 left-2 transform translate-y-3 -translate-x-1/2 transition-all duration-1000 delay-800`}
                 ></div>
             )}
         </div>
