@@ -75,7 +75,7 @@ function checkBackendExists() {
             throw result.error
         }
         const version = result.stdout.toString().trim()
-        mainLogger.info(`devon_agent v${version}`)
+        mainLogger.info(`devon_agent ${version ? 'v' + version : '(version not found)'}`)
     } catch (error) {
         mainLogger.error(
             'Failed to get devon_agent version. Please make sure you `pipx install devon_agent`:',
