@@ -31,8 +31,7 @@ function showErrorDialog(title: string, details?: string) {
     dialog
         .showMessageBox({
             type: 'error',
-            message: title,
-            // title: 'Uncaught Exception:',
+            message: title ?? 'Uncaught Exception:',
             detail: details,
             buttons: ['View Logs'],
             noLink: true,
