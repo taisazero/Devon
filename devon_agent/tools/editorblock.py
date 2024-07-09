@@ -168,21 +168,21 @@ mathweb/flask/app.py
 """
 
     def function(self, context: ToolContext, *args, **kwargs):
-        print("raw_command", context.get("raw_command", ""))
+        # print("raw_command", context.get("raw_command", ""))
         raw_command = context.get("raw_command", "")
         edit_content = self._extract_edit_content(raw_command)
         if not edit_content:
             return "Error: No edit content provided"
-        print("edit_content", edit_content)
+        # print("edit_content", edit_content)
         edits = list(self.find_original_update_blocks(edit_content))
         results = self.apply_edits(context, edits)
 
         return self._format_results(results)
 
     def _extract_edit_content(self, raw_command: str) -> str:
-        print("checking if found", raw_command)
+        # print("checking if found", raw_command)
         if raw_command.strip().startswith("edit"):
-            print("edit command", raw_command)
+            # print("edit command", raw_command)
             return raw_command.strip()[5:].strip()
         return ""
 
@@ -202,7 +202,7 @@ mathweb/flask/app.py
 
         try:
             while pieces:
-                print(pieces)
+                # print(pieces)
                 cur = pieces.pop()
                 if cur.strip() != HEAD:
                     processed.append(cur)

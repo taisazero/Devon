@@ -1,6 +1,4 @@
 import subprocess
-import sys
-import platform
 
 
 class GitVersioning:
@@ -14,24 +12,11 @@ class GitVersioning:
         except FileNotFoundError:
             return False
 
-    def install_git(self):
-        system = platform.system().lower()
-        if system == "linux":
-            subprocess.run(["sudo", "apt-get", "update"], check=True)
-            subprocess.run(["sudo", "apt-get", "install", "-y", "git"], check=True)
-        elif system == "darwin":  # macOS
-            subprocess.run(["brew", "install", "git"], check=True)
-        elif system == "windows":
-            print("Please download and install Git from https://git-scm.com/downloads")
-            sys.exit(1)
-        else:
-            print(f"Unsupported operating system: {system}")
-            sys.exit(1)
-
     def initialize_git(self):
         if not self.check_git_installation():
             print("Git is not installed. Attempting to install...")
-            self.install_git()
+            # self.install_git()
+            raise Exception("Git is not installed")
 
         # Check if the current directory is already a Git repository
         try:
@@ -51,11 +36,26 @@ class GitVersioning:
             subprocess.run(["git", "init"], cwd=self.project_path, check=True)
             print("Git repository initialized successfully.")
 
-    def commit_all_files(self, message="Initial commit"):
-        subprocess.run(["git", "add", "."], cwd=self.project_path, check=True)
-        subprocess.run(
-            ["git", "commit", "-m", message], cwd=self.project_path, check=True
+    def get_branch(self):
+
+        result = subprocess.run(
+            ["git", "branch", "--show-current"],
+        cwd=self.project_path,
+        capture_output=True,
+        text=True,
+        check=True,
         )
+        return result.stdout
+
+
+    def commit_all_files(self, message="Initial commit"):
+        subprocess.run(["git", "add", "."], cwd=self.project_path)
+        res = subprocess.run(
+            ["git", "commit", "-m", message], cwd=self.project_path
+        )
+        if res.returncode != 0:
+            return False, res.stderr
+        return True, res.stdout
 
     def commit_changes(self, message):
         subprocess.run(
@@ -96,14 +96,14 @@ class GitVersioning:
         )
         print(f"Created and checked out new branch: {branch_name}")
 
+    def delete_branch(self, branch_name):
+        subprocess.run(["git", "branch", "-d", branch_name], cwd=self.project_path, check=True)
 
-# Example usage:
-# gv = GitVersioning('/path/to/your/project')
-# gv.initialize_git()
-# gv.commit_all_files("Initial commit")
-# gv.commit_changes("Made some changes")
-# print(gv.list_commits())
-# gv.revert_to_commit("abc123")
-# gv.create_branch("feature-branch")
-# gv.switch_branch("main")
-# gv.merge_branch("feature-branch")
+    def get_branch_name(self):
+        return "devon_agent"
+    
+    def checkout_branch(self, branch_name):
+        subprocess.run(["git", "checkout", branch_name], cwd=self.project_path, check=True)
+        self.current_branch = branch_name
+        
+

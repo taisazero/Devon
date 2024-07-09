@@ -11,7 +11,6 @@ from devon_agent.agents.prompts.anthropic_prompts import (
     conversational_agent_last_user_prompt_template_v3,
     conversational_agent_system_prompt_template_v3,
 )
-from devon_agent.agents.prompts.llama3_prompts import llama3_parse_response
 from devon_agent.agents.prompts.openai_prompts import (
     openai_commands_to_command_docs,
     openai_conversation_agent_last_user_prompt_template,
@@ -27,6 +26,28 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(LOGGER_NAME)
 
+
+def parse_response(response):
+    if "<thought>" in response:
+        thought = response.split("<thought>")[1].split("</thought>")[0]
+        action = response.split("<command>")[1].split("</command>")[0]
+        scratchpad = None
+        if "<scratchpad>" in response:
+            scratchpad = response.split("<scratchpad>")[1].split("</scratchpad>")[0]
+        commit_message = None
+        if "<COMMIT_MESSAGE>" in response:
+            commit_message = response.split("<COMMIT_MESSAGE>")[1].split("</COMMIT_MESSAGE>")[0]
+    else:
+        thought = response.split("<THOUGHT>")[1].split("</THOUGHT>")[0]
+        action = response.split("<COMMAND>")[1].split("</COMMAND>")[0]
+        scratchpad = None
+        if "<SCRATCHPAD>" in response:
+            scratchpad = response.split("<SCRATCHPAD>")[1].split("</SCRATCHPAD>")[0]
+        commit_message = None
+        if "<COMMIT_MESSAGE>" in response:
+            commit_message = response.split("<COMMIT_MESSAGE>")[1].split("</COMMIT_MESSAGE>")[0]
+
+    return thought, action, scratchpad, commit_message
 
 class ConversationalAgent(Agent):
     scratchpad: str = None
@@ -155,7 +176,7 @@ class ConversationalAgent(Agent):
         task: str,
         observation: str,
         session: "Session",
-    ) -> Tuple[str, str, str]:
+    ) -> Tuple[str, str, str, str]:
         self.current_model = self._initialize_model()
 
         if self.interrupt:
@@ -193,9 +214,11 @@ class ConversationalAgent(Agent):
             action = None
 
             try:
-                thought, action, scratchpad = llama3_parse_response(output)
+                thought, action, scratchpad, commit_message = parse_response(output)
                 if scratchpad:
                     self.scratchpad = scratchpad
+                if commit_message:
+                    print("COMMIT MESSAGE: ", commit_message)
             except Exception:
                 raise Hallucination(f"Multiple actions found in response: {output}")
 
@@ -225,13 +248,15 @@ ACTION: {action}
 OBSERVATION: {observation}
 
 SCRATCHPAD: {scratchpad}
+
+COMMIT MESSAGE: {commit_message}
 \n\n****************\n\n\n\n""")
 
-            return thought, action, output
+            return thought, action, output, commit_message
         except KeyboardInterrupt:
             raise
         except Hallucination:
-            return "hallucination", "hallucination", "Incorrect response format"
+            return "hallucination", "hallucination", "Incorrect response format",""
         except RuntimeError as e:
             session.event_log.append(
                 {
@@ -246,6 +271,7 @@ SCRATCHPAD: {scratchpad}
                 f"Exit due to runtime error: {e}",
                 "exit_error",
                 f"exit due to runtime error: {e}",
+                ""
             )
         except RetryError as e:
             session.event_log.append(
@@ -261,6 +287,7 @@ SCRATCHPAD: {scratchpad}
                 f"Exit due to retry error: {e}",
                 "exit_api",
                 f"exit due to retry error: {e}",
+                ""
             )
         except Exception as e:
             session.event_log.append(
@@ -277,4 +304,5 @@ SCRATCHPAD: {scratchpad}
                 f"Exit due to exception: {e}",
                 "exit_error",
                 f"exit due to exception: {e}",
+                ""
             )

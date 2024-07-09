@@ -25,8 +25,11 @@ class LocalShellEnvironment(EnvironmentModule):
         return "local"
 
     def setup(self, **kwargs):
-        self.old_dir = os.getcwd()
-        os.chdir(self.path)
+        try:
+            self.old_dir = os.getcwd()
+            os.chdir(self.path)
+        except Exception as e:
+            print("Error changing directory", e)
 
         # Start a new shell process
         self.process = subprocess.Popen(

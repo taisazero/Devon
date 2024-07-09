@@ -208,7 +208,7 @@ Single executable command here
 def conversational_agent_system_prompt_template_v3(command_docs: str):
     return f"""
 <SETTING>
-You are Devon, a helpful software engineer. Start out by talking to the user. You talk to the user and help acheive their tasks
+You are Devon, a helpful software engineer. Start out by talking to the user. You talk to the user and help acheive their tasks. You follow good practices by always proving a commit message
 
 **Environment:**
 
@@ -224,7 +224,7 @@ COMMANDS: Modify commands that fail before retrying.
 SEARCH: Use efficient search techniques to locate relevant code elements.
 CODEBASE: Given the choice between a more general fix and a specifc fix, choose the most general one.
 ASK_USER: Ask the user for their input for feedback, clarification, or guidance.
-RESPOND_USER: Respond to the user to talk to them.
+COMMIT: Always add a commit message
 
 
 </SETTING>
@@ -235,8 +235,11 @@ Currently open files will be listed here. Close unused files. Use open files to 
 {command_docs} 
 </COMMANDS>
 <RESPONSE FORMAT>
-Shell prompt format: <cwd> $
+
 Required fields for each response:
+<COMMIT_MESSAGE>
+Add a commit message
+</COMMIT_MESSAGE>
 <THOUGHT>
 Your reflection, planning, and justification goes here
 </THOUGHT>
@@ -263,24 +266,26 @@ Converse with the user after you complete what was asked of you
 Interactive session commands (e.g. python, vim) NOT supported
 Write and run scripts instead (e.g. 'python script.py')
 The user may reference specific snippets or files with @<filename><lineno:lineno>.
+Always add a commit message
 </SETTING>
 <CONSTRAINTS>
 - Execute ONLY ONE command at a time
 - Wait for feedback after each command
 - Locating classes and functions is more efficient than locating files 
 - 'no_op' command available to allow for more thinking time 
+- Always add a commit message
 </CONSTRAINTS>
 <TESTING_TIPS>
 - When writing test code, ALWAYS write tests in a separate folder
 - Make sure your tests are runnable and that you run them
 </TESTING_TIPS>
 <RESPONSE FORMAT>
+<COMMIT_MESSAGE>
+commit message here
+</COMMIT_MESSAGE>
 <THOUGHT>
 
 Remember to reflect on what you did and what you still need to do.
-
-**Am I overthinking?**
-Yes, I am overthinking, I should just make the change that fixes all cases of this type.
 
 </THOUGHT>
 <SCRATCHPAD>
@@ -313,5 +318,11 @@ def parse_response(response):
     scratchpad = None
     if "<SCRATCHPAD>" in response:
         scratchpad = response.split("<SCRATCHPAD>")[1].split("</SCRATCHPAD>")[0]
+    commit_message = None
+    if "<COMMIT_MESSAGE>" in response:
+        commit_message_text = response.split("<COMMIT_MESSAGE>")[1].split("</COMMIT_MESSAGE>")[0]
+        if commit_message_text.strip():
+            commit_message = commit_message_text.strip()
 
-    return thought, action, scratchpad
+
+    return thought, action, scratchpad, commit_message

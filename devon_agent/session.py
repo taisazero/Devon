@@ -35,56 +35,7 @@ from devon_agent.tools.lifecycle import NoOpTool
 from devon_agent.tools.shelltool import ShellTool
 from devon_agent.tools.utils import get_ignored_files, read_file
 from devon_agent.utils.utils import DotDict
-
-"""
-The Event System
-
-To generalize over several things that can happen. We have decided to use an event log to communicate every "event" that happens in the system. The following are a type of some events.
-
-ModelResponse
-- Content: Response by the model (currently in the format <THOUGHT></THOUGHT><ACTION></ACTION>)
-- Next: The action is parsed and the right tool is chosen or user response is requested
-
-ToolResponse
-- Content: Response from the tool
-- Next: The model is called with the reponse as the observation
-
-UserRequest
-- Content: User input
-- Next: The output is sent as ToolRequest
-
-Interrupt
-- Content: The interrupt message
-- Next: ModelResponse, the model is interrupted
-
-Stop
-- Content: None
-- Next: None
-
-Task
-- Content: The next task/object the agent has to complete
-- Next: ModelResponse
-
-Error
-- Content: The error message
-- Next: None
-
-Event Transitions
-```
-stateDiagram
-    [*] --> ModelResponse
-    ModelResponse --> ToolResponse: Action parsed, tool chosen
-    ModelResponse --> UserRequest: User response requested
-    ToolResponse --> ModelResponse: Tool response as observation
-    UserRequest --> ModelResponse: User input as ToolRequest
-    Interrupt --> ModelResponse: Model interrupted
-    ModelResponse --> Task: Next task/object to complete
-    Task --> ModelResponse
-    User --> Interrupt
-    User --> UserRequest
-    ModelResponse --> [*]: Stop
-```
-"""
+from devon_agent.versioning.git_versioning import GitVersioning
 
 
 class Session:
@@ -132,6 +83,8 @@ class Session:
 
         self.environments["user"].register_tools({"ask_user": AskUserTool()})
 
+        self.versioning = GitVersioning(config.path)
+
         self.base_path = config.path
 
         self.telemetry_client = Posthog()
@@ -149,6 +102,25 @@ class Session:
     def init_state(self, event_log: List[Dict] = []):
         self.state = DotDict({})
         self.state.PAGE_SIZE = 200
+        self.versioning.initialize_git()
+        if not self.config.versioning_metadata:
+            self.config.versioning_metadata = {}
+        if "old_branch" not in self.config.versioning_metadata:
+            self.config.versioning_metadata["old_branch"] = {}
+            self.config.versioning_metadata["old_branch"] = self.versioning.get_branch()
+
+
+        if self.config.versioning_metadata["old_branch"] !=self.versioning.get_branch_name():
+            try:
+                self.versioning.create_and_checkout_branch(self.versioning.get_branch_name())
+                self.config.versioning_metadata["current_branch"] = self.versioning.get_branch_name()
+            except Exception as e:
+                self.logger.error(f"Error creating branch: {e}")
+
+        try:
+            self.versioning.commit_all_files("initial commit")
+        except Exception as e:
+            self.logger.error(f"Error committing files: {e}")
 
         self.config.task = None
 
@@ -241,7 +213,7 @@ class Session:
 
             event = self.event_log[self.event_id]
 
-            self.logger.info(f"Event: {event}")
+            # self.logger.info(f"Event: {event}")
             self.logger.info(f"State: {self.state}")
 
             if event["type"] == "Stop" and event["content"]["type"] != "submit":
@@ -266,10 +238,11 @@ class Session:
             self.event_id += 1
 
         self.status = "terminated"
+        self.versioning.checkout_branch(self.config.versioning_metadata["old_branch"])
 
     def step_event(self, event):
         new_events = []
-        print("event", event)
+        # print("event", event)
         match event["type"]:
             case "Error":
                 new_events.append(
@@ -296,6 +269,10 @@ class Session:
                             },
                         }
                     )
+            case "GitMerge":
+                self.versioning.checkout_branch(self.config.versioning_metadata["old_branch"])
+                self.versioning.merge_branch(self.config.versioning_metadata["current_branch"])
+                self.versioning.checkout_branch(self.config.versioning_metadata["current_branch"])
 
             case "ModelRequest":
                 # TODO: Need some quantized timestep for saving persistence that isn't literally every 0.1s
@@ -310,9 +287,23 @@ class Session:
                             },
                             file,
                         )
-                thought, action, output = self.agent.predict(
+                thought, action, output, commit_message = self.agent.predict(
                     self.get_last_task(), event["content"], self
                 )
+                if commit_message:
+                    print("COMMIT MESSAGE: ", commit_message)
+                    success, message = self.versioning.commit_all_files(commit_message)
+                    if not success:
+                        self.logger.error(f"Error committing files: {message}")
+                    else:
+                        self.event_log.append(
+                            {
+                                "type": "GitEvent",
+                                "content": {"type": "commit", "message": commit_message},
+                                "producer": self.agent.name,
+                                "consumer": event["producer"],
+                            }
+                        )
                 if action == "hallucination":
                     new_events.append(
                         {
@@ -595,6 +586,8 @@ class Session:
                         "state": self.state,
                     }
                 )
+
+        self.versioning.checkout_branch(self.config.versioning_metadata["current_branch"])
 
     def persist(self):
         if self.persist_to_db:
