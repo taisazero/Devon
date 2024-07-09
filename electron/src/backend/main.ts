@@ -15,7 +15,7 @@ import fs from 'fs'
 import './plugins/editor'
 
 const DEBUG_MODE = false
-const DEV_MODE = true ?? false
+const DEV_MODE = process.env.DEV_MODE ?? false
 
 const winston = require('winston')
 
@@ -134,7 +134,6 @@ portfinder.setBasePort(10000)
 let use_port = NaN
 
 process.on('uncaughtException', error => {
-    // Create a detailed error message
     const detailedError = `
 ${error.message}
 ${error.stack}
