@@ -29,6 +29,14 @@ from devon_agent.utils.telemetry import Posthog, SessionStartEvent
 from devon_agent.utils.utils import DotDict, Event
 from devon_agent.versioning.git_versioning import GitVersioning
 
+def waitForEvent(event_log: List[Dict], event_type: str):
+    while True:
+        if event_log[-1]["type"] == event_type:
+            return event_log[-1]
+        time.sleep(1)
+    
+
+
 
 class Session:
     def __init__(self, config: Config, event_log: List[Dict]):
@@ -566,18 +574,44 @@ class Session:
                 self.config.versioning_metadata["old_branch"] = {}
                 self.config.versioning_metadata["old_branch"] = self.versioning.get_branch()
 
-
+            # THIS PART IS STILL VERY JANKY. NEED A BETTER WAY TO HANDLE BLOCKING.
             if self.config.versioning_metadata["old_branch"] !=self.versioning.get_branch_name():
+                while True:
+                    try:
+                        # TODO: deal with situation where session is being loaded.
+                        self.versioning.create_if_not_exists_and_checkout_branch(self.versioning.get_branch_name())
+                        self.config.versioning_metadata["current_branch"] = self.versioning.get_branch_name()
+                        break
+                    except Exception as e:
+                        self.logger.error(f"Error creating branch: {e}")
+                        self.event_log.append({
+                            "type": "GitError",
+                            "content": f"Error creating branch: {e}",
+                            "producer": "system",
+                            "consumer": "user",
+                        })
+                        resolved = waitForEvent(self.event_log, "GitResolve")
+                        if resolved["content"]["action"] == "nogit":
+                            self.config.versioning_type = "none"
+                            self.versioning.versioningType = "none"
+                            break
+            while True:
                 try:
-                    self.versioning.create_if_not_exists_and_checkout_branch(self.versioning.get_branch_name())
-                    self.config.versioning_metadata["current_branch"] = self.versioning.get_branch_name()
+                    self.versioning.commit_all_files("initial commit")
                 except Exception as e:
-                    self.logger.error(f"Error creating branch: {e}")
+                    self.logger.error(f"Error committing files: {e}")
+                    self.event_log.append({
+                        "type": "GitError",
+                        "content": f"Error creating branch: {e}",
+                        "producer": "system",
+                        "consumer": "user",
+                    })
+                    resolved = waitForEvent(self.event_log, "GitResolve")
+                    if resolved["content"]["action"] == "nogit":
+                        self.config.versioning_type = "none"
+                        self.versioning.versioningType = "none"
+                        break
 
-            try:
-                self.versioning.commit_all_files("initial commit")
-            except Exception as e:
-                self.logger.error(f"Error committing files: {e}")
 
         if self.config.ignore_files:
             # check if devonignore exists, use default env
