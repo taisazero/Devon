@@ -74,8 +74,8 @@ class Session:
         self.environments["user"].event_log = event_log
 
         self.environments["user"].register_tools({"ask_user": AskUserTool()})
-
-        self.versioning = GitVersioning(config.path)
+        if self.config.versioning_type == "git":
+            self.versioning = GitVersioning(config.path)
 
         self.base_path = config.path
 
@@ -188,7 +188,7 @@ class Session:
             event = self.event_log[self.event_id]
 
             # self.logger.info(f"Event: {event}")
-            self.logger.info(f"State: {self.state}")
+            # self.logger.info(f"State: {self.state}")
 
             if event["type"] == "Stop" and event["content"]["type"] != "submit":
                 print("hopefully here")
@@ -213,7 +213,8 @@ class Session:
             self.event_id += 1
 
         self.status = "terminated"
-        self.versioning.checkout_branch(self.config.versioning_metadata["old_branch"])
+        if self.config.versioning_type == "git":
+            self.versioning.checkout_branch(self.config.versioning_metadata["old_branch"])
 
     def step_event(self, event):
         new_events = []
@@ -267,18 +268,19 @@ class Session:
                 )
                 if commit_message:
                     print("COMMIT MESSAGE: ", commit_message)
-                    success, message = self.versioning.commit_all_files(commit_message)
-                    if not success:
-                        self.logger.error(f"Error committing files: {message}")
-                    else:
-                        self.event_log.append(
-                            {
-                                "type": "GitEvent",
-                                "content": {"type": "commit", "message": commit_message},
-                                "producer": self.agent.name,
-                                "consumer": event["producer"],
-                            }
-                        )
+                    if self.config.versioning_type == "git":
+                        success, message = self.versioning.commit_all_files(commit_message)
+                        if not success:
+                            self.logger.error(f"Error committing files: {message}")
+                        else:
+                            self.event_log.append(
+                                {
+                                    "type": "GitEvent",
+                                    "content": {"type": "commit", "message": commit_message},
+                                    "producer": self.agent.name,
+                                    "consumer": event["producer"],
+                                }
+                            )
                 if action == "hallucination":
                     new_events.append(
                         {
@@ -556,26 +558,26 @@ class Session:
                         "state": self.state,
                     }
                 )
+        if self.config.versioning_type == "git":
+            self.versioning.initialize_git()
+            if not self.config.versioning_metadata:
+                self.config.versioning_metadata = {}
+            if "old_branch" not in self.config.versioning_metadata:
+                self.config.versioning_metadata["old_branch"] = {}
+                self.config.versioning_metadata["old_branch"] = self.versioning.get_branch()
 
-        self.versioning.initialize_git()
-        if not self.config.versioning_metadata:
-            self.config.versioning_metadata = {}
-        if "old_branch" not in self.config.versioning_metadata:
-            self.config.versioning_metadata["old_branch"] = {}
-            self.config.versioning_metadata["old_branch"] = self.versioning.get_branch()
 
+            if self.config.versioning_metadata["old_branch"] !=self.versioning.get_branch_name():
+                try:
+                    self.versioning.create_if_not_exists_and_checkout_branch(self.versioning.get_branch_name())
+                    self.config.versioning_metadata["current_branch"] = self.versioning.get_branch_name()
+                except Exception as e:
+                    self.logger.error(f"Error creating branch: {e}")
 
-        if self.config.versioning_metadata["old_branch"] !=self.versioning.get_branch_name():
             try:
-                self.versioning.create_if_not_exists_and_checkout_branch(self.versioning.get_branch_name())
-                self.config.versioning_metadata["current_branch"] = self.versioning.get_branch_name()
+                self.versioning.commit_all_files("initial commit")
             except Exception as e:
-                self.logger.error(f"Error creating branch: {e}")
-
-        try:
-            self.versioning.commit_all_files("initial commit")
-        except Exception as e:
-            self.logger.error(f"Error committing files: {e}")
+                self.logger.error(f"Error committing files: {e}")
 
         if self.config.ignore_files:
             # check if devonignore exists, use default env
@@ -598,8 +600,8 @@ class Session:
                         "state": self.state,
                     }
                 )
-
-        self.versioning.checkout_branch(self.config.versioning_metadata["current_branch"])
+        if self.config.versioning_type == "git":
+            self.versioning.checkout_branch(self.config.versioning_metadata["current_branch"])
 
     def persist(self):
         if self.persist_to_db:

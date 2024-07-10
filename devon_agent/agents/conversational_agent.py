@@ -218,7 +218,7 @@ class ConversationalAgent(Agent):
                             "consumer": "none",
                         }
                     )
-                    return "error", "error", "error"
+                    return "error", "error", "error", "error"
                 except Exception as e:
                     session.event_log.append(
                         {
@@ -228,7 +228,7 @@ class ConversationalAgent(Agent):
                             "consumer": "none",
                         }
                     )
-                    return "error", "error", "error"
+                    return "error", "error", "error", "error"
                  
                 
 

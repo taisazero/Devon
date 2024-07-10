@@ -24,7 +24,6 @@ class SingletonEngine:
 
     @classmethod
     def get_engine(cls):
-        print("get_engine", cls._instance)
         return cls._instance
 
 
@@ -37,7 +36,6 @@ def set_db_engine(db_path):
 
 
 async def init_db():
-    print(SingletonEngine.get_engine)
     engine = SingletonEngine.get_engine()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

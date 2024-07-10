@@ -28,7 +28,7 @@ class Config(BaseModel):
 
     agent_configs: List[AgentConfig]
     task: Optional[str] = None
-    versioning_type: Optional[Literal["git", "fossil"]] = None
+    versioning_type: Optional[Literal["git", "fossil","none"]] = None
     versioning_metadata: Optional[Dict] = Field(default_factory=dict)
     persist_to_db: bool = True
     ignore_files: Optional[bool]

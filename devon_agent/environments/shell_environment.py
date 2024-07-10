@@ -1,3 +1,4 @@
+import errno
 import os
 import shutil
 import subprocess
@@ -76,7 +77,7 @@ class LocalShellEnvironment(EnvironmentModule):
 
             return_code = int(output.splitlines()[-1])
             output = "\n".join(output.splitlines()[:-1])
-            output = output if return_code == 0 else error
+            output = output if return_code == 0 else output + error
 
             self.event_log.append(
                 {
@@ -123,11 +124,20 @@ class LocalShellEnvironment(EnvironmentModule):
         env.load(data)
         return env
 
+def copyanything(src, dst):
+    try:
+        shutil.copytree(src, dst)
+    except OSError as exc: # python >2.5
+        if exc.errno in (errno.ENOTDIR, errno.EINVAL):
+            shutil.copy(src, dst)
+        else: raise
 
 class TempDirShellEnvironment(LocalShellEnvironment):
     path: str = Field(default_factory=lambda: tempfile.TemporaryDirectory().name)
 
     def setup(self, files_to_cp: List[str], **kwargs):
         for src in files_to_cp:
-            shutil.copy(src, self.path)
+            print(src)
+            dest = copyanything(src, self.path)
+            print(dest)
         super().setup(**kwargs)
