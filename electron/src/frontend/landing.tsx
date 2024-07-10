@@ -11,6 +11,7 @@ import {
 import EditorPanel from '@/panels/editor/editor-panel'
 import { SessionMachineContext } from '@/contexts/session-machine-context'
 import TimelinePanel from '@/panels/timeline/timeline-panel'
+import GitErrorModal from '@/components/modals/git-error-modal'
 
 export default function Landing({
     smHealthCheckDone,
@@ -45,7 +46,6 @@ export default function Landing({
         state => state,
         (a, b) => a.value === b.value
     )
-    console.log(state.value)
 
     function afterOnboard(
         apiKey: string,
@@ -116,6 +116,7 @@ export default function Landing({
                     </ResizablePanel>
                 </ResizablePanelGroup>
             </div>
+            <GitErrorModal />
 
             {smHealthCheckDone && (!modelName || !hasKey) && (
                 <OnboardingModal

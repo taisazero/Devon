@@ -40,12 +40,18 @@ type ServerEvent = {
         | 'ToolRequest'
         | 'Error'
         | 'UserResponse'
-        | 'GitEvent'
         | 'ShellRequest'
         | 'ShellResponse'
         | 'RateLimit'
+        | 'GitEvent'
+        | 'GitError'
     content: any
     identifier: string | null
+}
+
+type GitError = {
+    message: string,
+    resolved: boolean
 }
 
 type ServerEventContext = {
@@ -58,6 +64,7 @@ type ServerEventContext = {
         base_commit: string | null
         commits: string[]
     }
+    gitError: GitError[]
 }
 
 export const eventHandlingLogic = fromTransition(
@@ -211,10 +218,7 @@ export const eventHandlingLogic = fromTransition(
                         ...state,
                         gitData: {
                             base_commit: state.gitData.base_commit,
-                            commits: [
-                                ...state.gitData.commits,
-                                commitMessage,
-                            ],
+                            commits: [...state.gitData.commits, commitMessage],
                         },
                     }
                 } else if (event.content.type === 'revert') {
@@ -234,6 +238,12 @@ export const eventHandlingLogic = fromTransition(
                     return state
                 }
             }
+            case 'GitError': {
+                return {
+                    ...state,
+                    gitError: [...state.gitError, event.content],
+                }
+            }
 
             default: {
                 return state
@@ -250,6 +260,10 @@ export const eventHandlingLogic = fromTransition(
             base_commit: null,
             commits: [],
         },
+        gitError: [{
+            message: 'testGitError',
+            resolved: false,
+        }],
     }
 )
 

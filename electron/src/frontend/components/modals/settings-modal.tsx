@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { CardHeader, CardContent, Card } from '@/components/ui/card'
-import { Checkbox } from '@/components/ui/checkbox'
+import { Checkbox, CheckedState } from '@/components/ui/checkbox'
 import { useToast } from '@/components/ui/use-toast'
 import { useSafeStorage } from '@/lib/services/safeStorageService'
 import {
@@ -435,8 +435,8 @@ const GeneralSettingsCard = ({
 }
 
 const VersionControlSettingsCard = () => {
-    const [useGit, setUseGit] = useState(true)
-    const [createNewBranch, setCreateNewBranch] = useState(true)
+    const [useGit, setUseGit] = useState<CheckedState>(true)
+    const [createNewBranch, setCreateNewBranch] = useState<CheckedState>(true)
     const { toast } = useToast()
 
     const handleMerge = () => {
