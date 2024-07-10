@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -25,7 +26,23 @@ from devon_agent.utils.utils import LOGGER_NAME
 # from devon_agent.semantic_search.code_graph_manager import CodeGraphManager
 
 
+class EndpointFilter(logging.Filter):
+    def __init__(
+        self,
+        path: str,
+        *args: Any,
+        **kwargs: Any,
+    ):
+        super().__init__(*args, **kwargs)
+        self._path = path
 
+    def filter(self, record: logging.LogRecord) -> bool:
+        return record.getMessage().find(self._path) == -1
+
+uvicorn_logger = logging.getLogger("uvicorn.access")
+uvicorn_logger.addFilter(EndpointFilter(path=f"/start"))
+uvicorn_logger.addFilter(EndpointFilter(path=f"/update"))
+uvicorn_logger.addFilter(EndpointFilter(path=f"/state"))
 # API
 # SESSION
 # - get sessions
@@ -46,6 +63,7 @@ origins = [
 
 sessions: Dict[str, Session] = {}
 running_sessions: List[Session] = []
+
 
 
 def get_user_input(session: str):
@@ -239,7 +257,7 @@ def create_session(
             logger_name=LOGGER_NAME,
             db_path=db_path,
             persist_to_db=app.persist,
-            versioning="git",
+            versioning_type=config["versioning_type"] if "versioning_type" in config else "none",
             environments={"local": local_environment, "user": user_environment},
             default_environment="local",
             agent_configs=[
@@ -264,6 +282,17 @@ def create_session(
 
     return session
 
+class UpdateConfig(BaseModel):
+    model: str
+    api_key: str
+
+@app.patch("/sessions/{session}/update")
+def update_session(session: str, update_config: UpdateConfig):
+    if session not in sessions:
+        raise fastapi.HTTPException(status_code=404, detail="Session not found")
+    sessions[session].config.agent_configs[0].model = update_config.model
+    sessions[session].config.agent_configs[0].api_key = update_config.api_key
+    return sessions[session]
 
 @app.delete("/sessions/{session}")
 def delete_session(session: str):

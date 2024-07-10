@@ -73,13 +73,17 @@ class JobEnvironment(EnvironmentModule):
                 status="running",
                 start_time=datetime.now(),
             )
-            self.jobs[input] = job
+            self.jobs[input + str(time.time())] = job
 
-            self.process.stdin.write(f"({input}; echo 'EXIT_CODE: '$? >&2; echo 'PID: '$! >&2; echo 'EOL' > {stdout_pipe_path}; echo 'EOL' >&2) > {stdout_pipe_path} 2> {stderr_pipe_path} &\n")
+            self.process.stdin.write(f"({input}; echo 'EXIT_CODE: '$? >&2; echo 'PID: '$! >&2; echo 'EOL' >&1; echo 'EOL' >&2) 1> {stdout_pipe_path} 2> {stderr_pipe_path} &\n")
             self.process.stdin.flush()
 
             for _ in range(int(timeout_duration / 0.1)):
                 stdout, stderr, exit_code, pid = self.read_background_output(job)
+                print("stdout end", stdout , job.stdout)
+                print("stderr end", stderr)
+                print("exit_code end", exit_code)
+                print("pid", pid)
                 job.stdout += stdout
                 job.stderr += stderr
                 if exit_code is not None:
@@ -113,6 +117,7 @@ class JobEnvironment(EnvironmentModule):
         while True:
             try:
                 stdout_data = os.read(stdout_fd, 1024).decode()
+                print("stdout_data", stdout_data)
                 if not stdout_data:
                     no_data = True
                 stdout += stdout_data
@@ -148,16 +153,17 @@ class JobEnvironment(EnvironmentModule):
         os.close(stderr_fd)
 
         stdout = stdout.split('EOL\n')[0]
+        print("stdout", stdout)
         stderr = stderr.split('EOL\n')[0]
+        print("stderr", stderr)
 
         if returned:
             job.status = "returned"
             job.end_time = datetime.now()
-            job.stdout += stdout
-            job.stderr += stderr
-            job.stderr = "\n".join(job.stderr.splitlines()[:-2])
-            job.exit_code = exit_code
-            job.pid = pid
+            # job.stdout += stdout
+            # job.stderr += stderr
+            # job.exit_code = exit_code
+            # job.pid = pid
 
         return stdout, stderr, exit_code, pid
 

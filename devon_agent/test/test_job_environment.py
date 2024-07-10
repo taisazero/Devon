@@ -32,4 +32,4 @@ def test_shared_job_environment(temp_dir_job_environment):
     assert stdout == ""
     stdout, rc = temp_dir_job_environment.execute("echo $TESTVAR")
     assert rc == 0
-    assert stdout == "test\n
+    assert stdout == "test\n"
