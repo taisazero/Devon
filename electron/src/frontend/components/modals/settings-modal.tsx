@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { CardHeader, CardContent, Card } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/components/ui/use-toast'
 import { useSafeStorage } from '@/lib/services/safeStorageService'
 import {
@@ -185,23 +186,11 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
 
     return (
         <div className="pt-4 pb-2 px-2 flex flex-col gap-5">
-            <Card className="bg-midnight">
-                <CardContent className="mt-5 w-full">
-                    <p className="text-lg font-semibold mb-4">
-                        {`Project directory:`}
-                    </p>
-                    <FolderPicker
-                        folderPath={folderPath}
-                        setFolderPath={setFolderPath}
-                        showTitle={false}
-                        customButton={
-                            <Button onClick={handleChangePath}>Change</Button>
-                        }
-                    />
-                    {/* Commenting out for now, just does a refresh instead rn */}
-                    {/* {!initialFolderPath.loading && initialFolderPath.value !== folderPath && <Button className="mt-5 w-full" onClick={handleNewChat}>Start new chat</Button>} */}
-                </CardContent>
-            </Card>
+            <GeneralSettingsCard
+                folderPath={folderPath}
+                setFolderPath={setFolderPath}
+                handleChangePath={handleChangePath}
+            />
             <Card className="bg-midnight">
                 <CardContent>
                     <div className="flex flex-col mt-5 w-full mb-4">
@@ -222,8 +211,9 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
                         </div>
                         {selectedModel.value !== 'claude-3-5-sonnet' && (
                             <span className="text-sm text-green-500 mt-2 flex gap-1 items-center">
-                                <Info className="w-4 h-4"/>
-                                Note: For best results use Claude 3.5 Sonnet (it's better at coding!)
+                                <Info className="w-4 h-4" />
+                                Note: For best results use Claude 3.5 Sonnet
+                                (it's better at coding!)
                             </span>
                         )}
                     </div>
@@ -233,20 +223,23 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
                                 {`${selectedModel.company} API Key`}
                             </p>
                             <Popover>
-                                <PopoverTrigger className="ml-[2px]" onClick={() => setHasClickedQuestion(true)}>
+                                <PopoverTrigger
+                                    className="ml-[2px]"
+                                    onClick={() => setHasClickedQuestion(true)}
+                                >
                                     <CircleHelp size={14} />
                                 </PopoverTrigger>
                                 <SafeStoragePopoverContent />
                             </Popover>
                             {hasClickedQuestion && (
-                                        <a
-                                            className="text-primary hover:underline self-end ml-auto cursor-pointer"
-                                            href={selectedModel?.apiKeyUrl}
-                                            target="_blank"
-                                        >
-                                            Looking for an API key?
-                                        </a>
-                                    )}
+                                <a
+                                    className="text-primary hover:underline self-end ml-auto cursor-pointer"
+                                    href={selectedModel?.apiKeyUrl}
+                                    target="_blank"
+                                >
+                                    Looking for an API key?
+                                </a>
+                            )}
                         </div>
                         {selectedModel.id !== originalModelName &&
                             modelHasSavedApiKey && (
@@ -290,33 +283,10 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
                     </div>
                 </CardContent>
             </Card> */}
-            <Card className="bg-midnight">
-                <CardHeader>
-                    <div className="flex gap-1 items-center">
-                        <h2 className="text-lg font-semibold">Miscellaneous</h2>
-                        <Popover>
-                            <PopoverTrigger className="ml-[2px]">
-                                <CircleHelp size={14} />
-                            </PopoverTrigger>
-                            <PopoverContent
-                                side="top"
-                                className="bg-night w-fit p-2 px-3"
-                            >
-                                Clears your keys from Electron Safe Storage and
-                                clears the session
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    <Button
-                        className="w-fit"
-                        onClick={clearStorageAndResetSession}
-                    >
-                        Clear Storage
-                    </Button>
-                </CardContent>
-            </Card>
+            <VersionControlSettingsCard />
+            <MiscellaneousCard
+                clearStorageAndResetSession={clearStorageAndResetSession}
+            />
         </div>
     )
 }
@@ -433,3 +403,149 @@ const APIKeyComponent = ({
 }
 
 export default SettingsModal
+
+const GeneralSettingsCard = ({
+    folderPath,
+    setFolderPath,
+    handleChangePath,
+}: {
+    folderPath: string
+    setFolderPath: (path: string) => void
+    handleChangePath: () => void
+}) => {
+    return (
+        <Card className="bg-midnight">
+            <CardContent className="mt-5 w-full">
+                <p className="text-lg font-semibold mb-4">
+                    {`Project directory:`}
+                </p>
+                <FolderPicker
+                    folderPath={folderPath}
+                    setFolderPath={setFolderPath}
+                    showTitle={false}
+                    customButton={
+                        <Button onClick={handleChangePath}>Change</Button>
+                    }
+                />
+                {/* Commenting out for now, just does a refresh instead rn */}
+                {/* {!initialFolderPath.loading && initialFolderPath.value !== folderPath && <Button className="mt-5 w-full" onClick={handleNewChat}>Start new chat</Button>} */}
+            </CardContent>
+        </Card>
+    )
+}
+
+const VersionControlSettingsCard = () => {
+    const [useGit, setUseGit] = useState(true)
+    const [createNewBranch, setCreateNewBranch] = useState(true)
+    const { toast } = useToast()
+
+    const handleMerge = () => {
+        // TODO: Implement merge logic
+        console.log('Attempting to merge...')
+        // If merge fails, show an error message
+        toast({
+            title: 'Merge failed',
+            description:
+                'There are merge conflicts. Please resolve them in your editor and try again.',
+            variant: 'destructive',
+        })
+    }
+
+    return (
+        <Card className="bg-midnight">
+            <CardContent className="mt-5 w-full">
+                <div className="flex gap-1 items-center mb-4 w-full">
+                    <h3 className="text-lg font-semibold">Version control</h3>
+                    <Popover>
+                        <PopoverTrigger className="ml-[2px]">
+                            <CircleHelp size={14} />
+                        </PopoverTrigger>
+                        <PopoverContent
+                            side="top"
+                            className="bg-night w-fit p-2 px-3"
+                        >
+                            Enabling this means you can revert and step back to
+                            previous versions
+                        </PopoverContent>
+                    </Popover>
+                </div>
+                <div className="flex flex-col gap-4">
+                    <div className="flex items-center space-x-2">
+                        <Checkbox
+                            id="use-git"
+                            checked={useGit}
+                            onCheckedChange={setUseGit}
+                        />
+                        <label htmlFor="use-git" className="hover:cursor-pointer">
+                            Use git as version control system
+                        </label>
+                    </div>
+                    <div
+                        className={`flex flex-col gap-4 ${
+                            !useGit ? 'opacity-50 hover:cursor-not-allowed' : ''
+                        }`}
+                    >
+                        <div className="flex items-center space-x-2">
+                            <Checkbox
+                                id="create-branch"
+                                checked={createNewBranch}
+                                onCheckedChange={setCreateNewBranch}
+                                disabled={!useGit}
+                            />
+                            <label htmlFor="create-branch" className={!useGit ? 'pointer-events-none' : 'hover:cursor-pointer'}>
+                                Create a new branch when starting a new session
+                            </label>
+                        </div>
+                        <p className="mt-4 flex">
+                            Sync changes with{' '}
+                            <code className="bg-black px-[6px] py-[1px] rounded-md text-primary text-opacity-90 text-[0.9rem] mx-[4px]">
+                                main
+                            </code>{' '}
+                            branch?
+                        </p>
+                        <Button
+                            className="w-fit"
+                            onClick={handleMerge}
+                            disabled={!useGit}
+                        >
+                            Merge branch
+                        </Button>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+    )
+}
+
+const MiscellaneousCard = ({
+    clearStorageAndResetSession,
+}: {
+    clearStorageAndResetSession: () => void
+}) => {
+    return (
+        <Card className="bg-midnight">
+            <CardHeader>
+                <div className="flex gap-1 items-center">
+                    <h2 className="text-lg font-semibold">Miscellaneous</h2>
+                    <Popover>
+                        <PopoverTrigger className="ml-[2px]">
+                            <CircleHelp size={14} />
+                        </PopoverTrigger>
+                        <PopoverContent
+                            side="top"
+                            className="bg-night w-fit p-2 px-3"
+                        >
+                            Clears your keys from Electron Safe Storage and
+                            clears the session
+                        </PopoverContent>
+                    </Popover>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <Button className="w-fit" onClick={clearStorageAndResetSession}>
+                    Clear Storage
+                </Button>
+            </CardContent>
+        </Card>
+    )
+}
