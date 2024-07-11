@@ -17,8 +17,6 @@ const GitErrorModal = () => {
     )
     const sessionActorRef = SessionMachineContext.useActorRef()
 
-    console.log('UNRES', unresolvedGitError)
-
     useEffect(() => {
         if (unresolvedGitError) {
             setIsOpen(true)
@@ -64,7 +62,7 @@ const GitErrorModal = () => {
                             <h2 className="text-xl font-semibold">Git error</h2>
                         </div>
                     </DialogTitle>
-                    <DialogDescription>
+                    <DialogDescription asChild>
                         <p className="text-sm text-gray-400 mt-2">
                             {unresolvedGitError}
                         </p>

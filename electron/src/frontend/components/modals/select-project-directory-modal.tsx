@@ -38,6 +38,12 @@ const DialogTitle = lazy(() =>
     }))
 )
 
+const DialogDescription = lazy(() =>
+    import('@/components/ui/dialog').then(module => ({
+        default: module.DialogDescription,
+    }))
+)
+
 const SelectProjectDirectoryModal = ({
     trigger,
     openProjectModal,
@@ -253,7 +259,11 @@ const ExistingSessionFound = ({ continueChat, newChat }) => {
     return (
         <div className="dark">
             <div>
-                <p className="text-2xl font-bold">Continue previous chat?</p>
+                <DialogDescription asChild>
+                    <p className="text-2xl font-bold">
+                        Continue previous chat?
+                    </p>
+                </DialogDescription>
                 {/* <p className="text-md mt-2 text-neutral-400">
                         {`Previous task: "`}
                         <span className="italic">Create a snake game</span>

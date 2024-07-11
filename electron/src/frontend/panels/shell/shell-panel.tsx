@@ -9,7 +9,6 @@ import { shallowEqual } from '@xstate/react'
  * we keep the terminal persistently open as a child of <App /> and hidden when not in use.
  */
 
-
 type ShellCommand = {
     command: string
     response: string
@@ -26,10 +25,13 @@ export default function ShellPanel({
     // const [renderedMessages, setRenderedMessages] = useState<ShellCommand[]>([])
     let renderedMessages: ShellCommand[] = []
     const initialPathRef = useRef<string | null>(null)
-    const messages = SessionMachineContext.useSelector(state =>
-        state.context.serverEventContext.messages.filter(
-            message => message.type === 'shellCommand' || message.type === 'shellResponse'
-        ),
+    const messages = SessionMachineContext.useSelector(
+        state =>
+            state.context.serverEventContext.messages.filter(
+                message =>
+                    message.type === 'shellCommand' ||
+                    message.type === 'shellResponse'
+            ),
         shallowEqual
     )
     useEffect(() => {
@@ -98,21 +100,17 @@ export default function ShellPanel({
         if (terminal) {
             const messagesToRender = messages.reduce((acc, message) => {
                 if (message.type === 'shellCommand') {
-                    acc.push({ command: message.text, response: '' });
+                    acc.push({ command: message.text, response: '' })
                 } else if (acc.length > 0) {
-                    acc[acc.length - 1].response += message.text;
+                    acc[acc.length - 1].response += message.text
                 }
-                return acc;
+                return acc
             }, [] as ShellCommand[])
-            console.log(messagesToRender, renderedMessages)
             terminal.clear()
             // terminal.clear() // Clear the existing content
             messagesToRender.forEach((message, idx) => {
-                console.log(message)
-                const {command, response} = message
-                // console.log("pusing", command, response)
+                const { command, response } = message
                 renderedMessages.push({ command, response })
-                // console.log("after push",renderedMessages)
 
                 let commandMsgs = removeBeforeRunningCommand(
                     command.trim()

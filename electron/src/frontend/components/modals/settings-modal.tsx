@@ -15,10 +15,18 @@ import SafeStoragePopoverContent from '@/components/modals/safe-storage-popover-
 import { Skeleton } from '@/components/ui/skeleton'
 import { Model } from '@/lib/types'
 import { models } from '@/lib/config'
-import { Dialog, DialogTrigger, DialogContent } from '@/components/ui/dialog'
+import {
+    Dialog,
+    DialogTrigger,
+    DialogContent,
+    DialogTitle,
+    DialogHeader,
+    DialogDescription,
+} from '@/components/ui/dialog'
 import Combobox, { ComboboxItem } from '@/components/ui/combobox'
 import { SessionMachineContext } from '@/contexts/session-machine-context'
 import FolderPicker from '@/components/ui/folder-picker'
+import * as VisuallyHidden from '@radix-ui/react-visually-hidden'
 
 type ExtendedComboboxItem = Model & ComboboxItem & { company: string }
 
@@ -36,7 +44,14 @@ const SettingsModal = ({ trigger }: { trigger: JSX.Element }) => {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>{trigger}</DialogTrigger>
+
             <DialogContent className="w-[500px]">
+                <VisuallyHidden.Root>
+                    <DialogHeader>
+                        <DialogTitle>Settings</DialogTitle>
+                    </DialogHeader>
+                    <DialogDescription></DialogDescription>
+                </VisuallyHidden.Root>
                 <General setOpen={setOpen} />
             </DialogContent>
         </Dialog>
@@ -476,7 +491,10 @@ const VersionControlSettingsCard = () => {
                             checked={useGit}
                             onCheckedChange={setUseGit}
                         />
-                        <label htmlFor="use-git" className="hover:cursor-pointer">
+                        <label
+                            htmlFor="use-git"
+                            className="hover:cursor-pointer"
+                        >
                             Use git as version control system
                         </label>
                     </div>
@@ -492,7 +510,14 @@ const VersionControlSettingsCard = () => {
                                 onCheckedChange={setCreateNewBranch}
                                 disabled={!useGit}
                             />
-                            <label htmlFor="create-branch" className={!useGit ? 'pointer-events-none' : 'hover:cursor-pointer'}>
+                            <label
+                                htmlFor="create-branch"
+                                className={
+                                    !useGit
+                                        ? 'pointer-events-none'
+                                        : 'hover:cursor-pointer'
+                                }
+                            >
                                 Create a new branch when starting a new session
                             </label>
                         </div>

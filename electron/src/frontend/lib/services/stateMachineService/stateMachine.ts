@@ -67,7 +67,6 @@ type ServerEventContext = {
 
 export const eventHandlingLogic = fromTransition(
     (state: ServerEventContext, event: ServerEvent) => {
-        console.log('event', event)
         switch (event.type) {
             case 'session.reset': {
                 return {
@@ -424,12 +423,6 @@ const sendEvent = async ({
 }: {
     input: { host: string; name: string; event: sendEventType }
 }) => {
-    console.log({
-        type: input.event.params.serverEventType,
-        content: input.event.params.content,
-        producer: 'user',
-        consumer: 'agent',
-    })
     const response = await axios.post(
         `${input.host}/sessions/${input.name}/event`,
         {
