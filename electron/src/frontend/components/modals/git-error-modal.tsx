@@ -1,13 +1,23 @@
+import React, { useState, useEffect } from 'react'
 import { SessionMachineContext } from '@/contexts/session-machine-context'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { AlertTriangle } from 'lucide-react'
 
 const GitErrorModal = () => {
+    const [isOpen, setIsOpen] = useState(false)
     const unresolvedGitError = SessionMachineContext.useSelector(
         state => state.context.serverEventContext.gitError
     )
     const sessionActorRef = SessionMachineContext.useActorRef()
+
+    console.log("UNRES", unresolvedGitError)
+
+    useEffect(() => {
+        if (unresolvedGitError) {
+            setIsOpen(true)
+        }
+    }, [unresolvedGitError])
 
     const handleResolve = () => {
         sessionActorRef.send({
@@ -17,6 +27,7 @@ const GitErrorModal = () => {
                 content: { action: 'retry' },
             },
         })
+        setIsOpen(false)
     }
 
     const handleContinueWithoutGit = () => {
@@ -27,6 +38,7 @@ const GitErrorModal = () => {
                 content: { action: 'nogit' },
             },
         })
+        setIsOpen(false)
     }
 
     if (!unresolvedGitError) {
@@ -34,7 +46,7 @@ const GitErrorModal = () => {
     }
 
     return (
-        <Dialog open={true}>
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogContent
                 hideclose={true.toString()}
                 className="sm:max-w-[425px] pb-4"

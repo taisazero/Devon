@@ -149,7 +149,8 @@ export const ToolResponseMessage = ({
         if (index === 0) {
             return null
         }
-        return <ThoughtMessage content={'Let me cook...'} />
+        // return <ThoughtMessage content={'Let me cook...'} />
+        return <ThoughtMessage content={'Let me think some more...'} />
     }
 
     if (command.includes('Running command: edit')) {
