@@ -1,13 +1,15 @@
 import subprocess
 
+from devon_agent.config import Config
+
 
 class GitVersioning:
-    def __init__(self, project_path, config):
+    def __init__(self, project_path, config : Config):
         self.project_path = project_path
-        self.versioningType = config.versioning_type
+        self.config = config
 
     def check_git_installation(self):
-        if self.versioningType == "none":
+        if self.config.versioningType == "none":
             return True
         try:
             subprocess.run(["git", "--version"], capture_output=True, check=True)
@@ -16,7 +18,7 @@ class GitVersioning:
             return False
 
     def initialize_git(self):
-        if self.versioningType == "none":
+        if self.config.versioningType == "none":
             return
         if not self.check_git_installation():
             print("Git is not installed. Attempting to install...")
@@ -42,7 +44,7 @@ class GitVersioning:
             print("Git repository initialized successfully.")
 
     def get_branch(self):
-        if self.versioningType == "none":
+        if self.config.versioningType == "none":
             return "none"
 
         result = subprocess.run(
@@ -56,7 +58,7 @@ class GitVersioning:
 
 
     def commit_all_files(self, message="Initial commit"):
-        if self.versioningType == "none":
+        if self.config.versioningType == "none":
             return True, "none"
         res =subprocess.run(["git", "add", "."], cwd=self.project_path)
         if res.returncode != 0:
@@ -71,14 +73,14 @@ class GitVersioning:
         return True, res.stdout
 
     def commit_changes(self, message):
-        if self.versioningType == "none":
+        if self.config.versioningType == "none":
             return True, "none"
         subprocess.run(
             ["git", "commit", "-am", message], cwd=self.project_path, check=True
         )
 
     def list_commits(self):
-        if self.versioningType == "none":
+        if self.config.versioningType == "none":
             return "none"
         result = subprocess.run(
             ["git", "log", "--oneline"],
@@ -90,14 +92,14 @@ class GitVersioning:
         return result.stdout
 
     def revert_to_commit(self, commit_hash):
-        if self.versioningType == "none":
+        if self.config.versioningType == "none":
             return
         subprocess.run(
             ["git", "checkout", commit_hash], cwd=self.project_path, check=True
         )
 
     def create_branch(self, branch_name):
-        if self.versioningType == "none":
+        if self.config.versioningType == "none":
             return
         subprocess.run(
             ["git", "checkout", "-b", branch_name], cwd=self.project_path, check=True
@@ -111,17 +113,17 @@ class GitVersioning:
         )
 
     def merge_branch(self, branch_name):
-        if self.versioningType == "none":
+        if self.config.versioningType == "none":
             return
         subprocess.run(["git", "merge", branch_name], cwd=self.project_path, check=True)
 
     def check_branch_exists(self, branch_name):
-        if self.versioningType == "none":
+        if self.config.versioningType == "none":
             return True
         return subprocess.run(["git", "branch", "--list", branch_name], cwd=self.project_path, check=True)
 
     def create_if_not_exists_and_checkout_branch(self, branch_name):
-        if self.versioningType == "none":
+        if self.config.versioningType == "none":
             return
         if not self.check_branch_exists(branch_name):
             print("here")
@@ -134,17 +136,17 @@ class GitVersioning:
             raise e
 
     def delete_branch(self, branch_name):
-        if self.versioningType == "none":
+        if self.config.versioningType == "none":
             return
         subprocess.run(["git", "branch", "-d", branch_name], cwd=self.project_path, check=True)
 
     def get_branch_name(self):
-        if self.versioningType == "none":
+        if self.config.versioningType == "none":
             return "none"
         return "devon_agent"
     
     def checkout_branch(self, branch_name):
-        if self.versioningType == "none":
+        if self.config.versioningType == "none":
             return
         subprocess.run(["git", "checkout", branch_name], cwd=self.project_path, check=True)
         self.current_branch = branch_name
