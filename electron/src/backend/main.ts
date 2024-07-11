@@ -14,7 +14,6 @@ import portfinder from 'portfinder'
 import fs from 'fs'
 import './plugins/editor'
 
-const DEBUG_MODE = false
 const DEV_MODE = process.env.DEV_MODE ?? false
 
 const winston = require('winston')
@@ -33,12 +32,14 @@ function showErrorDialog(title: string, details?: string) {
             type: 'error',
             message: title ?? 'Uncaught Exception:',
             detail: details,
-            buttons: ['View Logs'],
+            buttons: ['View Logs', 'Close'],
             noLink: true,
         })
         .then(result => {
             if (result.response === 0) {
                 shell.openPath(logDir)
+            } else {
+                app.quit()
             }
         })
 }
@@ -75,7 +76,9 @@ function checkBackendExists() {
             throw result.error
         }
         const version = result.stdout.toString().trim()
-        mainLogger.info(`devon_agent ${version ? 'v' + version : '(version not found)'}`)
+        mainLogger.info(
+            `devon_agent ${version ? 'v' + version : '(version not found)'}`
+        )
     } catch (error) {
         mainLogger.error(
             'Failed to get devon_agent version. Please make sure you `pipx install devon_agent`:',
@@ -112,16 +115,16 @@ function clearLogFiles() {
 }
 
 // if (process.env.NODE_ENV !== 'production') {
-    mainLogger.add(new winston.transports.Console())
-    serverLogger.add(new winston.transports.Console())
+mainLogger.add(new winston.transports.Console())
+serverLogger.add(new winston.transports.Console())
 // }
 
 // if (process.env.NODE_ENV !== 'production') {
-    mainLogger.add(
-        new winston.transports.Console({
-            format: winston.format.simple(),
-        })
-    )
+mainLogger.add(
+    new winston.transports.Console({
+        format: winston.format.simple(),
+    })
+)
 // }
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
@@ -186,13 +189,13 @@ const spawnAppWindow = async () => {
                 console.log(data.toString())
                 serverLogger.info(message)
                 // if (message.startsWith('INFO:')) {
-                    // serverLogger.info(message.substring(5).trim())
+                // serverLogger.info(message.substring(5).trim())
                 // }
             })
 
             serverProcess.stderr?.on('data', (data: string) => {
                 serverLogger.info(data)
-                const message = data.toString().trim()
+                const message = data.toString()
                 if (message.startsWith('INFO:')) {
                     // serverLogger.info(message.substring(5).trim())
                 } else {

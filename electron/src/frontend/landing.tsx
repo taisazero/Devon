@@ -12,6 +12,7 @@ import EditorPanel from '@/panels/editor/editor-panel'
 import { SessionMachineContext } from '@/contexts/session-machine-context'
 import TimelinePanel from '@/panels/timeline/timeline-panel'
 import GitErrorModal from '@/components/modals/git-error-modal'
+import Sidebar from '@/components/sidebar/sidebar'
 
 export default function Landing({
     smHealthCheckDone,
@@ -92,10 +93,10 @@ export default function Landing({
     return (
         <>
             <div className="w-full flex flex-row">
-                <div className="w-1/3">
+                {/* <div className="w-1/3">
                     <TimelinePanel />
-                </div>
-
+                </div> */}
+                <Sidebar expanded={true} setExpanded={() => {}}/>
                 <ResizablePanelGroup direction="horizontal">
                     <ResizablePanel
                         className={`flex flex-col w-full relative justify-center`}
