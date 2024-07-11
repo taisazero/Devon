@@ -24,7 +24,7 @@ import {
     emit,
     log,
     AnyEventObject,
-    ParameterizedObject
+    ParameterizedObject,
     // createActor
 } from 'xstate'
 import type { Message } from '@/lib/types'
@@ -47,6 +47,7 @@ type ServerEvent = {
         | 'RateLimit'
         | 'GitEvent'
         | 'GitError'
+        | 'GitResolve'
     content: any
     identifier: string | null
 }
@@ -64,12 +65,9 @@ type ServerEventContext = {
     gitError: string | null
 }
 
-
-
-
 export const eventHandlingLogic = fromTransition(
     (state: ServerEventContext, event: ServerEvent) => {
-        console.log("event", event)
+        console.log('event', event)
         switch (event.type) {
             case 'session.reset': {
                 return {
@@ -240,11 +238,15 @@ export const eventHandlingLogic = fromTransition(
                 }
             }
             case 'GitError': {
-                console.log('GIT ERROR')
-                console.log(event.content)
                 return {
                     ...state,
                     gitError: event.content ?? null,
+                }
+            }
+            case 'GitResolve': {
+                return {
+                    ...state,
+                    gitError: null,
                 }
             }
 
@@ -412,35 +414,33 @@ const startSessionActor = fromPromise(
 type sendEventType = {
     type: string
     params: {
-    serverEventType : string
-    content: any
+        serverEventType: string
+        content: any
     }
 }
 
-const sendEvent = 
-    async ({
-        input,
-    }: {
-        input: { host: string; name: string; event: sendEventType }
-    }) => {
-        console.log({
+const sendEvent = async ({
+    input,
+}: {
+    input: { host: string; name: string; event: sendEventType }
+}) => {
+    console.log({
+        type: input.event.params.serverEventType,
+        content: input.event.params.content,
+        producer: 'user',
+        consumer: 'agent',
+    })
+    const response = await axios.post(
+        `${input.host}/sessions/${input.name}/event`,
+        {
             type: input.event.params.serverEventType,
             content: input.event.params.content,
             producer: 'user',
             consumer: 'agent',
-        })
-        const response = await axios.post(
-            `${input.host}/sessions/${input.name}/event`,
-            {
-                type: input.event.params.serverEventType,
-                content: input.event.params.content,
-                producer: 'user',
-                consumer: 'agent',
-            }
-        )
-        return response.data
-    }
-
+        }
+    )
+    return response.data
+}
 
 const sendMessage = async ({
     host,
@@ -965,15 +965,16 @@ export const newSessionMachine = setup({
     on: {
         'session.sendEvent': {
             actions: [
-                ({event ,context}) => {
+                ({ event, context }) => {
                     sendEvent({
                         input: {
-                        host: context.host,
-                        name: context.name,
-                        event: event as sendEventType,
-                    }})
-                }
-            ]
+                            host: context.host,
+                            name: context.name,
+                            event: event as sendEventType,
+                        },
+                    })
+                },
+            ],
         },
     },
 })

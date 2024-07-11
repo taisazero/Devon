@@ -25,12 +25,12 @@ const sidebarItems = [
     //     id: '1',
     // },
     {
-        icon: <GitMerge />,
+        icon: <GitMerge size={22} />,
         text: '',
         alert: false,
         route: '',
         id: '2',
-        content: <TimelinePanel />
+        content: <TimelinePanel />,
     },
 ]
 
@@ -104,7 +104,11 @@ export default function Sidebar() {
                     </ul>
                 </SidebarContext.Provider>
             </nav>
-            {expanded ? <div className="py-4 overflow-auto px-2"><TimelinePanel/></div> : null}
+            {expanded ? (
+                <div className="py-4 overflow-auto px-2">
+                    <TimelinePanel />
+                </div>
+            ) : null}
         </aside>
     )
 }

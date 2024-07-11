@@ -126,7 +126,7 @@ const TimelinePanel: React.FC = () => {
                     setSubStepFinished={setSubStepFinished}
                     stepsLength={steps.length}
                 />
-            )) : <p className="whitespace-nowrap pr-4">Devon hasn't completed any tasks yet</p>}
+            )) : <p className="whitespace-nowrap pr-4">Devon hasn't made any commits yet</p>}
         </div>
     )
 }
