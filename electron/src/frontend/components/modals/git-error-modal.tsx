@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { SessionMachineContext } from '@/contexts/session-machine-context'
-import { Dialog, DialogContent } from '@/components/ui/dialog'
+import {
+    Dialog,
+    DialogContent,
+    DialogTitle,
+    DialogHeader,
+    DialogDescription,
+} from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { AlertTriangle } from 'lucide-react'
 
@@ -51,14 +57,20 @@ const GitErrorModal = () => {
                 hideclose={true.toString()}
                 className="sm:max-w-[425px] pb-4"
             >
+                <DialogHeader>
+                    <DialogTitle>
+                        <div className="flex items-center gap-2 text-red-500">
+                            <AlertTriangle size={20} className="mb-[2px]" />
+                            <h2 className="text-xl font-semibold">Git error</h2>
+                        </div>
+                    </DialogTitle>
+                    <DialogDescription>
+                        <p className="text-sm text-gray-400 mt-2">
+                            {unresolvedGitError}
+                        </p>
+                    </DialogDescription>
+                </DialogHeader>
                 <div className="flex flex-col gap-4">
-                    <div className="flex items-center gap-2 text-red-500">
-                        <AlertTriangle size={20} className="mb-[2px]" />
-                        <h2 className="text-xl font-semibold">Git error</h2>
-                    </div>
-                    <p className="text-sm text-gray-400">
-                        {unresolvedGitError}
-                    </p>
                     <p className="text-sm">
                         There was a problem with git. How would you like to
                         proceed?

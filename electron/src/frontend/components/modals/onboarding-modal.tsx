@@ -27,7 +27,21 @@ const DialogContent = lazy(() =>
     }))
 )
 
-type ExtendedComboboxItem = ComboboxItem & { company: string, apiKeyUrl?: string }
+const DialogHeader = lazy(() =>
+    import('@/components/ui/dialog').then(module => ({
+        default: module.DialogHeader,
+    }))
+)
+const DialogTitle = lazy(() =>
+    import('@/components/ui/dialog').then(module => ({
+        default: module.DialogTitle,
+    }))
+)
+
+type ExtendedComboboxItem = ComboboxItem & {
+    company: string
+    apiKeyUrl?: string
+}
 
 const comboboxItems: ExtendedComboboxItem[] = models
     .filter(model => !model.comingSoon)
@@ -104,9 +118,13 @@ const OnboardingModal = ({
                     className="w-[500px]"
                 >
                     <div className="flex flex-col items-center justify-center my-8 mx-8">
-                        <h1 className="text-3xl font-bold">
-                            Welcome to Devon!
-                        </h1>
+                        <DialogHeader>
+                            <DialogTitle>
+                                <h1 className="text-3xl font-bold">
+                                    Welcome to Devon!
+                                </h1>
+                            </DialogTitle>
+                        </DialogHeader>
                         <DisabledWrapper
                             disabled={false}
                             className="mt-10 w-full"
@@ -145,8 +163,12 @@ const OnboardingModal = ({
                                         {`${selectedModel.company} API Key`}
                                     </p>
                                     <Popover>
-                                        <PopoverTrigger className="ml-[2px]"
-                                        onClick={() => setHasClickedQuestion(true)}>
+                                        <PopoverTrigger
+                                            className="ml-[2px]"
+                                            onClick={() =>
+                                                setHasClickedQuestion(true)
+                                            }
+                                        >
                                             <CircleHelp size={14} />
                                         </PopoverTrigger>
                                         {isKeySaved ? (

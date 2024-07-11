@@ -6,6 +6,7 @@ import { ArrowLeft } from 'lucide-react'
 import { ActorRefFrom, AnyMachineSnapshot } from 'xstate'
 import { newSessionMachine } from '@/lib/services/stateMachineService/stateMachine'
 import { useSafeStorage } from '@/lib/services/safeStorageService'
+import * as VisuallyHidden from '@radix-ui/react-visually-hidden'
 
 const Dialog = lazy(() =>
     import('@/components/ui/dialog').then(module => ({
@@ -22,6 +23,18 @@ const DialogTrigger = lazy(() =>
 const DialogContent = lazy(() =>
     import('@/components/ui/dialog').then(module => ({
         default: module.DialogContent,
+    }))
+)
+
+const DialogHeader = lazy(() =>
+    import('@/components/ui/dialog').then(module => ({
+        default: module.DialogHeader,
+    }))
+)
+
+const DialogTitle = lazy(() =>
+    import('@/components/ui/dialog').then(module => ({
+        default: module.DialogTitle,
     }))
 )
 
@@ -116,6 +129,13 @@ const SelectProjectDirectoryModal = ({
                             hideclose ? true.toString() : false.toString()
                         }
                     >
+                        <VisuallyHidden.Root>
+                            <DialogHeader>
+                                <DialogTitle>
+                                    Select Project Directory
+                                </DialogTitle>
+                            </DialogHeader>
+                        </VisuallyHidden.Root>
                         <div className="dark mx-8 my-4">
                             {state.matches('sessionReady') ? (
                                 <>
