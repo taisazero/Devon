@@ -63,7 +63,7 @@ export default function Sidebar() {
 
     return (
         // <aside className="h-full flex flex-row bg-midnight border-r-[1px] border-t-[1px] border-outline-night">
-        <aside className="flex flex-row bg-midnight rounded-lg mx-3 mb-6 border border-outlinecolor">
+        <aside className="flex flex-row bg-midnight rounded-lg ml-3 mb-6 border border-outlinecolor">
             {/* <button
                 onClick={() => setExpanded(!expanded)}
                 className="no-drag relative p-2 z-10 focus:outline-none"
