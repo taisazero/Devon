@@ -23,6 +23,8 @@ import {
     fromPromise,
     emit,
     log,
+    AnyEventObject,
+    ParameterizedObject
     // createActor
 } from 'xstate'
 import type { Message } from '@/lib/types'
@@ -62,8 +64,12 @@ type ServerEventContext = {
     gitError: string | null
 }
 
+
+
+
 export const eventHandlingLogic = fromTransition(
     (state: ServerEventContext, event: ServerEvent) => {
+        console.log("event", event)
         switch (event.type) {
             case 'session.reset': {
                 return {
@@ -403,30 +409,38 @@ const startSessionActor = fromPromise(
     }
 )
 
-const sendEventActor = fromPromise(
+type sendEventType = {
+    type: string
+    params: {
+    serverEventType : string
+    content: any
+    }
+}
+
+const sendEvent = 
     async ({
         input,
     }: {
-        input: { host: string; name: string; type: string; content: any }
+        input: { host: string; name: string; event: sendEventType }
     }) => {
         console.log({
-            type: input.type,
-            content: input.content,
+            type: input.event.params.serverEventType,
+            content: input.event.params.content,
             producer: 'user',
             consumer: 'agent',
         })
         const response = await axios.post(
             `${input.host}/sessions/${input.name}/event`,
             {
-                type: input.type,
-                content: input.content,
+                type: input.event.params.serverEventType,
+                content: input.event.params.content,
                 producer: 'user',
                 consumer: 'agent',
             }
         )
         return response.data
     }
-)
+
 
 const sendMessage = async ({
     host,
@@ -489,7 +503,7 @@ export const newSessionMachine = setup({
         startSession: startSessionActor,
         eventSourceActor: eventSourceActor,
         eventHandlingLogic: eventHandlingLogic,
-        sendEventActor: sendEventActor,
+        // sendEventActor: sendEventActor,
         checkServer: fromPromise(
             async ({ input }: { input: { host: string } }) => {
                 const response = await axios.get(`${input?.host}/`)
@@ -951,18 +965,15 @@ export const newSessionMachine = setup({
     on: {
         'session.sendEvent': {
             actions: [
-                ({ event, context }) => {
-                    sendTo('sendEventActor', {
+                ({event ,context}) => {
+                    sendEvent({
                         input: {
-                            host: context.host,
-                            name: context.name,
-                            type: event.eventType,
-                            content: event.content,
-                        },
-                    })
-                },
-                log(({ event }) => `Sending ${event.eventType} event`),
-            ],
+                        host: context.host,
+                        name: context.name,
+                        event: event as sendEventType,
+                    }})
+                }
+            ]
         },
     },
 })

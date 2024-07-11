@@ -286,6 +286,7 @@ class UpdateConfig(BaseModel):
     model: str
     api_key: str
 
+
 @app.patch("/sessions/{session}/update")
 def update_session(session: str, update_config: UpdateConfig):
     if session not in sessions:

@@ -12,16 +12,20 @@ const GitErrorModal = () => {
     const handleResolve = () => {
         sessionActorRef.send({
             type: 'session.sendEvent',
-            eventType: 'GitResolve',
-            content: { action: 'retry' },
+            params: {
+                serverEventType: 'GitResolve',
+                content: { action: 'retry' },
+            },
         })
     }
 
     const handleContinueWithoutGit = () => {
         sessionActorRef.send({
             type: 'session.sendEvent',
-            eventType: 'GitResolve',
-            content: { action: 'nogit' },
+            params: {
+                serverEventType: 'GitResolve',
+                content: { action: 'nogit' },
+            },
         })
     }
 
