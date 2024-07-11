@@ -69,7 +69,7 @@ export default function IndexPage() {
                     sessionMachineProps={sessionMachineProps}
                 >
                     <button
-                        className="absolute top-4 right-0 z-10 p-4 text-sm text-neutral-500 hover:text-white duration-200"
+                        className="absolute top-0 right-0 z-10 p-4 text-sm text-neutral-500 hover:text-white duration-200"
                         onClick={() =>
                             window.api.invoke('open-logs-directory', null)
                         }

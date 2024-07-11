@@ -11,7 +11,7 @@ const GitErrorModal = () => {
     )
     const sessionActorRef = SessionMachineContext.useActorRef()
 
-    console.log("UNRES", unresolvedGitError)
+    console.log('UNRES', unresolvedGitError)
 
     useEffect(() => {
         if (unresolvedGitError) {

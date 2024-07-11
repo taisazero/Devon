@@ -93,10 +93,7 @@ export default function Landing({
     return (
         <>
             <div className="w-full flex flex-row">
-                {/* <div className="w-1/3">
-                    <TimelinePanel />
-                </div> */}
-                <Sidebar expanded={true} setExpanded={() => {}}/>
+                <Sidebar />
                 <ResizablePanelGroup direction="horizontal">
                     <ResizablePanel
                         className={`flex flex-col w-full relative justify-center`}

@@ -15,7 +15,6 @@ import { useBackendUrl } from '@/contexts/backend-url-context'
 // import SettingsModal from '@/components/modals/settings-modal'
 
 const AppHeader = () => {
-    const [expanded, setExpanded] = useState(false)
     // const pathname = usePathname()
 
     return (
@@ -30,18 +29,7 @@ const AppHeader = () => {
                     className="absolute w-full h-full top-0 left-0"
                 ></div>
 
-                {/* <button
-                    onClick={() => setExpanded(!expanded)}
-                    className="no-drag relative p-2 z-10 focus:outline-none"
-                >
-                    <PanelsTopLeft size="1.4rem" />
-                </button>
-                <a
-                    href="/"
-                    className="no-drag text-white text-xl font-semibold z-10"
-                >
-                    Devon
-                </a> */}
+                
                 {/* <SelectProjectDirectoryModal
                     trigger={
                         <button

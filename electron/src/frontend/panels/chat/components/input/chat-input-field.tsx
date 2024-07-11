@@ -254,7 +254,7 @@ const InformationBox = ({
             accessory: <></>,
         },
         loading: {
-            text: 'Devon is gathering himself...',
+            text: 'Devon is cleaning up his desk...',
             accessory: <></>,
         },
         paused: {

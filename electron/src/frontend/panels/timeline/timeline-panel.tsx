@@ -98,6 +98,7 @@ const TimelinePanel: React.FC = () => {
             subSteps: [],
         }
     })
+    // const steps: StepType[] = exampleSteps
 
     useEffect(() => {
         if (activeStep < steps.length - 1) {
@@ -115,21 +116,17 @@ const TimelinePanel: React.FC = () => {
     }, [activeStep, subStepFinished, steps.length])
 
     return (
-        <div className="flex flex-col h-full w-full px-5 mt-10">
-            <div className="relative">
-                <div className="absolute inset-0 flex flex-col w-full">
-                    {steps.map((step, index) => (
-                        <Step
-                            key={step.id}
-                            step={step}
-                            index={index}
-                            activeStep={activeStep}
-                            setSubStepFinished={setSubStepFinished}
-                            stepsLength={steps.length}
-                        />
-                    ))}
-                </div>
-            </div>
+        <div className="inset-0 flex flex-col w-full">
+            {steps && steps.length > 0 ? steps.map((step, index) => (
+                <Step
+                    key={step.id}
+                    step={step}
+                    index={index}
+                    activeStep={activeStep}
+                    setSubStepFinished={setSubStepFinished}
+                    stepsLength={steps.length}
+                />
+            )) : <p className="whitespace-nowrap pr-4">Devon hasn't completed any tasks yet</p>}
         </div>
     )
 }

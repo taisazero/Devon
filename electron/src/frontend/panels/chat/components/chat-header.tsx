@@ -32,13 +32,9 @@ export default function ChatHeader({
     }
 
     return (
-        <div className="relative mt-[-5px] items-end pt-1 pb-3 border-outline-night shrink-0 items-left flex flex-row justify-between border-b px-6">
-            {/* <div className="">
-                <p className="text-lg mb-2">Hey there!</p>
-                <p className="text-gray-400 text-sm">{`My name is Devon and I'm a software engineer. Give me coding tasks and I will try my best to solve them!`}</p>
-            </div> */}
-            <p className="text-lg font-semibold pb-[1px]">Chat</p>
-            <div className="flex gap-3 -mr-2">
+        <div className="relative pt-0 pb-2 border-outline-night shrink-0 items-left flex flex-row justify-between border-b px-6">
+            <p className="text-lg font-semibold">Chat</p>
+            <div className="flex gap-3 -mr-2 pb-1">
                 {/* <IndexesButton indexesHandler={handleIndexes} /> */}
                 <RestartButton resetHandler={handleReset} />
                 {/* <StopButton stopHandler={handleStop} /> */}
