@@ -341,7 +341,7 @@ const createSessionActor = fromPromise(
     }) => {
         // sleep for 5 sec
         // await new Promise(resolve => setTimeout(resolve, 5000));
-
+        input.agentConfig.versioning_type = "git"
         try {
             const response = await axios.post(
                 `${input.host}/sessions/${input?.name}`,
@@ -393,7 +393,6 @@ const startSessionActor = fromPromise(
             {
                 params: {
                     api_key: input.api_key,
-                    versioning_type: "git",
                 },
             }
         )

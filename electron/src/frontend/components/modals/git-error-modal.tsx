@@ -18,7 +18,7 @@ const GitErrorModal = () => {
     const currentError = unresolvedGitErrors[0]
 
     return (
-        <Dialog open={true}>
+        <Dialog open={false}>
             <DialogContent hideclose={true.toString()} className="sm:max-w-[425px] pb-4">
                 <div className="flex flex-col gap-4">
                     <div className="flex items-center gap-2 text-red-500">

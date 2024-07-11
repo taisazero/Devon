@@ -58,12 +58,16 @@ class GitVersioning:
     def commit_all_files(self, message="Initial commit"):
         if self.versioningType == "none":
             return True, "none"
-        subprocess.run(["git", "add", "."], cwd=self.project_path)
+        res =subprocess.run(["git", "add", "."], cwd=self.project_path)
+        if res.returncode != 0:
+            return False, res.stdout if res.stdout else "" + res.stderr if res.stderr else ""
         res = subprocess.run(
             ["git", "commit", "-m", message], cwd=self.project_path
         )
         if res.returncode != 0:
-            return False, res.stderr
+            # if "nothing to commit, working tree clean" in res.stderr:
+            #     return True, "nothing to commit, working tree clean"
+            return False,  res.stdout if res.stdout else "" + res.stderr if res.stderr else ""
         return True, res.stdout
 
     def commit_changes(self, message):
@@ -120,9 +124,14 @@ class GitVersioning:
         if self.versioningType == "none":
             return
         if not self.check_branch_exists(branch_name):
+            print("here")
             self.create_branch(branch_name)
-        self.checkout_branch(branch_name)
-        print(f"Created and checked out new branch: {branch_name}")
+        try:
+            self.checkout_branch(branch_name)
+            print(f"Created and checked out new branch: {branch_name}")
+        except Exception as e:
+            print(f"Error checking out branch: {branch_name}")
+            raise e
 
     def delete_branch(self, branch_name):
         if self.versioningType == "none":

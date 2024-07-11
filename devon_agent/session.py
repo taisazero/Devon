@@ -83,7 +83,7 @@ class Session:
 
         self.environments["user"].register_tools({"ask_user": AskUserTool()})
         if self.config.versioning_type == "git":
-            self.versioning = GitVersioning(config.path)
+            self.versioning = GitVersioning(config.path, config)
 
         self.base_path = config.path
 
@@ -221,8 +221,8 @@ class Session:
             self.event_id += 1
 
         self.status = "terminated"
-        if self.config.versioning_type == "git":
-            self.versioning.checkout_branch(self.config.versioning_metadata["old_branch"])
+        # if self.config.versioning_type == "git":
+        #     self.versioning.checkout_branch(self.config.versioning_metadata["old_branch"])
 
     def step_event(self, event):
         new_events = []
@@ -549,6 +549,7 @@ class Session:
         return docs
 
     def setup(self):
+        print("hello world")
         self.state.task = self.config.task
 
         self.status = "paused"
@@ -567,6 +568,7 @@ class Session:
                     }
                 )
         if self.config.versioning_type == "git":
+            print("hello world")
             self.versioning.initialize_git()
             if not self.config.versioning_metadata:
                 self.config.versioning_metadata = {}
@@ -574,6 +576,8 @@ class Session:
                 self.config.versioning_metadata["old_branch"] = {}
                 self.config.versioning_metadata["old_branch"] = self.versioning.get_branch()
 
+            print("OLD BRANCH: ", self.config.versioning_metadata["old_branch"])
+            print("NEW BRANCH: ", self.versioning.get_branch_name())
             # THIS PART IS STILL VERY JANKY. NEED A BETTER WAY TO HANDLE BLOCKING.
             if self.config.versioning_metadata["old_branch"] !=self.versioning.get_branch_name():
                 while True:
@@ -598,6 +602,7 @@ class Session:
             while True:
                 try:
                     self.versioning.commit_all_files("initial commit")
+                    break
                 except Exception as e:
                     self.logger.error(f"Error committing files: {e}")
                     self.event_log.append({

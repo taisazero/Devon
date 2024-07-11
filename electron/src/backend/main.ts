@@ -182,16 +182,19 @@ const spawnAppWindow = async () => {
             )
 
             serverProcess.stdout?.on('data', (data: string) => {
-                const message = data.toString().trim()
-                if (message.startsWith('INFO:')) {
-                    serverLogger.info(message.substring(5).trim())
-                }
+                const message = data
+                console.log(data.toString())
+                serverLogger.info(message)
+                // if (message.startsWith('INFO:')) {
+                    // serverLogger.info(message.substring(5).trim())
+                // }
             })
 
             serverProcess.stderr?.on('data', (data: string) => {
+                serverLogger.info(data)
                 const message = data.toString().trim()
                 if (message.startsWith('INFO:')) {
-                    serverLogger.info(message.substring(5).trim())
+                    // serverLogger.info(message.substring(5).trim())
                 } else {
                     serverLogger.error(message)
                     if (appWindow) {
