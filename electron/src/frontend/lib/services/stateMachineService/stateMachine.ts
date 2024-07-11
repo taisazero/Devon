@@ -393,6 +393,7 @@ const startSessionActor = fromPromise(
             {
                 params: {
                     api_key: input.api_key,
+                    versioning_type: "git",
                 },
             }
         )
