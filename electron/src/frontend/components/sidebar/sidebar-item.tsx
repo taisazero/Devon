@@ -1,4 +1,5 @@
 // import Link from 'next/link'
+import { useComingSoonToast } from '@/components/ui/use-toast'
 
 function SidebarItem({
     id,
@@ -10,6 +11,7 @@ function SidebarItem({
     expanded,
     handleClick,
     content,
+    comingSoon = false,
 }: {
     id: string
     icon: JSX.Element
@@ -20,7 +22,9 @@ function SidebarItem({
     expanded: boolean
     handleClick: (id: string) => void
     content?: JSX.Element
+    comingSoon?: boolean
 }) {
+    const toast = useComingSoonToast()
     return (
         <div
             className={`
@@ -32,9 +36,16 @@ function SidebarItem({
         >
             {/* <Link href={route} className="flex"> */}
             <button
-                onClick={() => handleClick(id)}
+                onClick={() => {
+                    if (comingSoon) {
+                        toast()
+                        return
+                    } else {
+                        handleClick(id)
+                    }
+                }}
                 className={`py-2 px-3 ${
-                    active ? 'text-toned-text-color' : 'text-neutral-500'
+                    active ? 'text-toned-text-color' : 'text-gray-500 hover:text-white transition-colors duration-200'
                 }`}
             >
                 {icon}

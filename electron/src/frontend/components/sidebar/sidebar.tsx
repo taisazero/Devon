@@ -17,31 +17,34 @@ const defaultValue = {
 }
 
 const sidebarItems = [
-    // {
-    //     icon: <List />,
-    //     text: '',
-    //     alert: false,
-    //     route: '/chat',
-    //     id: '1',
-    // },
     {
         icon: <GitMerge size={22} />,
         text: '',
         alert: false,
         route: '',
-        id: '2',
+        id: 'timeline',
         content: <TimelinePanel />,
+        comingSoon: false,
+    },
+    {
+        icon: <List size={22} />,
+        text: '',
+        alert: false,
+        route: '',
+        id: 'sessions',
+        comingSoon: true
     },
 ]
 
 const bottomSidebarItems: any = [
-    // {
-    //     icon: <Settings className="text-primary" />,
-    //     text: 'Settings',
-    //     active: true,
-    //     alert: false,
-    //     route: '/settings',
-    // },
+    {
+        icon: <Settings size={22} />,
+        text: 'Settings',
+        active: true,
+        alert: false,
+        route: '/settings',
+        comingSoon: true
+    },
 ]
 
 const SidebarContext = createContext(defaultValue)
@@ -76,9 +79,9 @@ export default function Sidebar() {
             >
                 Devon
             </a> */}
-            <nav className="h-full flex flex-col rounded-sm pb-2">
+            <nav className={`h-full flex flex-col rounded-sm ${expanded ? 'border-r-[1px] border-outlinecolor' : ''}`}>
                 <SidebarContext.Provider value={{ expanded }}>
-                    <ul className={`flex-1 flex flex-col justify-between pb-2`}>
+                    <ul className={`flex-1 flex flex-col justify-between pb-1 items-center`}>
                         <div>
                             {/* <SidebarHeader expanded={expanded} /> */}
                             {/* {expanded && <SidebarChatLogs />} */}
@@ -92,7 +95,7 @@ export default function Sidebar() {
                                 />
                             ))}
                         </div>
-                        {/* {bottomSidebarItems.map((item, index) => (
+                        {bottomSidebarItems.map((item, index) => (
                             <SidebarItem
                                 key={item.text}
                                 {...item}
@@ -100,12 +103,12 @@ export default function Sidebar() {
                                 active={item.id === activeTabId}
                                 handleClick={handleClick}
                             />
-                        ))} */}
+                        ))}
                     </ul>
                 </SidebarContext.Provider>
             </nav>
             {expanded ? (
-                <div className="py-3 overflow-auto px-2">
+                <div className="py-3 overflow-auto px-4">
                     <TimelinePanel />
                 </div>
             ) : null}

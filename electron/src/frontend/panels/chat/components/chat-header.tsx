@@ -35,7 +35,7 @@ export default function ChatHeader({
         <div className="relative pt-[2px] pb-2 border-outline-night shrink-0 items-left flex flex-row justify-between border-b mx-5">
             <p className="text-lg font-semibold self-end">Chat</p>
             <div className="flex gap-3 mb-[2px]">
-                {/* <IndexesButton indexesHandler={handleIndexes} /> */}
+                <IndexesButton indexesHandler={handleIndexes} />
                 <RestartButton resetHandler={handleReset} />
                 {/* <StopButton stopHandler={handleStop} /> */}
                 <ConfigureButton />

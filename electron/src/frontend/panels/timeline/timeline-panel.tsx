@@ -142,7 +142,7 @@ const TimelinePanel: React.FC = () => {
                     ))
                 ) : (
                     <div className="inset-0 flex">
-                        <p className="whitespace-nowrap pr-4 text-center text-md text-gray-400">
+                        <p className="whitespace-nowrap text-center text-md text-gray-400">
                             Devon hasn't made any commits yet
                         </p>
                     </div>
