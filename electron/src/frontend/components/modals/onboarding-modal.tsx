@@ -195,7 +195,7 @@ const OnboardingModal = ({
                                 <Input
                                     className="w-full"
                                     type="password"
-                                    value={apiKey}
+                                    value={isKeySaved ? '******************************' : apiKey}
                                     onChange={handleApiKeyInputChange}
                                     disabled={isKeySaved}
                                 />
