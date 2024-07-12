@@ -2,47 +2,49 @@ import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { CardContent, Card } from '@/components/ui/card'
-import { Dialog, DialogTrigger, DialogContent, DialogTitle, DialogHeader } from '@/components/ui/dialog'
+import {
+    Dialog,
+    DialogContent,
+    DialogTitle,
+    DialogHeader,
+} from '@/components/ui/dialog'
 import FolderPicker from '@/components/ui/folder-picker'
 import axios from 'axios'
 import { SessionMachineContext } from '@/contexts/session-machine-context'
-import { Check, Info } from 'lucide-react'
+import { Check, X } from 'lucide-react'
 import CircleSpinner from '@/components/ui/circle-spinner/circle-spinner'
 import { useSafeStorage } from '@/lib/services/safeStorageService'
 import { useToast } from '@/components/ui/use-toast'
-import * as VisuallyHidden from '@radix-ui/react-visually-hidden'
 
-type IndexStatus = 'running' | 'done' | 'error'
-
-interface IndexItem {
-    path: string
-    status: IndexStatus
+const API_KEYS = {
+    ANTHROPIC: 'claude-3-5-sonnet',
+    OPENAI: 'gpt4-o',
 }
 
-const IndexManagementModal = ({ isOpen, setOpen }) => {
-    return (
-        <Dialog open={isOpen} onOpenChange={setOpen}>
-            <DialogContent className="w-[500px]">
-                <VisuallyHidden.Root>
-                    <DialogHeader>
-                        <DialogTitle>Index Management</DialogTitle>
-                    </DialogHeader>
-                </VisuallyHidden.Root>
-                <IndexManagement setOpen={setOpen} />
-            </DialogContent>
-        </Dialog>
-    )
-}
+const IndexManagementModal = ({ isOpen, setOpen }) => (
+    <Dialog open={isOpen} onOpenChange={setOpen}>
+        <DialogContent className="w-[500px]">
+            <DialogHeader className="mx-auto">
+                <DialogTitle>
+                    <h1 className="text-2xl font-bold">Project Indexes</h1>
+                </DialogTitle>
+            </DialogHeader>
+            <IndexManagement setOpen={setOpen} />
+        </DialogContent>
+    </Dialog>
+)
 
-const IndexManagement = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
+const IndexManagement = ({ setOpen }) => {
     const { toast } = useToast()
     const host = SessionMachineContext.useSelector(state => state.context.host)
     const { getApiKey, setApiKey } = useSafeStorage()
-    const [indexes, setIndexes] = useState<IndexItem[]>([])
+    const [indexes, setIndexes] = useState([])
     const [newIndexPath, setNewIndexPath] = useState('')
-    const [error, setError] = useState<string | null>(null)
-    const [anthropicKey, setAnthropicKey] = useState('')
-    const [openAIKey, setOpenAIKey] = useState('')
+    const [error, setError] = useState(null)
+    const [apiKeys, setApiKeys] = useState({
+        [API_KEYS.ANTHROPIC]: '',
+        [API_KEYS.OPENAI]: '',
+    })
 
     const fetchIndexes = useCallback(async () => {
         try {
@@ -55,10 +57,12 @@ const IndexManagement = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
     }, [host])
 
     const fetchApiKeys = useCallback(async () => {
-        const anthropic = await getApiKey('anthropic')
-        const openai = await getApiKey('openai')
-        setAnthropicKey(anthropic || '')
-        setOpenAIKey(openai || '')
+        const anthropic = await getApiKey(API_KEYS.ANTHROPIC)
+        const openai = await getApiKey(API_KEYS.OPENAI)
+        setApiKeys({
+            [API_KEYS.ANTHROPIC]: anthropic || '',
+            [API_KEYS.OPENAI]: openai || '',
+        })
     }, [getApiKey])
 
     useEffect(() => {
@@ -66,7 +70,7 @@ const IndexManagement = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
         fetchApiKeys()
     }, [fetchIndexes, fetchApiKeys])
 
-    const handleRemoveIndex = async (path: string) => {
+    const handleRemoveIndex = async path => {
         try {
             const encodedPath = encodeURIComponent(path.replace(/\//g, '%2F'))
             await axios.delete(`${host}/indexes/${encodedPath}`)
@@ -82,10 +86,15 @@ const IndexManagement = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
         if (newIndexPath) {
             try {
                 setError(null)
-                const encodedPath = encodeURIComponent(newIndexPath.replace(/\//g, '%2F'))
+                const encodedPath = encodeURIComponent(
+                    newIndexPath.replace(/\//g, '%2F')
+                )
                 await axios.delete(`${host}/indexes/${encodedPath}`)
                 await axios.post(`${host}/indexes/${encodedPath}`)
-                setIndexes([...indexes, { path: newIndexPath, status: 'running' }])
+                setIndexes([
+                    ...indexes,
+                    { path: newIndexPath, status: 'running' },
+                ])
                 setNewIndexPath('')
                 toast({ title: 'Index added successfully' })
             } catch (error) {
@@ -95,44 +104,70 @@ const IndexManagement = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
         }
     }
 
-    const handleApiKeyChange = async (key: string, value: string) => {
-        if (key === 'anthropic') {
-            setAnthropicKey(value)
-        } else {
-            setOpenAIKey(value)
-        }
+    const handleApiKeyChange = async (key, value) => {
+        setApiKeys(prev => ({ ...prev, [key]: value }))
         await setApiKey(key, value)
-        toast({ title: `${key.charAt(0).toUpperCase() + key.slice(1)} API key updated` })
+        toast({
+            title: `${
+                key === API_KEYS.ANTHROPIC ? 'Anthropic' : 'OpenAI'
+            } API key updated`,
+        })
     }
 
+    const renderApiKeyInput = (keyName, displayName) => (
+        <div className="mb-4">
+            <p className="text-xl font-bold mb-2">{displayName}</p>
+            {apiKeys[keyName] ? (
+                <div className="flex items-center gap-2">
+                    <Check className="text-green-500" />
+                    <span>API Key set</span>
+                    <Button
+                        onClick={() => handleApiKeyChange(keyName, '')}
+                        size="sm"
+                        variant="outline"
+                    >
+                        <X className="h-4 w-4" />
+                    </Button>
+                </div>
+            ) : (
+                <div className="flex items-center gap-2">
+                    <Input
+                        type="password"
+                        value={apiKeys[keyName]}
+                        onChange={e =>
+                            handleApiKeyChange(keyName, e.target.value)
+                        }
+                        placeholder={`Enter ${displayName}`}
+                    />
+                    <Button
+                        onClick={() =>
+                            handleApiKeyChange(keyName, apiKeys[keyName])
+                        }
+                        size="sm"
+                    >
+                        Save
+                    </Button>
+                </div>
+            )}
+        </div>
+    )
+
     return (
-        <div className="pt-4 pb-2 px-2 flex flex-col gap-5">
+        <div className="pb-2 flex flex-col gap-5">
             <Card className="bg-midnight">
                 <CardContent className="mt-5 w-full">
-                    <h2 className="text-lg font-semibold mb-4">API Keys</h2>
-                    <div className="flex items-center mb-2 gap-4">
-                        <Input
-                            type="password"
-                            value={anthropicKey}
-                            onChange={(e) => handleApiKeyChange('anthropic', e.target.value)}
-                            placeholder="Anthropic API Key"
-                        />
-                        {anthropicKey && <Check className="text-green-500" />}
-                    </div>
-                    <div className="flex items-center mb-2 gap-4">
-                        <Input
-                            type="password"
-                            value={openAIKey}
-                            onChange={(e) => handleApiKeyChange('openai', e.target.value)}
-                            placeholder="OpenAI API Key"
-                        />
-                        {openAIKey && <Check className="text-green-500" />}
-                    </div>
+                    <h2 className="text-lg font-semibold mb-4">
+                        Required API Keys
+                    </h2>
+                    {renderApiKeyInput(API_KEYS.ANTHROPIC, 'Anthropic API Key')}
+                    {renderApiKeyInput(API_KEYS.OPENAI, 'OpenAI API Key')}
                 </CardContent>
             </Card>
             <Card className="bg-midnight">
                 <CardContent className="mt-5 w-full">
-                    <h2 className="text-lg font-semibold mb-4">Directory indexes</h2>
+                    <h2 className="text-lg font-semibold mb-4">
+                        Directory indexes
+                    </h2>
                     <div className="flex items-center mb-2 gap-4">
                         <FolderPicker
                             folderPath={newIndexPath}
@@ -150,14 +185,31 @@ const IndexManagement = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
                         <div className="text-red-500 mb-2 mt-6">{error}</div>
                     )}
                     {indexes.length > 0 && (
-                        <div className={'mt-6'}>
+                        <div className="mt-6">
                             {indexes.map(index => (
-                                <div key={index.path} className="flex items-center justify-between mb-2">
+                                <div
+                                    key={index.path}
+                                    className="flex items-center justify-between mb-2"
+                                >
                                     <span>{index.path}</span>
-                                    {index.status === 'running' && <CircleSpinner />}
-                                    {index.status === 'done' && <Check className="text-green-500" />}
-                                    {index.status === 'error' && <span className="text-red-500">Error</span>}
-                                    <Button onClick={() => handleRemoveIndex(index.path)} variant="destructive" size="sm">
+                                    {index.status === 'running' && (
+                                        <CircleSpinner />
+                                    )}
+                                    {index.status === 'done' && (
+                                        <Check className="text-green-500" />
+                                    )}
+                                    {index.status === 'error' && (
+                                        <span className="text-red-500">
+                                            Error
+                                        </span>
+                                    )}
+                                    <Button
+                                        onClick={() =>
+                                            handleRemoveIndex(index.path)
+                                        }
+                                        variant="destructive"
+                                        size="sm"
+                                    >
                                         Remove
                                     </Button>
                                 </div>
