@@ -16,7 +16,6 @@ class AgentConfig(BaseModel):
     temperature: float = 0.0
     chat_history: List[dict] = []
 
-
 class Config(BaseModel):
     name: str
     logger_name: str

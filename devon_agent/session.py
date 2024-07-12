@@ -214,7 +214,6 @@ class Session:
                         resolved = waitForEvent(self.event_log, "GitResolve")
                         if resolved["content"]["action"] == "nogit":
                             self.config.versioning_type = "none"
-                            self.versioning.versioningType = "none"
                             break
             while True:
                 try:
@@ -231,7 +230,6 @@ class Session:
                     resolved = waitForEvent(self.event_log, "GitResolve")
                     if resolved["content"]["action"] == "nogit":
                         self.config.versioning_type = "none"
-                        self.versioning.versioningType = "none"
                         break
 
 
