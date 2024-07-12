@@ -14,6 +14,8 @@ type StepType = {
     subSteps: SubStepType[]
 }
 
+const ANIMATE_DEMO = false
+
 const exampleSteps: StepType[] = [
     {
         id: 1,
@@ -90,15 +92,15 @@ const TimelinePanel: React.FC = () => {
         state => state.context.serverEventContext.gitData.commits
     )
 
-    const steps: StepType[] = commits.map((commit, index) => {
-        return {
-            id: index,
-            label: commit,
-            // subtitle: commit.author,
-            subSteps: [],
-        }
-    })
-    // const steps: StepType[] = exampleSteps
+    // const steps: StepType[] = commits.map((commit, index) => {
+    //     return {
+    //         id: index,
+    //         label: commit,
+    //         // subtitle: commit.author,
+    //         subSteps: [],
+    //     }
+    // })
+    const steps: StepType[] = exampleSteps
 
     useEffect(() => {
         if (activeStep < steps.length - 1) {
@@ -117,16 +119,38 @@ const TimelinePanel: React.FC = () => {
 
     return (
         <div className="inset-0 flex flex-col w-full">
-            {steps && steps.length > 0 ? steps.map((step, index) => (
-                <Step
-                    key={step.id}
-                    step={step}
-                    index={index}
-                    activeStep={activeStep}
-                    setSubStepFinished={setSubStepFinished}
-                    stepsLength={steps.length}
-                />
-            )) : <p className="whitespace-nowrap pr-4">Devon hasn't made any commits yet</p>}
+            {steps && steps.length > 0 ? (
+                steps.map((step, index) => (
+                    <Step
+                        key={step.id}
+                        step={step}
+                        index={index}
+                        activeStep={activeStep}
+                        setSubStepFinished={setSubStepFinished}
+                        stepsLength={steps.length}
+                    />
+                ))
+            ) : (
+                <div className="relative">
+                    <div className="blur-sm">
+                        {exampleSteps.map((step, index) => (
+                            <Step
+                                key={step.id}
+                                step={step}
+                                index={index}
+                                activeStep={activeStep}
+                                setSubStepFinished={setSubStepFinished}
+                                stepsLength={steps.length}
+                            />
+                        ))}
+                    </div>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <p className="whitespace-nowrap px-4 text-center">
+                            Devon hasn't made any commits yet
+                        </p>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
@@ -243,7 +267,7 @@ const Step: React.FC<{
                 <div className="flex flex-col">
                     <div ref={contentRef} className="flex flex-col">
                         <span className="text-white">{step.label}</span>
-                        <span className="mt-1 text-gray-400">
+                        <span className="mt-1 text-gray-400 whitespace-nowrap">
                             {step.subtitle}
                         </span>
                     </div>
