@@ -7,6 +7,7 @@ import { ActorRefFrom, AnyMachineSnapshot } from 'xstate'
 import { newSessionMachine } from '@/lib/services/stateMachineService/stateMachine'
 import { useSafeStorage } from '@/lib/services/safeStorageService'
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden'
+import IndexManagementModal from './index-management-modal'
 
 const Dialog = lazy(() =>
     import('@/components/ui/dialog').then(module => ({
@@ -66,11 +67,13 @@ const SelectProjectDirectoryModal = ({
     const [folderPath, setFolderPath] = useState('')
     const [open, setOpen] = useState(false)
     const [page, setPage] = useState(1)
+    const [indexExists, setIndexExists] = useState(false)
+    const [shouldIndex, setShouldIndex] = useState(false)
+    const [isIndexManagementModalOpen, setIsIndexManagementModalOpen] =
+        useState(false)
 
     const { getApiKey } = useSafeStorage()
     const [apiKey, setApiKey] = useState('')
-
-    // const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.Panel)
 
     useEffect(() => {
         getApiKey(model).then(value => {
@@ -79,6 +82,29 @@ const SelectProjectDirectoryModal = ({
             }
         })
     }, [])
+
+    function checkIndexExists(s: string) {
+        return true
+    }
+
+    useEffect(() => {
+        if (folderPath) {
+            // checkIndexExists(folderPath).then(exists => {
+            //     setIndexExists(exists)
+            //     setShouldIndex(exists) // If index exists, default to using it
+            // })
+            let found = false
+            setIndexExists(found)
+            setShouldIndex(found)
+        }
+    }, [folderPath])
+
+    const handleIndexCheckboxChange = (checked: boolean) => {
+        setShouldIndex(checked)
+        if (checked && !indexExists) {
+            setIsIndexManagementModalOpen(true)
+        }
+    }
 
     function validate() {
         return folderPath !== ''
@@ -93,13 +119,16 @@ const SelectProjectDirectoryModal = ({
                     model: model,
                     api_key: apiKey,
                 },
+                indexing: {
+                    shouldIndex: shouldIndex,
+                    indexExists: indexExists,
+                },
             },
         })
         sessionActorref.on('session.creationComplete', () => {
             sessionActorref.send({
                 type: 'session.init',
                 payload: {
-                    // path: folderPath,
                     agentConfig: {
                         model: model,
                         api_key: apiKey,
@@ -194,20 +223,42 @@ const SelectProjectDirectoryModal = ({
                                             {/* {'Back'} */}
                                         </button>
                                     )}
-                                    {/* {header} */}
-                                    <SelectProjectDirectoryComponent
-                                        folderPath={folderPath}
-                                        setFolderPath={setFolderPath}
-                                    />
-                                    <StartChatButton
-                                        disabled={!validate()}
-                                        onClick={afterSubmit}
-                                        folderPath={folderPath}
-                                    />
                                 </>
                             ) : (
                                 <></>
                             )}
+
+                            {/* {header} */}
+                            <SelectProjectDirectoryComponent
+                                folderPath={folderPath}
+                                setFolderPath={setFolderPath}
+                            />
+                            <div className="flex items-center space-x-2 mt-4">
+                                <input
+                                    type="checkbox"
+                                    id="indexCheckbox"
+                                    checked={shouldIndex}
+                                    onChange={e =>
+                                        handleIndexCheckboxChange(
+                                            e.target.checked
+                                        )
+                                    }
+                                />
+                                <label htmlFor="indexCheckbox">
+                                    {indexExists
+                                        ? 'Index found. Use existing index'
+                                        : 'Index this codebase (Recommended for better assistance)'}
+                                </label>
+                            </div>
+                            <IndexManagementModal
+                                isOpen={isIndexManagementModalOpen}
+                                setOpen={setIsIndexManagementModalOpen}
+                            />
+                            <StartChatButton
+                                disabled={!validate()}
+                                onClick={afterSubmit}
+                                folderPath={folderPath}
+                            />
                         </div>
                     </DialogContent>
                 </Dialog>
