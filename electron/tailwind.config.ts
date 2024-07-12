@@ -79,6 +79,7 @@ const config: Config = {
             },
             animation: {
                 'pulse-size': 'pulse-size 4s infinite',
+                'pulse-size-lg': 'pulse-size-lg 2s infinite',
                 'accordion-down': 'accordion-down 0.2s ease-out',
                 'accordion-up': 'accordion-up 0.2s ease-out',
                 lineGrow: 'lineGrow 2s ease-in-out forwards',
@@ -87,6 +88,12 @@ const config: Config = {
                 'pulse-size': {
                     '0%, 100%': { transform: 'scale(1)', opacity: '0.4' },
                     '50%': { transform: 'scale(0.3)', opacity: '0.6' },
+                },
+                'pulse-size-lg': {
+                    '0%': { transform: 'scale(1)', opacity: '1' },
+                    '80%': { transform: 'scale(2.5)', opacity: '0' },
+                    '100%': { transform: 'scale(2.5)', opacity: '0' },
+
                 },
                 'accordion-down': {
                     from: { height: '0' },

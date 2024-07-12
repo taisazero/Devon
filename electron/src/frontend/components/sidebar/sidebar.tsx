@@ -105,7 +105,7 @@ export default function Sidebar() {
                 </SidebarContext.Provider>
             </nav>
             {expanded ? (
-                <div className="py-4 overflow-auto px-2">
+                <div className="py-3 overflow-auto px-2">
                     <TimelinePanel />
                 </div>
             ) : null}
