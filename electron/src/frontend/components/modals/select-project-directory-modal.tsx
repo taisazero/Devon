@@ -2,6 +2,7 @@ import FolderPicker from '@/components/ui/folder-picker'
 import { useState, lazy, useEffect, Suspense } from 'react'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
 
 import { ActorRefFrom, AnyMachineSnapshot } from 'xstate'
 import { newSessionMachine } from '@/lib/services/stateMachineService/stateMachine'
@@ -223,43 +224,38 @@ const SelectProjectDirectoryModal = ({
                                             {/* {'Back'} */}
                                         </button>
                                     )}
+                                    {/* {header} */}
+                                    <SelectProjectDirectoryComponent
+                                        folderPath={folderPath}
+                                        setFolderPath={setFolderPath}
+                                    />
+                                    <div className="flex items-center space-x-2 mt-4">
+                                        <Checkbox
+                                            id="indexCheckbox"
+                                            checked={shouldIndex}
+                                            onCheckedChange={
+                                                handleIndexCheckboxChange
+                                            }
+                                        />
+                                        <label htmlFor="indexCheckbox">
+                                            {indexExists
+                                                ? 'Index found. Use existing index'
+                                                : 'Index this codebase (Recommended for better assistance)'}
+                                        </label>
+                                    </div>
+                                    <IndexManagementModal
+                                        isOpen={isIndexManagementModalOpen}
+                                        setOpen={setIsIndexManagementModalOpen}
+                                        folderPath={folderPath}
+                                    />
+                                    <StartChatButton
+                                        disabled={!validate()}
+                                        onClick={afterSubmit}
+                                    />
                                 </>
                             ) : (
                                 <></>
                             )}
-
-                            {/* {header} */}
-                            <SelectProjectDirectoryComponent
-                                folderPath={folderPath}
-                                setFolderPath={setFolderPath}
-                            />
-                            <div className="flex items-center space-x-2 mt-4">
-                                <input
-                                    type="checkbox"
-                                    id="indexCheckbox"
-                                    checked={shouldIndex}
-                                    onChange={e =>
-                                        handleIndexCheckboxChange(
-                                            e.target.checked
-                                        )
-                                    }
-                                />
-                                <label htmlFor="indexCheckbox">
-                                    {indexExists
-                                        ? 'Index found. Use existing index'
-                                        : 'Index this codebase (Recommended for better assistance)'}
-                                </label>
-                            </div>
-                            <IndexManagementModal
-                                isOpen={isIndexManagementModalOpen}
-                                setOpen={setIsIndexManagementModalOpen}
-                                folderPath={folderPath}
-                            />
-                            <StartChatButton
-                                disabled={!validate()}
-                                onClick={afterSubmit}
-                                folderPath={folderPath}
-                            />
                         </div>
                     </DialogContent>
                 </Dialog>

@@ -1,5 +1,11 @@
-import { useEffect, useState, useRef, RefObject } from 'react'
+import { useEffect, useState, useRef, RefObject, MutableRefObject } from 'react'
 import { SessionMachineContext } from '@/contexts/session-machine-context'
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 type SubStepType = {
     id: number
@@ -85,14 +91,29 @@ const exampleSteps: StepType[] = [
 
 // const steps: StepType[] = exampleSteps
 
-const TimelinePanel: React.FC = () => {
+const TimelinePanel = ({
+    expanded,
+    setExpanded,
+    setShowMinimizedTimeline,
+}: {
+    expanded: boolean
+    setExpanded: (value: boolean) => void
+    setShowMinimizedTimeline: (value: boolean) => void
+}) => {
     const [activeStep, setActiveStep] = useState(0)
     const [subStepFinished, setSubStepFinished] = useState(false)
     const commits = SessionMachineContext.useSelector(
         state => state.context.serverEventContext.gitData.commits
     )
 
+    // const hasCommits = true
+    // const steps: StepType[] = exampleSteps
+
     const hasCommits = commits && commits.length > 0
+
+    useEffect(() => {
+        setShowMinimizedTimeline(hasCommits)
+    }, [hasCommits])
 
     const steps: StepType[] = hasCommits
         ? commits.map((commit, index) => ({
@@ -124,9 +145,15 @@ const TimelinePanel: React.FC = () => {
     }, [activeStep, subStepFinished, steps.length])
 
     return (
-        <div className="inset-0 flex flex-col w-full">
+        <div className="inset-0 flex flex-col">
             <div className="relative">
-                <h2 className="mb-4 text-lg font-semibold">Devon's Timeline</h2>
+                <h2
+                    className={`text-lg font-semibold overflow-hidden transition-all duration-300 ease-in-out ${
+                        expanded || !hasCommits ? 'h-6 mb-4' : 'h-0 mb-0'
+                    }`}
+                >
+                    Devon's Timeline
+                </h2>
                 {hasCommits ? (
                     steps.map((step, index) => (
                         <Step
@@ -138,6 +165,8 @@ const TimelinePanel: React.FC = () => {
                             stepsLength={steps.length}
                             animateDemo={ANIMATE_DEMO}
                             hasCommits={hasCommits}
+                            expanded={expanded}
+                            setExpanded={setExpanded}
                         />
                     ))
                 ) : (
@@ -160,6 +189,8 @@ const Step: React.FC<{
     stepsLength: number
     animateDemo: boolean
     hasCommits: boolean
+    expanded: boolean
+    setExpanded: (value: boolean) => void
 }> = ({
     step,
     index,
@@ -168,6 +199,8 @@ const Step: React.FC<{
     stepsLength,
     animateDemo,
     hasCommits,
+    expanded,
+    setExpanded,
 }) => {
     const [subStepActiveIndex, setSubStepActiveIndex] = useState(
         animateDemo ? -1 : step.subSteps.length - 1
@@ -241,24 +274,45 @@ const Step: React.FC<{
         Q 12 ${connectorHeight / 2} ${CURVE_SVG_WIDTH} ${connectorHeight / 2}
     `
 
+    const renderCircle = () => {
+        const circle = (
+            <div
+                className={`z-10 flex items-center justify-center w-6 h-6 bg-white rounded-full ${
+                    activeStep >= index ? 'opacity-100' : 'opacity-0'
+                } transition-opacity duration-1000`}
+            >
+                {hasCommits && activeStep === index ? (
+                    <div className="flex items-center justify-center relative">
+                        <div className="w-3 h-3 bg-primary rounded-full animate-pulse-size-lg"></div>
+                        <div className="absolute w-3 h-3 bg-primary rounded-full"></div>
+                        {/* <div className="absolute w-6 h-6 bg-primary rounded-full opacity-40"></div> */}
+                    </div>
+                ) : (
+                    <div className="w-2 h-2 bg-white rounded-full"></div>
+                )}
+            </div>
+        )
+        if (expanded) {
+            return circle
+        }
+        return (
+            <TooltipProvider delayDuration={100}>
+                <Tooltip>
+                    <TooltipTrigger onClick={() => setExpanded(!expanded)}>
+                        {circle}
+                    </TooltipTrigger>
+                    <TooltipContent side="right" align="end">
+                        <p>{step.label}</p>
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
+        )
+    }
+
     return (
         <div className="flex flex-row">
             <div className="relative flex-start">
-                <div
-                    className={`z-10 flex items-center justify-center w-6 h-6 bg-white rounded-full ${
-                        activeStep >= index ? 'opacity-100' : 'opacity-0'
-                    } transition-opacity duration-1000`}
-                >
-                    {hasCommits && activeStep === index ? (
-                        <div className="flex items-center justify-center relative">
-                            <div className="w-3 h-3 bg-primary rounded-full animate-pulse-size-lg"></div>
-                            <div className="absolute w-3 h-3 bg-primary rounded-full"></div>
-                            {/* <div className="absolute w-6 h-6 bg-primary rounded-full opacity-40"></div> */}
-                        </div>
-                    ) : (
-                        <div className="w-2 h-2 bg-white rounded-full"></div>
-                    )}
-                </div>
+                {renderCircle()}
                 {index < stepsLength - 1 && (
                     <div
                         className={`absolute w-px ${

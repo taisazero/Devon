@@ -1,6 +1,7 @@
 import { List, Settings, PanelsTopLeft, GitMerge } from 'lucide-react'
 import {
     useContext,
+    useEffect,
     createContext,
     useState,
     useRef,
@@ -23,7 +24,6 @@ const sidebarItems = [
         alert: false,
         route: '',
         id: 'timeline',
-        content: <TimelinePanel />,
         comingSoon: false,
     },
     {
@@ -32,7 +32,7 @@ const sidebarItems = [
         alert: false,
         route: '',
         id: 'sessions',
-        comingSoon: true
+        comingSoon: true,
     },
 ]
 
@@ -43,7 +43,7 @@ const bottomSidebarItems: any = [
         active: true,
         alert: false,
         route: '/settings',
-        comingSoon: true
+        comingSoon: true,
     },
 ]
 
@@ -52,6 +52,9 @@ const SidebarContext = createContext(defaultValue)
 export default function Sidebar() {
     const [expanded, setExpanded] = useState(false)
     const [activeTabId, setActiveTabId] = useState(sidebarItems[0].id)
+    const contentRef = useRef(null)
+    // const showMinimizedTimeline = useRef(false)
+    const [showMinimizedTimeline, setShowMinimizedTimeline] = useState(false)
 
     function handleClick(id: string) {
         if (id === activeTabId) {
@@ -59,59 +62,56 @@ export default function Sidebar() {
         } else {
             setExpanded(true)
         }
-        if (activeTabId !== id) {
-            setActiveTabId(id)
-        }
+        setActiveTabId(id)
     }
 
     return (
-        // <aside className="h-full flex flex-row bg-midnight border-r-[1px] border-t-[1px] border-outline-night">
-        <aside className="flex flex-row bg-midnight rounded-lg ml-3 mb-6 border border-outlinecolor">
-            {/* <button
-                onClick={() => setExpanded(!expanded)}
-                className="no-drag relative p-2 z-10 focus:outline-none"
-            >
-                <PanelsTopLeft size="1.4rem" />
-            </button> */}
-            {/* <a
-                href="/"
-                className="no-drag text-white text-xl font-semibold z-10"
-            >
-                Devon
-            </a> */}
-            <nav className={`h-full flex flex-col rounded-sm ${expanded ? 'border-r-[1px] border-outlinecolor' : ''}`}>
-                <SidebarContext.Provider value={{ expanded }}>
-                    <ul className={`flex-1 flex flex-col justify-between pb-1 items-center`}>
-                        <div>
-                            {/* <SidebarHeader expanded={expanded} /> */}
-                            {/* {expanded && <SidebarChatLogs />} */}
-                            {sidebarItems.map((item, index) => (
-                                <SidebarItem
-                                    key={item.text}
-                                    {...item}
-                                    expanded={expanded}
-                                    active={item.id === activeTabId}
-                                    handleClick={handleClick}
-                                />
-                            ))}
-                        </div>
-                        {bottomSidebarItems.map((item, index) => (
+        <aside className="flex flex-row bg-midnight rounded-lg ml-3 mb-6 border border-outlinecolor overflow-hidden transition-all duration-300 ease-in-out">
+            <nav className="h-full flex flex-col rounded-sm border-r border-outlinecolor">
+                <ul className="flex-1 flex flex-col justify-between pb-1 items-center">
+                    <div>
+                        {sidebarItems.map(item => (
                             <SidebarItem
-                                key={item.text}
+                                key={item.id}
                                 {...item}
                                 expanded={expanded}
                                 active={item.id === activeTabId}
                                 handleClick={handleClick}
                             />
                         ))}
-                    </ul>
-                </SidebarContext.Provider>
+                    </div>
+                    {bottomSidebarItems.map(item => (
+                        <SidebarItem
+                            key={item.id}
+                            {...item}
+                            expanded={expanded}
+                            active={item.id === activeTabId}
+                            handleClick={handleClick}
+                        />
+                    ))}
+                </ul>
             </nav>
-            {expanded ? (
-                <div className="py-3 overflow-auto px-4">
-                    <TimelinePanel />
+            <div
+                className={`overflow-hidden transition-all duration-200 ease-in-out ${
+                    expanded
+                        ? 'w-[500px]'
+                        : showMinimizedTimeline
+                        ? 'w-[54px]'
+                        : 'w-[0px]'
+                }`}
+            >
+                <div className="p-4 h-full">
+                    {activeTabId === 'timeline' ? (
+                        <TimelinePanel
+                            expanded={expanded}
+                            setExpanded={setExpanded}
+                            setShowMinimizedTimeline={setShowMinimizedTimeline}
+                        />
+                    ) : (
+                        ''
+                    )}
                 </div>
-            ) : null}
+            </div>
         </aside>
     )
 }
