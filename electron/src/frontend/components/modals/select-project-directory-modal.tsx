@@ -253,6 +253,7 @@ const SelectProjectDirectoryModal = ({
                             <IndexManagementModal
                                 isOpen={isIndexManagementModalOpen}
                                 setOpen={setIsIndexManagementModalOpen}
+                                folderPath={folderPath}
                             />
                             <StartChatButton
                                 disabled={!validate()}

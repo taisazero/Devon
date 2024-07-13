@@ -21,12 +21,16 @@ const API_KEYS = {
     OPENAI: 'gpt4-o',
 }
 
-const IndexManagementModal = ({ isOpen, setOpen }) => (
+const IndexManagementModal = ({ isOpen, setOpen, folderPath }: {
+    isOpen: boolean
+    setOpen: (isOpen: boolean) => void
+    folderPath: string
+}) => (
     <Dialog open={isOpen} onOpenChange={setOpen}>
-        <DialogContent className="w-[500px]">
+        <DialogContent className="">
             <DialogHeader className="mx-auto">
                 <DialogTitle>
-                    <h1 className="text-2xl font-bold">Project Indexes</h1>
+                    <h1 className="text-2xl font-bold">{folderPath ? 'Create New Index' : 'Project Indexes'}</h1>
                 </DialogTitle>
             </DialogHeader>
             <IndexManagement setOpen={setOpen} />
@@ -34,13 +38,13 @@ const IndexManagementModal = ({ isOpen, setOpen }) => (
     </Dialog>
 )
 
-const IndexManagement = ({ setOpen }) => {
+const IndexManagement = () => {
     const { toast } = useToast()
     const host = SessionMachineContext.useSelector(state => state.context.host)
-    const { getApiKey, setApiKey } = useSafeStorage()
+    const { getApiKey, addApiKey } = useSafeStorage()
     const [indexes, setIndexes] = useState([])
     const [newIndexPath, setNewIndexPath] = useState('')
-    const [error, setError] = useState(null)
+    const [error, setError] = useState<string | null>(null)
     const [apiKeys, setApiKeys] = useState({
         [API_KEYS.ANTHROPIC]: '',
         [API_KEYS.OPENAI]: '',
@@ -68,7 +72,15 @@ const IndexManagement = ({ setOpen }) => {
     useEffect(() => {
         fetchIndexes()
         fetchApiKeys()
-    }, [fetchIndexes, fetchApiKeys])
+    }, [])
+
+    // useEffect(() => {
+    //     fetchIndexes()
+    //     fetchApiKeys()
+    // }, [fetchIndexes, fetchApiKeys])
+    const getSetApiKeysCount = () => {
+        return Object.values(apiKeys).filter(key => key !== '').length
+    }
 
     const handleRemoveIndex = async path => {
         try {
@@ -106,7 +118,7 @@ const IndexManagement = ({ setOpen }) => {
 
     const handleApiKeyChange = async (key, value) => {
         setApiKeys(prev => ({ ...prev, [key]: value }))
-        await setApiKey(key, value)
+        await addApiKey(key, value)
         toast({
             title: `${
                 key === API_KEYS.ANTHROPIC ? 'Anthropic' : 'OpenAI'
@@ -116,21 +128,16 @@ const IndexManagement = ({ setOpen }) => {
 
     const renderApiKeyInput = (keyName, displayName) => (
         <div className="mb-4">
-            <p className="text-xl font-bold mb-2">{displayName}</p>
+            <div className="flex gap-1 items-center">
+                <p className="text-md">{displayName}</p>
+                {apiKeys[keyName] && (
+                    <Check className="text-green-500" size={16} />
+                )}
+            </div>
             {apiKeys[keyName] ? (
-                <div className="flex items-center gap-2">
-                    <Check className="text-green-500" />
-                    <span>API Key set</span>
-                    <Button
-                        onClick={() => handleApiKeyChange(keyName, '')}
-                        size="sm"
-                        variant="outline"
-                    >
-                        <X className="h-4 w-4" />
-                    </Button>
-                </div>
+                <></>
             ) : (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 mt-2">
                     <Input
                         type="password"
                         value={apiKeys[keyName]}
@@ -155,9 +162,10 @@ const IndexManagement = ({ setOpen }) => {
     return (
         <div className="pb-2 flex flex-col gap-5">
             <Card className="bg-midnight">
-                <CardContent className="mt-5 w-full">
+                <CardContent className="mt-5 w-full pb-2">
                     <h2 className="text-lg font-semibold mb-4">
-                        Required API Keys
+                        Required API Keys ({getSetApiKeysCount()}/
+                        {Object.keys(API_KEYS).length})
                     </h2>
                     {renderApiKeyInput(API_KEYS.ANTHROPIC, 'Anthropic API Key')}
                     {renderApiKeyInput(API_KEYS.OPENAI, 'OpenAI API Key')}
