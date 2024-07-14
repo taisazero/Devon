@@ -51,13 +51,13 @@ const IndexesButton = ({ indexesHandler }: { indexesHandler: () => void }) => {
             trigger={
                 <button
                     onClick={indexesHandler}
-                    className="group flex items-center gap-2 px-3 py-1 rounded-md mb-[-4px] -mr-2 smooth-hover"
+                    className="group flex items-center gap-2 px-3 py-1 rounded-md mb-[-4px] -mr-2 smooth-hover min-w-0"
                 >
                     <TextQuote
                         size={14}
-                        className="group-hover:transition text-gray-400 duration-300 mb-[1px] group-hover:text-white"
+                        className="group-hover:transition text-gray-400 duration-300 mb-[1px] group-hover:text-white flex-shrink-0"
                     />
-                    <p className="group-hover:transition duration-300 text-gray-400 group-hover:text-white">
+                    <p className="group-hover:transition duration-300 text-gray-400 group-hover:text-white truncate">
                         Indexes
                     </p>
                 </button>
@@ -70,13 +70,13 @@ const RestartButton = ({ resetHandler }: { resetHandler: () => void }) => {
     return (
         <button
             onClick={resetHandler}
-            className="group flex items-center gap-2 px-3 py-1 rounded-md mb-[-4px] -mr-2 smooth-hover"
+            className="group flex items-center gap-2 px-3 py-1 rounded-md mb-[-4px] -mr-2 smooth-hover min-w-0"
         >
             <History
                 size={14}
-                className="group-hover:transition text-gray-400 duration-300 mb-[1px] group-hover:text-white"
+                className="group-hover:transition text-gray-400 duration-300 mb-[1px] group-hover:text-white flex-shrink-0"
             />
-            <p className="group-hover:transition duration-300 text-gray-400 group-hover:text-white">
+            <p className="group-hover:transition duration-300 text-gray-400 group-hover:text-white truncate">
                 Reset session
             </p>
         </button>
@@ -87,12 +87,12 @@ const ConfigureButton = () => {
     return (
         <SettingsModal
             trigger={
-                <button className="group flex items-center gap-2 px-3 py-1 rounded-md mb-[-4px] -mr-2 smooth-hover">
+                <button className="group flex items-center gap-2 px-3 py-1 rounded-md mb-[-4px] -mr-2 smooth-hover min-w-0">
                     <Settings
                         size={14}
-                        className="group-hover:transition text-gray-400 duration-300 mb-[1px] group-hover:text-white"
+                        className="group-hover:transition text-gray-400 duration-300 mb-[1px] group-hover:text-white flex-shrink-0"
                     />
-                    <p className="group-hover:transition duration-300 text-gray-400 group-hover:text-white">
+                    <p className="group-hover:transition duration-300 text-gray-400 group-hover:text-white truncate">
                         Configure session
                     </p>
                 </button>
