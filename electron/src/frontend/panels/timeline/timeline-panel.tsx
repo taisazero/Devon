@@ -145,7 +145,7 @@ const TimelinePanel = ({
     }, [activeStep, subStepFinished, steps.length])
 
     return (
-        <div className="inset-0 flex flex-col">
+        <div className="flex flex-col">
             <div className="relative">
                 <h2
                     className={`text-lg font-semibold overflow-hidden transition-all duration-300 ease-in-out ${

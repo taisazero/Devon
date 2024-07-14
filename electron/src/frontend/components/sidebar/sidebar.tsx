@@ -94,7 +94,9 @@ export default function Sidebar() {
             <div
                 className={`overflow-hidden transition-all duration-200 ease-in-out ${
                     expanded
-                        ? 'w-[500px]'
+                        ? showMinimizedTimeline
+                            ? 'w-[500px]'
+                            : 'w-[340px]'
                         : showMinimizedTimeline
                         ? 'w-[54px]'
                         : 'w-[0px]'
