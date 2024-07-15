@@ -36,8 +36,6 @@ def waitForEvent(event_log: List[Dict], event_type: str):
         time.sleep(1)
     
 
-
-
 class Session:
     def __init__(self, config: Config, event_log: List[Dict]):
         self.name = config.name
@@ -174,13 +172,11 @@ class Session:
         self.status = "running"
 
     def terminate(self):
-        print(self.status)
         if self.status == "terminated":
             return
         self.status = "terminating"
 
         while self.status != "terminated":
-            print(self.status)
             time.sleep(2)
 
     def run_event_loop(self):
@@ -599,7 +595,6 @@ class Session:
         return docs
 
     def setup(self):
-        print("hello world")
         self.state.task = self.config.task
 
         self.status = "paused"
