@@ -66,11 +66,16 @@ class GitVersioning:
         res = subprocess.run(
             ["git", "commit", "-m", message], cwd=self.project_path
         )
+
+        # return  commit hash
+
         if res.returncode != 0:
             # if "nothing to commit, working tree clean" in res.stderr:
             #     return True, "nothing to commit, working tree clean"
             return False,  res.stdout if res.stdout else "" + res.stderr if res.stderr else ""
-        return True, res.stdout
+        
+        res = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.project_path, capture_output=True, text=True, check=True)
+        return True, res.stdout.strip()
 
     def commit_changes(self, message):
         if self.config.versioning_type == "none":
@@ -78,6 +83,18 @@ class GitVersioning:
         subprocess.run(
             ["git", "commit", "-am", message], cwd=self.project_path, check=True
         )
+
+    def get_diff_patch(self,commit_hash_src, commit_hash_dst):
+        if self.config.versioning_type == "none":
+            return "none"
+        res = subprocess.run(["git", "diff", commit_hash_src, commit_hash_dst], cwd=self.project_path, capture_output=True, text=True, check=True)
+        return res.stdout
+    
+    def apply_patch(self,patch):
+        if self.config.versioning_type == "none":
+            return True, "none"
+        res = subprocess.run(["git", "apply", patch], cwd=self.project_path, capture_output=True, text=True, check=True)
+        return res.returncode == 0, res.stdout if res.stdout else "" + res.stderr if res.stderr else ""
 
     def list_commits(self):
         if self.config.versioning_type == "none":

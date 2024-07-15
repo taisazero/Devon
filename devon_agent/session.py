@@ -213,7 +213,9 @@ class Session:
                             break
             while True:
                 try:
-                    self.versioning.commit_all_files("initial commit")
+                    commit_hash = self.versioning.commit_all_files("initial commit")
+                    self.config.versioning_metadata["initial_commit"] = commit_hash
+                    self.config.versioning_metadata["commits"] = [commit_hash]
                     break
                 except Exception as e:
                     self.logger.error(f"Error committing files: {e}")
@@ -300,9 +302,17 @@ class Session:
                         }
                     )
             case "GitMerge":
+                # self.versioning.checkout_branch(self.config.versioning_metadata["old_branch"])
+                # self.versioning.merge_branch(self.config.versioning_metadata["current_branch"])
+                # self.versioning.checkout_branch(self.config.versioning_metadata["current_branch"])
+                dest_commit = self.config.versioning_metadata["commits"][-1]
+                src_commit = self.config.versioning_metadata["commits"][0]
+                merge_patch = self.versioning.get_diff_patch(src_commit,dest_commit)
                 self.versioning.checkout_branch(self.config.versioning_metadata["old_branch"])
-                self.versioning.merge_branch(self.config.versioning_metadata["current_branch"])
+                self.versioning.apply_patch(merge_patch)
+                self.versioning.commit_all_files(event["content"]["commit_message"])
                 self.versioning.checkout_branch(self.config.versioning_metadata["current_branch"])
+
 
             case "ModelRequest":
                 # TODO: Need some quantized timestep for saving persistence that isn't literally every 0.1s
@@ -327,6 +337,7 @@ class Session:
                         if not success:
                             self.logger.error(f"Error committing files: {message}")
                         else:
+                            self.config.versioning_metadata["commits"].append(commit_message)
                             self.event_log.append(
                                 {
                                     "type": "GitEvent",
