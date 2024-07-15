@@ -213,8 +213,8 @@ class Session:
                             break
             while True:
                 try:
-                    commit_hash = self.versioning.commit_all_files("initial commit")
-                    self.config.versioning_metadata["initial_commit"] = commit_hash
+                    commit_hash = self.versioning.initial_commit()
+                    self.config.versioning_metadata["initial_commit"] = commit_hash[1]
                     # self.config.versioning_metadata["commits"] = [commit_hash]
                     # print(commit_hash)
                     # if commit_hash[0] == True:

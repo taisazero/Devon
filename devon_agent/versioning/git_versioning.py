@@ -80,6 +80,38 @@ class GitVersioning:
         
         res = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.project_path, capture_output=True, text=True, check=True)
         return True, res.stdout.strip()
+    
+    def initial_commit(self):
+        if self.config.versioning_type == "none":
+            return True, "none"
+        # check if previous commit is "initial commit"
+        res = subprocess.run(["git", "log", "-1", "--pretty=%B"], cwd=self.project_path, capture_output=True, text=True, check=True)
+        if  res.stdout.strip() == "initial commit":
+            # return commit hash
+            res = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.project_path, capture_output=True, text=True, check=True)
+            return True, res.stdout.strip()
+        
+        res =subprocess.run(["git", "add", "."], cwd=self.project_path)
+        if res.returncode != 0:
+            print("git add failed")
+            # print(res.stdout if res.stdout else "" + res.stderr if res.stderr else "")
+            return False, res.stdout if res.stdout else "" + res.stderr if res.stderr else ""
+        
+        res = subprocess.run(
+            ["git", "commit", "-m", "initial commit", "--allow-empty"], cwd=self.project_path
+        )
+
+        if res.returncode != 0:
+            print("git commit failed")
+            # if "nothing to commit, working tree clean" in res.stderr:
+            #     return True, "nothing to commit, working tree clean"
+            # print(res.stdout if res.stdout else "" + res.stderr if res.stderr else "")
+            return False,  res.stdout if res.stdout else "" + res.stderr if res.stderr else ""
+        
+        res = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.project_path, capture_output=True, text=True, check=True)
+        return True, res.stdout.strip()
+        
+
 
     def commit_changes(self, message):
         if self.config.versioning_type == "none":
@@ -122,9 +154,7 @@ class GitVersioning:
     def create_branch(self, branch_name):
         if self.config.versioning_type == "none":
             return
-        subprocess.run(
-            ["git", "checkout", "-b", branch_name], cwd=self.project_path, check=True
-        )
+        subprocess.run(["git", "checkout", "-b", branch_name], cwd=self.project_path, check=True)
 
     def switch_branch(self, branch_name):
         if self.config.versioning_type == "none":
@@ -156,12 +186,17 @@ class GitVersioning:
     def create_if_not_exists_and_checkout_branch(self, branch_name):
         if self.config.versioning_type == "none":
             return
+        print(self.get_branch(),branch_name)
+        if self.get_branch().strip() == branch_name:
+            print("Branch already exists")
+            return
         print('im here', self.check_branch_exists(branch_name))
         if not self.check_branch_exists(branch_name):
-            print("here")
             self.create_branch(branch_name)
         try:
+            old_branch = self.get_branch()
             self.checkout_branch(branch_name)
+            self.merge_branch(old_branch)
             print(f"Created and checked out new branch: {branch_name}")
         except Exception as e:
             print(f"Error checking out branch: {branch_name}")
