@@ -13,6 +13,7 @@ import { ChildProcess, spawn, spawnSync } from 'child_process'
 import portfinder from 'portfinder'
 import fs from 'fs'
 import './plugins/editor'
+import axios from 'axios'
 
 const DEV_MODE = process.env.DEV_MODE ?? false
 
@@ -319,9 +320,12 @@ app.on('ready', () => {
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
-app.on('window-all-closed', () => {
+app.on('window-all-closed',async () => {
     mainLogger.info('All windows closed. Quitting application.')
     // if (process.platform !== 'darwin') {
+    serverProcess.kill("SIGINT")
+    mainLogger.info("Killing server process with pid:", serverProcess.pid)
+    await new Promise(resolve => setTimeout(resolve, 2000))
     app.quit()
     // }
 })
@@ -358,11 +362,13 @@ app.on('activate', () => {
 //     }
 // })
 
-app.on('before-quit', () => {
-    if (!serverProcess) {
+app.on('before-quit',() => {
+    if (!serverProcess || serverProcess.killed) {
         mainLogger.info('No server process found. Quitting application.')
         return
     }
+
+    mainLogger.info("Killing server process with pid:", serverProcess.pid)
     if (serverProcess.pid) {
         mainLogger.info('Killing server process with pid:', serverProcess.pid)
         process.kill(serverProcess.pid, 'SIGTERM')

@@ -84,6 +84,8 @@ def get_user_input(session: str):
         return result
 
 
+
+
 @asynccontextmanager
 async def lifespan(app: fastapi.FastAPI):
     # Hacky but it works
@@ -122,6 +124,10 @@ async def lifespan(app: fastapi.FastAPI):
             sessions = data
 
     yield
+    print("Terminating sessions")
+    for session in sessions.values():
+        # session.terminate()
+        session.teardown()
 
 
 app = fastapi.FastAPI(
@@ -226,6 +232,16 @@ def get_sessions():
         {"name": session_name, "path": session_data.base_path}
         for session_name, session_data in sessions.items()
     ]
+
+@app.delete("/sessions")
+def delete_sessions():
+    print("deleting sessions")
+    global sessions
+    for session in sessions.values():
+        session.terminate()
+        session.teardown()
+    sessions = {}
+    return "done"
 
 
 @app.post("/sessions/{session}")

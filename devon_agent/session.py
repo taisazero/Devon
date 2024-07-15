@@ -186,8 +186,30 @@ class Session:
             if not self.config.versioning_metadata:
                 self.config.versioning_metadata = {}
             if "old_branch" not in self.config.versioning_metadata:
+                print("old branch not in metadata")
                 self.config.versioning_metadata["old_branch"] = {}
                 self.config.versioning_metadata["old_branch"] = self.versioning.get_branch()
+
+                if self.config.versioning_metadata["old_branch"].strip() == "devon_agent":
+                    while True:
+                        try:
+                            if self.versioning.get_branch() == "devon_agent":
+                                raise Exception("On invalid branch 'devon_agent', this happens if previous session didnt clean up properly. To solve this, git checkout <yourbranch> && git branch -D devon_agent")
+                            else:
+                                self.config.versioning_metadata["old_branch"] = self.versioning.get_branch()
+                                break
+                        except Exception as e:
+                            self.logger.error(f"Error creating branch: {e}")
+                            self.event_log.append({
+                                "type": "GitError",
+                                "content": f"{e}",
+                                "producer": "system",
+                                "consumer": "user",
+                            })
+                            resolved = waitForEvent(self.event_log, "GitResolve")
+                            if resolved["content"]["action"] == "nogit":
+                                self.config.versioning_type = "none"
+                                break
 
             print("OLD BRANCH: ", self.config.versioning_metadata["old_branch"])
             print("NEW BRANCH: ", self.versioning.get_branch_name())
@@ -272,8 +294,8 @@ class Session:
             self.event_id += 1
 
         self.status = "terminated"
-        # if self.config.versioning_type == "git":
-        #     self.versioning.checkout_branch(self.config.versioning_metadata["old_branch"])
+        if self.config.versioning_type == "git":
+            self.versioning.checkout_branch(self.config.versioning_metadata["old_branch"])
 
     def step_event(self, event):
         new_events = []
@@ -680,7 +702,7 @@ class Session:
                     }
                 )
         if self.config.versioning_type == "git":
-            self.versioning.checkout_branch(self.config.versioning_metadata["current_branch"])
+            self.versioning.checkout_branch(self.config.versioning_metadata["old_branch"])
 
     def persist(self):
         if self.persist_to_db:

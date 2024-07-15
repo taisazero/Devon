@@ -54,7 +54,7 @@ class GitVersioning:
         text=True,
         check=True,
         )
-        return result.stdout
+        return result.stdout.strip()
 
 
     def commit_all_files(self, message="Initial commit"):
