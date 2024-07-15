@@ -139,9 +139,6 @@ const handleEvents = (
 			tool_message = '';
 		}
 
-		if (event.type == 'Task') {
-			messages.push({text: event.content, type: 'task'});
-		}
 
 		if (event.type == 'Interrupt') {
 			// writeLogLine('interrupt: ' + event.content);

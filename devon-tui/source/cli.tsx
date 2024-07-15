@@ -39,9 +39,7 @@ const cli = meow(
       $ devon start --api_key=YOUR_API_KEY 
       $ devon start --port 8080 --api_key=YOUR_API_KEY
       $ devon start --model=gpt4-o --api_key=YOUR_API_KEY
-      $ devon start --model=claude-opus --api_key=YOUR_API_KEY
-      $ devon start --model=llama-3-70b --api_key=YOUR_API_KEY
-      $ devon start --model=custom --api_base=https://api.example.com --prompt_type=anthropic --api_key=YOUR_API_KEY
+      $ devon start --model=claude-3-5-sonnet --api_key=YOUR_API_KEY
       $ devon configure
   `,
 	{
@@ -86,11 +84,11 @@ if (input[0] === 'configure') {
 				name: 'modelName',
 				message: 'Select the model name:',
 				choices: [
-					'claude-opus',
+					'claude-3-5-sonnet',
 					'gpt4-o',
-					'llama-3-70b',
-					'ollama/deepseek-coder:6.7b',
-					'custom',
+					// 'llama-3-70b',
+					// 'ollama/deepseek-coder:6.7b',
+					// 'custom',
 				],
 			},
 		])
