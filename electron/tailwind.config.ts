@@ -78,6 +78,7 @@ const config: Config = {
                 '800': '800ms',
             },
             animation: {
+                pulse2: 'pulse2 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
                 'pulse-size': 'pulse-size 4s infinite',
                 'pulse-size-lg': 'pulse-size-lg 2s infinite',
                 'accordion-down': 'accordion-down 0.2s ease-out',
@@ -85,6 +86,10 @@ const config: Config = {
                 lineGrow: 'lineGrow 2s ease-in-out forwards',
             },
             keyframes: {
+                pulse2: {
+                    '0%, 100%': { opacity: '0.5' },
+                    '50%': { opacity: '0.2' },
+                },
                 'pulse-size': {
                     '0%, 100%': { transform: 'scale(1)', opacity: '0.4' },
                     '50%': { transform: 'scale(0.3)', opacity: '0.6' },
@@ -93,7 +98,6 @@ const config: Config = {
                     '0%': { transform: 'scale(1)', opacity: '1' },
                     '80%': { transform: 'scale(2.5)', opacity: '0' },
                     '100%': { transform: 'scale(2.5)', opacity: '0' },
-
                 },
                 'accordion-down': {
                     from: { height: '0' },

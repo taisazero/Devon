@@ -6,6 +6,13 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { Button } from '@/components/ui/button'
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover'
+import { History, Undo, Undo2 } from 'lucide-react'
 
 type SubStepType = {
     id: number
@@ -102,6 +109,9 @@ const TimelinePanel = ({
 }) => {
     const [activeStep, setActiveStep] = useState(0)
     const [subStepFinished, setSubStepFinished] = useState(false)
+    const [selectedRevertStep, setSelectedRevertStep] = useState<number | null>(
+        null
+    )
     const commits = SessionMachineContext.useSelector(
         state => state.context.serverEventContext.gitData.commits
     )
@@ -111,10 +121,6 @@ const TimelinePanel = ({
 
     const hasCommits = commits && commits.length > 0
 
-    useEffect(() => {
-        setShowMinimizedTimeline(hasCommits)
-    }, [hasCommits])
-
     const steps: StepType[] = hasCommits
         ? commits.map((commit, index) => ({
               id: index,
@@ -123,6 +129,10 @@ const TimelinePanel = ({
               subSteps: [],
           }))
         : exampleSteps
+
+    useEffect(() => {
+        setShowMinimizedTimeline(hasCommits)
+    }, [hasCommits])
 
     useEffect(() => {
         if (ANIMATE_DEMO) {
@@ -145,7 +155,7 @@ const TimelinePanel = ({
     }, [activeStep, subStepFinished, steps.length])
 
     return (
-        <div className="flex flex-col">
+        <div className="flex flex-col justify-between h-full">
             <div className="relative">
                 <h2
                     className={`text-lg font-semibold overflow-hidden transition-all duration-300 ease-in-out ${
@@ -167,6 +177,8 @@ const TimelinePanel = ({
                             hasCommits={hasCommits}
                             expanded={expanded}
                             setExpanded={setExpanded}
+                            selectedRevertStep={selectedRevertStep}
+                            setSelectedRevertStep={setSelectedRevertStep}
                         />
                     ))
                 ) : (
@@ -177,6 +189,23 @@ const TimelinePanel = ({
                     </div>
                 )}
             </div>
+            {expanded && hasCommits && (
+                <div className="flex flex-col gap-4 items-center pb-6">
+                    <p className="mt-4 flex">
+                        Sync changes with{' '}
+                        <code className="bg-black px-[6px] py-[1px] rounded-md text-primary text-opacity-100 text-[0.9rem] mx-[4px]">
+                            main
+                        </code>{' '}
+                        branch?
+                    </p>
+                    <Button
+                        className="w-fit"
+                        // onClick={handleMerge} disabled={!useGit}
+                    >
+                        Merge branch
+                    </Button>
+                </div>
+            )}
         </div>
     )
 }
@@ -191,6 +220,8 @@ const Step: React.FC<{
     hasCommits: boolean
     expanded: boolean
     setExpanded: (value: boolean) => void
+    selectedRevertStep: number | null
+    setSelectedRevertStep: (value: number | null) => void
 }> = ({
     step,
     index,
@@ -201,7 +232,12 @@ const Step: React.FC<{
     hasCommits,
     expanded,
     setExpanded,
+    selectedRevertStep,
+    setSelectedRevertStep,
 }) => {
+    const isPulsing = selectedRevertStep !== null && index > selectedRevertStep
+    const lineBeforeShouldPulse =
+        selectedRevertStep !== null && index === selectedRevertStep
     const [subStepActiveIndex, setSubStepActiveIndex] = useState(
         animateDemo ? -1 : step.subSteps.length - 1
     )
@@ -309,15 +345,76 @@ const Step: React.FC<{
         )
     }
 
+    const renderTextAndSubsteps = () => {
+        return (
+            <Popover
+                onOpenChange={open => {
+                    if (open) {
+                        setSelectedRevertStep(index)
+                    } else {
+                        setSelectedRevertStep(null)
+                    }
+                }}
+            >
+                <PopoverTrigger asChild>
+                    <div
+                        className={`flex flex-col hover:opacity-90 hover:cursor-pointer`}
+                    >
+                        <div ref={contentRef} className="flex flex-col">
+                            <span className="text-white">{step.label}</span>
+                            <span className="mt-1 text-gray-400 whitespace-nowrap">
+                                {step.subtitle}
+                            </span>
+                        </div>
+                        {activeStep >= index && step.subSteps.length > 0 && (
+                            <div
+                                style={{
+                                    marginLeft: `calc(${CURVE_SVG_WIDTH}px - ${SUBITEM_LEFT_MARGIN}px)`,
+                                }}
+                                className="mt-3"
+                            >
+                                {step.subSteps.map((subStep, subIndex) => (
+                                    <SubStep
+                                        key={subStep.id}
+                                        subStep={subStep}
+                                        showLine={
+                                            subIndex < step.subSteps.length - 1
+                                        }
+                                        active={subStepActiveIndex >= subIndex}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </PopoverTrigger>
+                <PopoverContent
+                    side="right"
+                    className="flex gap-2 items-center px-3 py-2 w-auto border-primary bg-night hover:bg-batman smooth-hover"
+                >
+                    <Undo2 size={16} />
+                    <button onClick={() => console.log('handle revert')}>
+                        Revert to this commit
+                    </button>
+                </PopoverContent>
+            </Popover>
+        )
+    }
+
     return (
-        <div className="flex flex-row">
+        <div className={`flex flex-row ${isPulsing ? 'animate-pulse2' : ''}`}>
             <div className="relative flex-start">
                 {renderCircle()}
+                {/* This is the line */}
                 {index < stepsLength - 1 && (
                     <div
                         className={`absolute w-px ${
-                            activeStep > index ? 'h-full' : 'h-0'
-                        } bg-white top-6 left-1/2 transform -translate-x-1/2 transition-all duration-1000`}
+                            activeStep > index ? 'h-[calc(100%-1.5rem)]' : 'h-0'
+                        } bg-white top-6 left-1/2 transform -translate-x-1/2 transition-all
+                         ${
+                             lineBeforeShouldPulse
+                                 ? 'animate-pulse2 duration-2000'
+                                 : 'duration-1000'
+                         }`}
                     ></div>
                 )}
                 {step.subSteps.length > 0 && subStepActiveIndex >= 0 && (
@@ -345,33 +442,7 @@ const Step: React.FC<{
                     animateDemo ? 'delay-800' : ''
                 }`}
             >
-                <div className="flex flex-col">
-                    <div ref={contentRef} className="flex flex-col">
-                        <span className="text-white">{step.label}</span>
-                        <span className="mt-1 text-gray-400 whitespace-nowrap">
-                            {step.subtitle}
-                        </span>
-                    </div>
-                    {activeStep >= index && step.subSteps.length > 0 && (
-                        <div
-                            style={{
-                                marginLeft: `calc(${CURVE_SVG_WIDTH}px - ${SUBITEM_LEFT_MARGIN}px)`,
-                            }}
-                            className="mt-3"
-                        >
-                            {step.subSteps.map((subStep, subIndex) => (
-                                <SubStep
-                                    key={subStep.id}
-                                    subStep={subStep}
-                                    showLine={
-                                        subIndex < step.subSteps.length - 1
-                                    }
-                                    active={subStepActiveIndex >= subIndex}
-                                />
-                            ))}
-                        </div>
-                    )}
-                </div>
+                {renderTextAndSubsteps()}
             </div>
         </div>
     )

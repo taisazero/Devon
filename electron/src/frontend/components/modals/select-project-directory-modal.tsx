@@ -229,7 +229,7 @@ const SelectProjectDirectoryModal = ({
                                         folderPath={folderPath}
                                         setFolderPath={setFolderPath}
                                     />
-                                    <div className="flex items-center space-x-2 mt-4">
+                                    {/* <div className="flex items-center space-x-2 mt-4">
                                         <Checkbox
                                             id="indexCheckbox"
                                             checked={shouldIndex}
@@ -242,7 +242,7 @@ const SelectProjectDirectoryModal = ({
                                                 ? 'Index found. Use existing index'
                                                 : 'Index this codebase (Recommended for better assistance)'}
                                         </label>
-                                    </div>
+                                    </div> */}
                                     <IndexManagementModal
                                         isOpen={isIndexManagementModalOpen}
                                         setOpen={setIsIndexManagementModalOpen}

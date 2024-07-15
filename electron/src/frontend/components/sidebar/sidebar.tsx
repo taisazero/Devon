@@ -102,7 +102,7 @@ export default function Sidebar() {
                         : 'w-[0px]'
                 }`}
             >
-                <div className="p-4 h-full">
+                <div className="p-4 h-full overflow-auto">
                     {activeTabId === 'timeline' ? (
                         <TimelinePanel
                             expanded={expanded}

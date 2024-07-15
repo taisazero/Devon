@@ -521,20 +521,6 @@ const VersionControlSettingsCard = () => {
                                 Create a new branch when starting a new session
                             </label>
                         </div>
-                        <p className="mt-4 flex">
-                            Sync changes with{' '}
-                            <code className="bg-black px-[6px] py-[1px] rounded-md text-primary text-opacity-90 text-[0.9rem] mx-[4px]">
-                                main
-                            </code>{' '}
-                            branch?
-                        </p>
-                        <Button
-                            className="w-fit"
-                            onClick={handleMerge}
-                            disabled={!useGit}
-                        >
-                            Merge branch
-                        </Button>
                     </div>
                 </div>
             </CardContent>
