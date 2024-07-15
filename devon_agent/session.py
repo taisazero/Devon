@@ -8,7 +8,7 @@ import traceback
 from typing import Dict, List
 
 from devon_agent.agents.conversational_agent import ConversationalAgent
-from devon_agent.config import Config
+from devon_agent.config import Checkpoint, Config
 from devon_agent.data_models import _delete_session_util, _save_session_util
 from devon_agent.tool import ToolNotFoundException
 from devon_agent.tools import parse_command
@@ -23,7 +23,7 @@ from devon_agent.tools.filesearchtools import (FindFileTool, GetCwdTool,
 from devon_agent.tools.filetools import FileTreeDisplay, SearchFileTool
 from devon_agent.tools.lifecycle import NoOpTool
 from devon_agent.tools.shelltool import ShellTool
-from devon_agent.tools.usertools import AskUserTool
+from devon_agent.tools.usertools import AskUserTool, AskUserToolWithCommit
 from devon_agent.tools.utils import get_ignored_files, read_file
 from devon_agent.utils.telemetry import Posthog, SessionStartEvent
 from devon_agent.utils.utils import DotDict, Event
@@ -79,7 +79,7 @@ class Session:
         self.environments["local"].event_log = event_log
         self.environments["user"].event_log = event_log
 
-        self.environments["user"].register_tools({"ask_user": AskUserTool()})
+        self.environments["user"].register_tools({"ask_user": AskUserToolWithCommit()})
         if self.config.versioning_type == "git":
             self.versioning = GitVersioning(config.path, config)
 
@@ -215,7 +215,10 @@ class Session:
                 try:
                     commit_hash = self.versioning.commit_all_files("initial commit")
                     self.config.versioning_metadata["initial_commit"] = commit_hash
-                    self.config.versioning_metadata["commits"] = [commit_hash]
+                    # self.config.versioning_metadata["commits"] = [commit_hash]
+                    # print(commit_hash)
+                    # if commit_hash[0] == True:
+                    self.config.checkpoints.append(Checkpoint(commit_message="initial commit", commit_hash=commit_hash[1], agent_history=self.config.agent_configs[0].chat_history, event_id=len(self.event_log)))
                     break
                 except Exception as e:
                     self.logger.error(f"Error committing files: {e}")
@@ -301,12 +304,57 @@ class Session:
                             },
                         }
                     )
+
+            case "GitEvent":
+                if event["content"]["type"] == "revert":
+                    for i,checkpoint in enumerate(self.config.checkpoints):
+                        if checkpoint.commit_hash == event["content"]["commit_to_revert"]:
+                            # self.config.agent_configs[0].chat_history = checkpoint.agent_history
+
+                            # self.event_log = self.event_log[:checkpoint.event_id]
+                            # self.config.checkpoints = self.config.checkpoints[: i + 1]
+                            self.config.agent_configs[0].chat_history.append(                            (
+                {"role": "user", "content": "The user rolled back code to this commit: " + checkpoint.commit_message, "agent": self.name}
+            ))
+
+                            self.pause()
+                            break
+
+                    if self.config.versioning_type == "git":
+                        self.versioning.revert_to_commit(event["content"]["commit_to_revert"])
+
+                if event["content"]["type"] == "commitRequest":
+                    commit_message = event["content"]["message"]
+                    print("COMMIT MESSAGE: ", commit_message)
+                    if self.config.versioning_type == "git":
+                        success, message = self.versioning.commit_all_files(commit_message)
+                        if not success:
+                            self.config.checkpoints.append(Checkpoint(commit_message=commit_message, 
+                                                                      commit_hash="no_commit", 
+                                                                      agent_history=self.config.agent_configs[0].chat_history, 
+                                                                      event_id=len(self.event_log)))
+                            self.logger.error(f"Error committing files: {message}")
+                        else:
+                            self.config.checkpoints.append(Checkpoint(commit_message=commit_message, 
+                                                                      commit_hash=message, 
+                                                                      agent_history=self.config.agent_configs[0].chat_history, 
+                                                                      event_id=len(self.event_log)))
+                            new_events.append(
+                                {
+                                    "type": "GitEvent",
+                                    "content": {"type": "commit", "message": commit_message,
+                                                "commit_hash": message},
+                                    "producer": "",
+                                    "consumer":"",
+                                }
+                            )
+
             case "GitMerge":
                 # self.versioning.checkout_branch(self.config.versioning_metadata["old_branch"])
                 # self.versioning.merge_branch(self.config.versioning_metadata["current_branch"])
                 # self.versioning.checkout_branch(self.config.versioning_metadata["current_branch"])
-                dest_commit = self.config.versioning_metadata["commits"][-1]
-                src_commit = self.config.versioning_metadata["commits"][0]
+                dest_commit = self.config.checkpoints[-1].commit_hash
+                src_commit = self.config.checkpoints[0].commit_hash
                 merge_patch = self.versioning.get_diff_patch(src_commit,dest_commit)
                 self.versioning.checkout_branch(self.config.versioning_metadata["old_branch"])
                 self.versioning.apply_patch(merge_patch)
@@ -327,25 +375,10 @@ class Session:
                             },
                             file,
                         )
-                thought, action, output, commit_message = self.agent.predict(
+                thought, action, output = self.agent.predict(
                     self.get_last_task(), event["content"], self
                 )
-                if commit_message:
-                    print("COMMIT MESSAGE: ", commit_message)
-                    if self.config.versioning_type == "git":
-                        success, message = self.versioning.commit_all_files(commit_message)
-                        if not success:
-                            self.logger.error(f"Error committing files: {message}")
-                        else:
-                            self.config.versioning_metadata["commits"].append(commit_message)
-                            self.event_log.append(
-                                {
-                                    "type": "GitEvent",
-                                    "content": {"type": "commit", "message": commit_message},
-                                    "producer": self.agent.name,
-                                    "consumer": event["producer"],
-                                }
-                            )
+
                 if action == "hallucination":
                     new_events.append(
                         {
@@ -420,6 +453,7 @@ class Session:
                                     "environment": env,
                                     "config": self.config,
                                     "state": self.state,
+                                    "event_log": self.event_log,
                                     "raw_command": raw_command,
                                 },
                                 *args,

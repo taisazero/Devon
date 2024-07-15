@@ -260,6 +260,7 @@ def create_session(
             versioning_type=config["versioning_type"] if "versioning_type" in config else "none",
             environments={"local": local_environment, "user": user_environment},
             default_environment="local",
+            checkpoints=[],
             agent_configs=[
                 AgentConfig(
                     agent_name="Devon",

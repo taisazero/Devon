@@ -16,6 +16,12 @@ class AgentConfig(BaseModel):
     temperature: float = 0.0
     chat_history: List[dict] = []
 
+class Checkpoint(BaseModel):
+    commit_hash: str
+    commit_message: str
+    agent_history: List[dict]
+    event_id: int
+
 class Config(BaseModel):
     name: str
     logger_name: str
@@ -29,6 +35,9 @@ class Config(BaseModel):
     task: Optional[str] = None
     versioning_type: Optional[Literal["git", "fossil","none"]] = None
     versioning_metadata: Optional[Dict] = Field(default_factory=dict)
+
+    checkpoints: List[Checkpoint]
+
     persist_to_db: bool = True
     ignore_files: Optional[bool]
     exclude_files: Optional[List[str]] = Field(default_factory=list)

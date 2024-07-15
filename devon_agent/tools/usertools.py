@@ -1,3 +1,4 @@
+from devon_agent.config import Checkpoint
 from devon_agent.tool import Tool, ToolContext
 
 
@@ -50,6 +51,70 @@ class AskUserTool(Tool):
         example: `ask_user "What would you like me to do?"`
         """
         return context["environment"].execute(input=question)
+
+
+
+class AskUserToolWithCommit(Tool):
+    @property
+    def name(self):
+        return "AskUserTool"
+
+    @property
+    def supported_formats(self):
+        return ["docstring", "manpage"]
+
+    def setup(self, context: ToolContext):
+        pass
+
+    def cleanup(self, context: ToolContext):
+        pass
+
+    def documentation(self, format="docstring"):
+        match format:
+            case "docstring":
+                return self.function.__doc__
+            case "manpage":
+                return """
+                NAME
+                    ask_user - ask the user for their input and provide commit message for changes
+
+                SYNOPSIS
+                    ask_user "Some question here" "Some commit message here"
+
+                DESCRIPTION
+                    The ask_user command asks the user for their input
+
+                RETURN VALUE
+                    The ask_user command returns a string indicating the user's input.
+
+                EXAMPLES
+                    To ask the user for their input, run the following command:
+
+                        ask_user "What would you like me to do?" "Added a new feature"
+                """
+            case _:
+                raise ValueError(f"Invalid format: {format}")
+
+    def function(self, context: ToolContext, question: str, commit_message: str, **kwargs):
+        """
+        command_name: ask_user
+        description: The ask_user command asks the user for their input and provide a commit message for changes
+        signature: ask_user "Some question here" "Some commit message here"
+        example: `ask_user "What would you like me to do?" "Added a new feature"`
+        """
+        if commit_message:
+            print("COMMIT MESSAGE: ", commit_message)
+            context["event_log"].append(
+                {
+                    "type": "GitEvent",
+                    "content": {"type": "commitRequest", "message": commit_message},
+                    "producer": "",
+                    "consumer": "",
+                }
+            )
+        return context["environment"].execute(input=question)
+
+
 
 
 class SetTaskTool(Tool):

@@ -32,20 +32,14 @@ def parse_response(response):
         scratchpad = None
         if "<scratchpad>" in response:
             scratchpad = response.split("<scratchpad>")[1].split("</scratchpad>")[0]
-        commit_message = None
-        if "<COMMIT_MESSAGE>" in response:
-            commit_message = response.split("<COMMIT_MESSAGE>")[1].split("</COMMIT_MESSAGE>")[0]
     else:
         thought = response.split("<THOUGHT>")[1].split("</THOUGHT>")[0]
         action = response.split("<COMMAND>")[1].split("</COMMAND>")[0]
         scratchpad = None
         if "<SCRATCHPAD>" in response:
             scratchpad = response.split("<SCRATCHPAD>")[1].split("</SCRATCHPAD>")[0]
-        commit_message = None
-        if "<COMMIT_MESSAGE>" in response:
-            commit_message = response.split("<COMMIT_MESSAGE>")[1].split("</COMMIT_MESSAGE>")[0]
 
-    return thought, action, scratchpad, commit_message
+    return thought, action, scratchpad
 
 class ConversationalAgent(Agent):
     scratchpad: str = None
@@ -174,7 +168,7 @@ class ConversationalAgent(Agent):
         task: str,
         observation: str,
         session: "Session",
-    ) -> Tuple[str, str, str, str]:
+    ) -> Tuple[str, str, str]:
         self.current_model = self._initialize_model()
 
         if self.interrupt:
@@ -218,7 +212,7 @@ class ConversationalAgent(Agent):
                             "consumer": "none",
                         }
                     )
-                    return "error", "error", "error", "error"
+                    return "error", "error", "error"
                 except Exception as e:
                     session.event_log.append(
                         {
@@ -228,21 +222,15 @@ class ConversationalAgent(Agent):
                             "consumer": "none",
                         }
                     )
-                    return "error", "error", "error", "error"
+                    return "error", "error", "error"
                  
-                
-
-                
-
             thought = None
             action = None
 
             try:
-                thought, action, scratchpad, commit_message = parse_response(output)
+                thought, action, scratchpad = parse_response(output)
                 if scratchpad:
                     self.scratchpad = scratchpad
-                if commit_message:
-                    print("COMMIT MESSAGE: ", commit_message)
             except Exception:
                 raise Hallucination(f"Multiple actions found in response: {output}")
 
@@ -273,14 +261,13 @@ OBSERVATION: {observation}
 
 SCRATCHPAD: {scratchpad}
 
-COMMIT MESSAGE: {commit_message}
 \n\n****************\n\n\n\n""")
 
-            return thought, action, output, commit_message
+            return thought, action, output
         except KeyboardInterrupt:
             raise
         except Hallucination:
-            return "hallucination", "hallucination", "Incorrect response format",""
+            return "hallucination", "hallucination", "Incorrect response format"
         except RuntimeError as e:
             session.event_log.append(
                 {
@@ -294,8 +281,7 @@ COMMIT MESSAGE: {commit_message}
             return (
                 f"Exit due to runtime error: {e}",
                 "exit_error",
-                f"exit due to runtime error: {e}",
-                ""
+                f"exit due to runtime error: {e}"
             )
         except RetryError as e:
             session.event_log.append(
@@ -310,8 +296,7 @@ COMMIT MESSAGE: {commit_message}
             return (
                 f"Exit due to retry error: {e}",
                 "exit_api",
-                f"exit due to retry error: {e}",
-                ""
+                f"exit due to retry error: {e}"
             )
         except Exception as e:
             session.event_log.append(
@@ -328,5 +313,4 @@ COMMIT MESSAGE: {commit_message}
                 f"Exit due to exception: {e}",
                 "exit_error",
                 f"exit due to exception: {e}",
-                ""
             )

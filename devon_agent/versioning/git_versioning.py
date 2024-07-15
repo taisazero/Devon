@@ -62,6 +62,8 @@ class GitVersioning:
             return True, "none"
         res =subprocess.run(["git", "add", "."], cwd=self.project_path)
         if res.returncode != 0:
+            print("git add failed")
+            # print(res.stdout if res.stdout else "" + res.stderr if res.stderr else "")
             return False, res.stdout if res.stdout else "" + res.stderr if res.stderr else ""
         res = subprocess.run(
             ["git", "commit", "-m", message], cwd=self.project_path
@@ -70,8 +72,10 @@ class GitVersioning:
         # return  commit hash
 
         if res.returncode != 0:
+            print("git commit failed")
             # if "nothing to commit, working tree clean" in res.stderr:
             #     return True, "nothing to commit, working tree clean"
+            # print(res.stdout if res.stdout else "" + res.stderr if res.stderr else "")
             return False,  res.stdout if res.stdout else "" + res.stderr if res.stderr else ""
         
         res = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.project_path, capture_output=True, text=True, check=True)
