@@ -417,6 +417,22 @@ def get_session_state(session: str):
     state["path"] = session_obj.base_path
     return state
 
+@app.get("/sessions/{session}/config")
+def get_session_config(session: str):
+    if session not in sessions:
+        raise fastapi.HTTPException(status_code=404, detail="Session not found")
+    
+    session_obj = sessions.get(session)
+    if not session_obj:
+        raise fastapi.HTTPException(status_code=404, detail="Session not found")
+    
+    # Extract relevant config details
+    config = {
+        "model": session_obj.config.agent_configs[0].model,
+        "versioning_type": session_obj.config.versioning_type,
+        "checkpoints": session_obj.config.checkpoints,
+    }
+    return config
 
 @app.post("/sessions/{session}/response")
 def create_response(session: str, response: str):

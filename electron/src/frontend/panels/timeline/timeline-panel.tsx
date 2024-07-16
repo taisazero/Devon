@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, RefObject, MutableRefObject } from 'react'
+import axios from 'axios'
 import { SessionMachineContext } from '@/contexts/session-machine-context'
 import {
     Tooltip,
@@ -13,6 +14,7 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover'
 import { History, Undo, Undo2 } from 'lucide-react'
+import { AgentConfig } from '@/lib/types'
 
 type SubStepType = {
     hash: string
@@ -116,11 +118,24 @@ const TimelinePanel = ({
     const commits = SessionMachineContext.useSelector(
         state => state.context.serverEventContext.gitData.commits
     )
-    const agentConfig = SessionMachineContext.useSelector(state => state.context.agentConfig)
-    // Using this to reload the component, might not be necessary
-    const sessionReload = SessionMachineContext.useSelector(state => state.context?.sessionState?.path)
-    
-    console.log('Versioning type:', agentConfig?.versioning_type)
+    const host = SessionMachineContext.useSelector(state => state.context.host)
+    const name = SessionMachineContext.useSelector(state => state.context.name)
+    const [config, setConfig] = useState<AgentConfig | null>(null)
+    const getSessionConfig = async () => {
+        try {
+            const response = await axios.get(`${host}/sessions/${name}/config`)
+            console.log('Session config:', response.data)
+            return response.data
+        } catch (error) {
+            console.error('Error fetching session config:', error)
+            throw error
+        }
+    }
+
+    useEffect(() => {
+        getSessionConfig().then(res => setConfig(res))
+    }, [expanded])
+    // console.log('Versioning type:', agentConfig?.versioning_type)
 
     // const hasCommits = true
     // const steps: StepType[] = exampleSteps
@@ -201,7 +216,9 @@ const TimelinePanel = ({
                 ) : (
                     <div className="flex">
                         <p className="whitespace-nowrap text-center text-md text-gray-400">
-                            {agentConfig?.versioning_type === 'git' ? `Devon hasn't made any commits yet` : 'Git is disabled for this project'}
+                            {config?.versioning_type === 'git'
+                                ? `Devon hasn't made any commits yet`
+                                : 'Git is disabled for this project'}
                         </p>
                     </div>
                 )}

@@ -30,3 +30,10 @@ export type Message = {
         | 'shellResponse'
         | 'rateLimit'
 }
+
+// Make sure this is up-to-date with server.py @app.get("/sessions/{session}/config")
+export type AgentConfig = {
+    model: string
+    versioning_type: string
+    checkpoints: any[]
+}

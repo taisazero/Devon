@@ -13,7 +13,7 @@ import {
 import { CircleHelp, Settings, Info } from 'lucide-react'
 import SafeStoragePopoverContent from '@/components/modals/safe-storage-popover-content'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Model } from '@/lib/types'
+import { Model, AgentConfig } from '@/lib/types'
 import { models } from '@/lib/config'
 import {
     Dialog,
@@ -28,6 +28,7 @@ import { SessionMachineContext } from '@/contexts/session-machine-context'
 import FolderPicker from '@/components/ui/folder-picker'
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden'
 import { getGitSettings } from '@/lib/app-settings'
+import axios from 'axios'
 
 type ExtendedComboboxItem = Model & ComboboxItem & { company: string }
 
@@ -464,8 +465,7 @@ const GeneralSettingsCard = ({
 const VersionControlSettingsCard = () => {
     const [useGit, setUseGit] = useState<CheckedState>(true)
     const [createNewBranch, setCreateNewBranch] = useState<CheckedState>(true)
-    const [showChangesApplyInfoText, setShowChangesApplyInfoText] =
-        useState(false)
+    const [config, setConfig] = useState<AgentConfig | null>(null)
     const { toast } = useToast()
 
     useEffect(() => {
@@ -501,7 +501,6 @@ const VersionControlSettingsCard = () => {
     }
 
     async function handleUseGitChange(checked: boolean) {
-        setShowChangesApplyInfoText(true)
         setUseGit(checked)
         const data = {
             setting: 'git',
@@ -512,7 +511,6 @@ const VersionControlSettingsCard = () => {
     }
 
     async function handleCreateNewBranch(checked: boolean) {
-        setShowChangesApplyInfoText(true)
         setCreateNewBranch(checked)
         const data = {
             setting: 'git',
@@ -521,6 +519,23 @@ const VersionControlSettingsCard = () => {
         }
         const response = await window.api.invoke('set-user-setting', data)
     }
+
+    const host = SessionMachineContext.useSelector(state => state.context.host)
+    const name = SessionMachineContext.useSelector(state => state.context.name)
+
+    const getSessionConfig = async () => {
+        try {
+            const response = await axios.get(`${host}/sessions/${name}/config`)
+            return response.data
+        } catch (error) {
+            console.error('Error fetching session config:', error)
+            throw error
+        }
+    }
+
+    useEffect(() => {
+        getSessionConfig().then(res => setConfig(res))
+    }, [])
 
     return (
         <Card className="bg-midnight">
@@ -578,7 +593,8 @@ const VersionControlSettingsCard = () => {
                             </label>
                         </div>
                     </div>
-                    {showChangesApplyInfoText && (
+                    {((useGit && config?.versioning_type !== 'git') ||
+                        (!useGit && config?.versioning_type === 'git')) && (
                         <span className="text-sm text-green-500 mt-2 flex gap-1 items-center">
                             <Info className="w-4 h-4" />
                             Note: Changes will apply once a new session is
