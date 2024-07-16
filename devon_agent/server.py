@@ -432,6 +432,7 @@ def get_session_config(session: str):
         "model": session_obj.config.agent_configs[0].model,
         "versioning_type": session_obj.config.versioning_type,
         "checkpoints": session_obj.config.checkpoints,
+        "versioning_metadata": session_obj.config.versioning_metadata,
     }
     return config
 

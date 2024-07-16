@@ -35,5 +35,19 @@ export type Message = {
 export type AgentConfig = {
     model: string
     versioning_type: string
-    checkpoints: any[]
+    checkpoints: Checkpoint[]
+    versioning_metadata: VersioningMetadata
+}
+
+type Checkpoint = {
+    commit_hash: string
+    commit_message: string
+    agent_history: any[]
+    event_id: number
+}
+
+type VersioningMetadata = {
+    current_branch: string
+    old_branch: string
+    initial_commit: string
 }

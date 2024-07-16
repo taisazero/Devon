@@ -13,7 +13,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover'
-import { History, Undo, Undo2 } from 'lucide-react'
+import { History, Undo, Undo2, GitBranch } from 'lucide-react'
 import { AgentConfig } from '@/lib/types'
 
 type SubStepType = {
@@ -132,10 +132,16 @@ const TimelinePanel = ({
         }
     }
 
-    const commits = config?.checkpoints.filter(checkpoint => checkpoint.commit_hash !== "no_commit").map(checkpoint => ({
-            hash: checkpoint.commit_hash,
-            message: checkpoint.commit_message,
-        })) ?? []
+    const commits: {
+        hash: string
+        message: string
+    }[] =
+        config?.checkpoints
+            .filter(checkpoint => checkpoint.commit_hash !== 'no_commit')
+            .map(checkpoint => ({
+                hash: checkpoint.commit_hash,
+                message: checkpoint.commit_message,
+            })) ?? []
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -197,13 +203,41 @@ const TimelinePanel = ({
     return (
         <div className="flex flex-col justify-between h-full">
             <div className="relative">
-                <h2
-                    className={`text-lg font-semibold overflow-hidden transition-all duration-300 ease-in-out ${
-                        expanded || !hasCommits ? 'h-6 mb-4' : 'h-0 mb-0'
+                <div
+                    className={`flex justify-between ${
+                        expanded || !hasCommits
+                            ? 'mb-5 gap-1'
+                            : 'h-0 mb-0 overflow-hidden'
                     }`}
                 >
-                    Devon's Timeline
-                </h2>
+                    <h2
+                        className={`text-lg font-semibold overflow-hidden transition-all duration-300 ease-in-out`}
+                    >
+                        Devon's Timeline
+                    </h2>
+                    {config?.versioning_type === 'git' && (
+                        <TooltipProvider delayDuration={100}>
+                            <Tooltip>
+                                <TooltipTrigger>
+                                    <div className="flex items-center">
+                                        <code className="flex gap-2 bg-black px-[6px] py-[1px] rounded-md text-primary text-opacity-100 text-[0.9rem]">
+                                            <GitBranch
+                                                size={16}
+                                                className="text-primary"
+                                            />
+                                            {config?.versioning_metadata
+                                                ?.old_branch ??
+                                                '(name not found)'}
+                                        </code>
+                                    </div>
+                                </TooltipTrigger>
+                                <TooltipContent side="right" align="end">
+                                    <p>Source branch</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    )}
+                </div>
                 {hasCommits ? (
                     steps.map((step, index) => (
                         <Step
@@ -237,15 +271,12 @@ const TimelinePanel = ({
                     <p className="mt-4 flex whitespace-nowrap">
                         Sync changes with{' '}
                         <code className="bg-black px-[6px] py-[1px] rounded-md text-primary text-opacity-100 text-[0.9rem] mx-[4px]">
-                            main
+                            {config?.versioning_metadata?.old_branch ??
+                                '(name not found)'}
                         </code>{' '}
                         branch?
                     </p>
-                    <Button
-                        className="w-fit"
-                        onClick={handleGitMerge}
-                        // disabled={!useGit}
-                    >
+                    <Button className="w-fit" onClick={handleGitMerge}>
                         Merge branch
                     </Button>
                 </div>
