@@ -1,6 +1,14 @@
+import time
+from typing import Dict, List
 from devon_agent.config import Checkpoint
 from devon_agent.tool import Tool, ToolContext
 
+
+def waitForEvent(event_log: List[Dict], event):
+    while True:
+        if event_log[-1] == event:
+            return event_log[-1]
+        time.sleep(1)
 
 class AskUserTool(Tool):
     @property
@@ -101,17 +109,7 @@ class AskUserToolWithCommit(Tool):
         description: The ask_user command asks the user for their input and provide a commit message for changes
         signature: ask_user "Some question here" "Some commit message here"
         example: `ask_user "What would you like me to do?" "Added a new feature"`
-        """
-        if commit_message:
-            print("COMMIT MESSAGE: ", commit_message)
-            context["event_log"].append(
-                {
-                    "type": "GitEvent",
-                    "content": {"type": "commitRequest", "message": commit_message},
-                    "producer": "",
-                    "consumer": "",
-                }
-            )
+        """            
         return context["environment"].execute(input=question)
 
 

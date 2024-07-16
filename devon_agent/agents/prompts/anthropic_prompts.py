@@ -51,7 +51,7 @@ def anthropic_history_to_bash_history(history):
 </COMMAND>
 </YOU>
 """
-    print(bash_history)
+    # print(bash_history)
     return bash_history
 
 

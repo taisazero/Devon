@@ -998,8 +998,10 @@ export const newSessionMachine = setup({
                     name,
                     hash: event.params.hash,
                 }),
-            },
-            target: 'paused',
+                onDone: {
+                    target: 'paused',
+                },
+            }
         },
         stopped: {
             type: 'final',

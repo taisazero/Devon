@@ -70,6 +70,7 @@ def get_user_input(session: str):
     if session not in session_buffers:
         while True:
             if session not in session_buffers:
+                print("blocking")
                 sleep(0.1)
                 continue
             else:
@@ -455,6 +456,7 @@ def create_event(session: str, event: ServerEvent):
     if session not in sessions:
         raise fastapi.HTTPException(status_code=404, detail="Session not found")
     print(event)
+    # session_buffers[session] = "ignore"
     sessions[session].event_log.append(event.model_dump())
     return event
 

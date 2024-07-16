@@ -185,9 +185,9 @@ const spawnAppWindow = async () => {
             )
 
             serverProcess.stdout?.on('data', (data: string) => {
-                const message = data
+                // const message = data
                 console.log(data.toString())
-                serverLogger.info(message)
+                // serverLogger.info(message)
                 // if (message.startsWith('INFO:')) {
                 // serverLogger.info(message.substring(5).trim())
                 // }

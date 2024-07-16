@@ -44,6 +44,9 @@ export default function Landing({
     }, [checkHasEncryptedData])
 
     const sessionActorref = SessionMachineContext.useActorRef()
+    sessionActorref.subscribe(state => {
+        console.log("STATE", state.value)
+    })
     const state = SessionMachineContext.useSelector(
         state => state,
         (a, b) => a.value === b.value

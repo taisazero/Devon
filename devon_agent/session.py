@@ -181,22 +181,20 @@ class Session:
 
     def run_event_loop(self):
         if self.config.versioning_type == "git":
-            print("hello world")
             self.versioning.initialize_git()
             if not self.config.versioning_metadata:
                 self.config.versioning_metadata = {}
             if "old_branch" not in self.config.versioning_metadata:
-                print("old branch not in metadata")
                 self.config.versioning_metadata["old_branch"] = {}
-                self.config.versioning_metadata["old_branch"] = self.versioning.get_branch()
-
+                self.config.versioning_metadata["old_branch"] = self.versioning.get_branch()[1]
+                self.logger.info("OLD BRANCH: " + str(self.config.versioning_metadata["old_branch"]))
                 if self.config.versioning_metadata["old_branch"].strip() == "devon_agent":
                     while True:
                         try:
-                            if self.versioning.get_branch() == "devon_agent":
+                            if self.versioning.get_branch()[1] == "devon_agent":
                                 raise Exception("On invalid branch 'devon_agent', this happens if previous session didnt clean up properly. To solve this, git checkout <yourbranch> && git branch -D devon_agent")
                             else:
-                                self.config.versioning_metadata["old_branch"] = self.versioning.get_branch()
+                                self.config.versioning_metadata["old_branch"] = self.versioning.get_branch()[1]
                                 break
                         except Exception as e:
                             self.logger.error(f"Error creating branch: {e}")
@@ -212,14 +210,16 @@ class Session:
                                 break
 
             print("OLD BRANCH: ", self.config.versioning_metadata["old_branch"])
-            print("NEW BRANCH: ", self.versioning.get_branch_name())
+            print("NEW BRANCH: ", self.versioning.get_branch_name()[1])
             # THIS PART IS STILL VERY JANKY. NEED A BETTER WAY TO HANDLE BLOCKING.
             if self.config.versioning_metadata["old_branch"] !=self.versioning.get_branch_name():
                 while True:
                     try:
                         # TODO: deal with situation where session is being loaded.
-                        self.versioning.create_if_not_exists_and_checkout_branch(self.versioning.get_branch_name())
-                        self.config.versioning_metadata["current_branch"] = self.versioning.get_branch_name()
+                        result = self.versioning.create_if_not_exists_and_checkout_branch(self.versioning.get_branch_name()[1])
+                        if result[0] != 0:
+                            raise Exception(result[1])
+                        self.config.versioning_metadata["current_branch"] = self.versioning.get_branch_name()[1]
                         break
                     except Exception as e:
                         self.logger.error(f"Error creating branch: {e}")
@@ -258,7 +258,7 @@ class Session:
 
 
         while True and not (self.event_id == len(self.event_log)):
-            print("EVENT ID: ", self.event_id, self.status)
+            self.logger.info("EVENT ID: %s, STATUS: %s", self.event_id, self.status)
             if self.status == "terminating":
                 break
 
@@ -291,16 +291,16 @@ class Session:
 
             events = self.step_event(event)
             self.event_log.extend(events)
-
+            print("done")
             self.event_id += 1
-
+        print("its over")
         self.status = "terminated"
         if self.config.versioning_type == "git":
             self.versioning.checkout_branch(self.config.versioning_metadata["old_branch"])
 
     def step_event(self, event):
         new_events = []
-        # print("event", event)
+        self.logger.info("event " + str(event))
         match event["type"]:
             case "Error":
                 new_events.append(
@@ -331,6 +331,7 @@ class Session:
             case "GitEvent":
                 if event["content"]["type"] == "revert":
                     print("REVERTING")
+                    checkpoint_id = 0 
                     for i,checkpoint in enumerate(self.config.checkpoints):
                         if checkpoint.commit_hash == event["content"]["commit_to_revert"]:
                             # self.config.agent_configs[0].chat_history = checkpoint.agent_history
@@ -339,25 +340,34 @@ class Session:
                             # self.config.checkpoints = self.config.checkpoints[: i + 1]
                             self.config.agent_configs[0].chat_history.append(                            (
                 {"role": "user", "content": "The user rolled back code to this commit: " + checkpoint.commit_message, "agent": self.name}
-            ))
-
-                            self.pause()
+                ))
+                            # message = "The user rolled back code to this commit: " + checkpoint.commit_message
+                            checkpoint_id = i
+                            # self.pause()
+                            if self.config.versioning_type == "git":
+                                res = self.versioning.revert_to_commit(event["content"]["commit_to_revert"])
+                                print(res)
+                            # new_events.append({
+                            #     "type" : "ModelRequest",
+                            #     "content" : message,
+                            #     "producer" : "system",
+                            #     "consumer" : "devon"
+                            # })
+                            print("REVERTED")
                             break
-
-                    if self.config.versioning_type == "git":
-                        self.versioning.revert_to_commit(event["content"]["commit_to_revert"])
-
+                    self.config.checkpoints = self.config.checkpoints[:checkpoint_id+1]
                 if event["content"]["type"] == "commitRequest":
                     commit_message = event["content"]["message"]
                     print("COMMIT MESSAGE: ", commit_message)
                     if self.config.versioning_type == "git":
                         success, message = self.versioning.commit_all_files(commit_message)
-                        if not success:
+                        if not (success == 0):
                             self.config.checkpoints.append(Checkpoint(commit_message=commit_message, 
                                                                       commit_hash="no_commit", 
                                                                       agent_history=self.config.agent_configs[0].chat_history, 
                                                                       event_id=len(self.event_log)))
                             self.logger.error(f"Error committing files: {message}")
+                            self.logger.error("why blocking")
                         else:
                             self.config.checkpoints.append(Checkpoint(commit_message=commit_message, 
                                                                       commit_hash=message, 
@@ -462,6 +472,34 @@ class Session:
                             toolname = event["content"]["toolname"]
                             args = event["content"]["args"]
                             raw_command = event["content"]["raw_command"]
+
+                            if toolname == "ask_user" and len(args) == 2:
+                                commit_message = args[1]
+                                print("COMMIT MESSAGE: ", commit_message)
+                                if self.config.versioning_type == "git":
+                                    success, message = self.versioning.commit_all_files(commit_message)
+                                    print("SUCCESS: ", success)
+                                    print("MESSAGE: ", message)
+                                    if not (success == 0):
+                                        self.config.checkpoints.append(Checkpoint(commit_message=commit_message, 
+                                                                                commit_hash="no_commit", 
+                                                                                agent_history=self.config.agent_configs[0].chat_history, 
+                                                                                event_id=len(self.event_log)))
+                                        self.logger.error(f"Error committing files: {message}")
+                                    else:
+                                        self.config.checkpoints.append(Checkpoint(commit_message=commit_message, 
+                                                                                commit_hash=message, 
+                                                                                agent_history=self.config.agent_configs[0].chat_history, 
+                                                                                event_id=len(self.event_log)))
+                                        new_events.append(
+                                            {
+                                                "type": "GitEvent",
+                                                "content": {"type": "commit", "message": commit_message,
+                                                            "commit_hash": message},
+                                                "producer": "",
+                                                "consumer":"",
+                                            }
+                                        )
 
                             env = None
 

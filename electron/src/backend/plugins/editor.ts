@@ -59,8 +59,13 @@ class EditorFileManager {
     }
 
     async addOpenFile(filename: string) {
-        const content = await fsPromise.readFile(filename, 'utf8')
-        this.openFiles.set(filename, { path: filename, content })
+        try {
+            const content = await fsPromise.readFile(filename, 'utf8')
+            this.openFiles.set(filename, { path: filename, content })
+        }
+        catch (err) {
+            // console.error(`Error reading file ${filename}:`, err)
+        }
     }
 
     handleEvent(changedFiles: FileEvent[]) {

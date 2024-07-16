@@ -140,7 +140,7 @@ const ChatInputField = ({
                 eventContext.modelLoading ||
                 eventContext.userRequest ||
                 sessionActorRef.getSnapshot().matches('paused') ||
-                sessionActorRef.getSnapshot().matches('running')) && (
+                sessionActorRef.getSnapshot().matches('running') || sessionActorRef.getSnapshot().matches('reverting')) && (
                 <InformationBox
                     modelLoading={eventContext.modelLoading}
                     userRequested={eventContext.userRequest}
