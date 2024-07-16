@@ -258,6 +258,7 @@ class Session:
 
 
         while True and not (self.event_id == len(self.event_log)):
+            print("EVENT ID: ", self.event_id, self.status)
             if self.status == "terminating":
                 break
 
@@ -329,10 +330,11 @@ class Session:
 
             case "GitEvent":
                 if event["content"]["type"] == "revert":
+                    print("REVERTING")
                     for i,checkpoint in enumerate(self.config.checkpoints):
                         if checkpoint.commit_hash == event["content"]["commit_to_revert"]:
                             # self.config.agent_configs[0].chat_history = checkpoint.agent_history
-
+                            print(checkpoint)
                             # self.event_log = self.event_log[:checkpoint.event_id]
                             # self.config.checkpoints = self.config.checkpoints[: i + 1]
                             self.config.agent_configs[0].chat_history.append(                            (

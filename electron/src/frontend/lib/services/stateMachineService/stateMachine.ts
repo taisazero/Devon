@@ -433,7 +433,7 @@ const revertSessionActor = fromPromise(
                         serverEventType: 'GitEvent',
                         content: {
                             type: 'revert',
-                            commit_hash: input.hash,
+                            commit_to_revert: input.hash,
                         },
                     },
                 },

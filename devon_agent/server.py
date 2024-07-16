@@ -454,6 +454,7 @@ class ServerEvent(BaseModel):
 def create_event(session: str, event: ServerEvent):
     if session not in sessions:
         raise fastapi.HTTPException(status_code=404, detail="Session not found")
+    print(event)
     sessions[session].event_log.append(event.model_dump())
     return event
 

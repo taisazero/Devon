@@ -86,6 +86,7 @@ export default function Landing({
         state &&
         !state.matches({ setup: 'healthcheck' })
     ) {
+        console.log(state)
         setSmHealthCheckDone(true)
         if (state.context.healthcheckRetry >= 10) {
             alert(
