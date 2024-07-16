@@ -59,8 +59,14 @@ type ServerEventContext = {
     toolMessage: string
     userRequest: boolean
     gitData: {
-        base_commit: string | null
-        commits: string[]
+        base_commit: {
+            message: string
+            hash: string
+        } | null
+        commits: {
+            message: string
+            hash: string
+        }[]
     }
     gitError: string | null
 }
@@ -202,13 +208,16 @@ export const eventHandlingLogic = fromTransition(
                 }
             }
             case 'GitEvent': {
-                const commitMessage = event.content?.message?.trim()
+                const commit = {
+                    message: event.content?.message?.trim(),
+                    hash: event.content?.commit_hash,
+                }
                 if (event.content.type === 'base_commit') {
                     return {
                         ...state,
                         gitData: {
-                            base_commit: commitMessage,
-                            commits: [commitMessage],
+                            base_commit: commit,
+                            commits: [commit],
                         },
                     }
                 } else if (event.content.type === 'commit') {
@@ -216,14 +225,14 @@ export const eventHandlingLogic = fromTransition(
                         ...state,
                         gitData: {
                             base_commit: state.gitData.base_commit,
-                            commits: [...state.gitData.commits, commitMessage],
+                            commits: [...state.gitData.commits, commit],
                         },
                     }
                 } else if (event.content.type === 'revert') {
                     return {
                         ...state,
                         gitData: {
-                            base_commit: commitMessage,
+                            base_commit: commit,
                             commits: state.gitData.commits.slice(
                                 0,
                                 state.gitData.commits.indexOf(
@@ -410,7 +419,31 @@ const startSessionActor = fromPromise(
     }
 )
 
-type sendEventType = {
+const revertSessionActor = fromPromise(
+    async ({
+        input,
+    }: {
+        input: { host: string; name: string; hash: string }
+    }) => {
+        sendEvent({
+            input: {
+                ...input,
+                event: {
+                    type: 'GitEvent',
+                    params: {
+                        serverEventType: 'GitEvent',
+                        content: {
+                            type: 'revert',
+                            commit_hash: input.hash,
+                        },
+                    },
+                },
+            },
+        })
+    }
+)
+
+type SendEventType = {
     type: string
     params: {
         serverEventType: string
@@ -421,7 +454,7 @@ type sendEventType = {
 const sendEvent = async ({
     input,
 }: {
-    input: { host: string; name: string; event: sendEventType }
+    input: { host: string; name: string; event: SendEventType }
 }) => {
     const response = await axios.post(
         `${input.host}/sessions/${input.name}/event`,
@@ -551,6 +584,7 @@ export const newSessionMachine = setup({
                 return response
             }
         ),
+        revertSession: revertSessionActor,
     },
 }).createMachine({
     context: ({ input }: { input: any }) => ({
@@ -927,6 +961,9 @@ export const newSessionMachine = setup({
                     }),
                     reenter: true,
                 },
+                'session.revert': {
+                    target: 'reverting',
+                },
             },
         },
         paused: {
@@ -948,7 +985,22 @@ export const newSessionMachine = setup({
                 'session.delete': {
                     target: 'deleting',
                 },
+                'session.revert': {
+                    target: 'reverting',
+                },
             },
+        },
+        reverting: {
+            invoke: {
+                id: 'revertSession',
+                src: 'revertSession',
+                input: ({ context: { host, name }, event }) => ({
+                    host,
+                    name,
+                    hash: event.params.hash,
+                }),
+            },
+            target: 'paused',
         },
         stopped: {
             type: 'final',
@@ -963,7 +1015,7 @@ export const newSessionMachine = setup({
                         input: {
                             host: context.host,
                             name: context.name,
-                            event: event as sendEventType,
+                            event: event as SendEventType,
                         },
                     })
                 },

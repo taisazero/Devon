@@ -15,13 +15,13 @@ import {
 import { History, Undo, Undo2 } from 'lucide-react'
 
 type SubStepType = {
-    id: number
+    hash: string
     label: string
     subtitle?: string
 }
 
 type StepType = {
-    id: number
+    hash: string
     label: string
     subtitle?: string
     subSteps: SubStepType[]
@@ -31,65 +31,65 @@ const ANIMATE_DEMO = false
 
 const exampleSteps: StepType[] = [
     {
-        id: 1,
+        hash: '1',
         label: 'Initialize the project',
         subtitle: 'Setting up the initial project structure',
         subSteps: [
             {
-                id: 1.1,
+                hash: '1.1',
                 label: 'Install dependencies',
                 subtitle: 'Add necessary packages',
             },
             {
-                id: 1.2,
+                hash: '1.2',
                 label: 'Create project files',
                 subtitle: 'Setup basic file structure',
             },
             {
-                id: 1.3,
+                hash: '1.3',
                 label: 'Initialize the project',
                 subtitle: 'Setup the project configuration',
             },
         ],
     },
     {
-        id: 2,
+        hash: '2',
         label: 'Create the game loop',
         subtitle: 'Implement the main game loop',
         subSteps: [
             {
-                id: 2.1,
+                hash: '2.1',
                 label: 'Define game loop logic',
                 subtitle: 'Setup the game loop function',
             },
         ],
     },
     {
-        id: 3,
+        hash: '3',
         label: 'Add snake logic',
         subtitle: 'Implement the snake movement and controls',
         subSteps: [],
     },
     {
-        id: 4,
+        hash: '4',
         label: 'Implement the game board',
         subtitle: 'Design and code the game board layout',
         subSteps: [],
     },
     {
-        id: 5,
+        hash: '5',
         label: 'Add collision detection',
         subtitle: 'Implement logic to detect collisions',
         subSteps: [],
     },
     {
-        id: 6,
+        hash: '6',
         label: 'Add food and scoring',
         subtitle: 'Add food items and scoring mechanism',
         subSteps: [],
     },
     {
-        id: 7,
+        hash: '7',
         label: 'Finalize the game',
         subtitle: 'Finish up and test the game',
         subSteps: [],
@@ -112,6 +112,7 @@ const TimelinePanel = ({
     const [selectedRevertStep, setSelectedRevertStep] = useState<number | null>(
         null
     )
+    const sessionActorRef = SessionMachineContext.useActorRef()
     const commits = SessionMachineContext.useSelector(
         state => state.context.serverEventContext.gitData.commits
     )
@@ -124,7 +125,8 @@ const TimelinePanel = ({
     const steps: StepType[] = hasCommits
         ? commits.map((commit, index) => ({
               id: index,
-              label: commit,
+              label: commit.message,
+              hash: commit.hash,
               // subtitle: commit.author,
               subSteps: [],
           }))
@@ -167,7 +169,7 @@ const TimelinePanel = ({
                 {hasCommits ? (
                     steps.map((step, index) => (
                         <Step
-                            key={step.id}
+                            key={step.hash}
                             step={step}
                             index={index}
                             activeStep={activeStep}
@@ -179,6 +181,7 @@ const TimelinePanel = ({
                             setExpanded={setExpanded}
                             selectedRevertStep={selectedRevertStep}
                             setSelectedRevertStep={setSelectedRevertStep}
+                            sessionActorRef={sessionActorRef}
                         />
                     ))
                 ) : (
@@ -222,6 +225,7 @@ const Step: React.FC<{
     setExpanded: (value: boolean) => void
     selectedRevertStep: number | null
     setSelectedRevertStep: (value: number | null) => void
+    sessionActorRef: any
 }> = ({
     step,
     index,
@@ -234,6 +238,7 @@ const Step: React.FC<{
     setExpanded,
     selectedRevertStep,
     setSelectedRevertStep,
+    sessionActorRef,
 }) => {
     const isPulsing = selectedRevertStep !== null && index > selectedRevertStep
     const lineBeforeShouldPulse =
@@ -310,6 +315,14 @@ const Step: React.FC<{
         Q 12 ${connectorHeight / 2} ${CURVE_SVG_WIDTH} ${connectorHeight / 2}
     `
 
+    function handleRevertStep(step: StepType) {
+        console.log('r', step.hash)
+        sessionActorRef.send({
+            type: 'session.revert',
+            params: { hash: step.hash },
+        })
+    }
+
     const renderCircle = () => {
         const circle = (
             <div
@@ -375,7 +388,7 @@ const Step: React.FC<{
                             >
                                 {step.subSteps.map((subStep, subIndex) => (
                                     <SubStep
-                                        key={subStep.id}
+                                        key={subStep.hash}
                                         subStep={subStep}
                                         showLine={
                                             subIndex < step.subSteps.length - 1
@@ -392,7 +405,7 @@ const Step: React.FC<{
                     className="flex gap-2 items-center px-3 py-2 w-auto border-primary bg-night hover:bg-batman smooth-hover"
                 >
                     <Undo2 size={16} />
-                    <button onClick={() => console.log('handle revert')}>
+                    <button onClick={() => handleRevertStep(step)}>
                         Revert to this commit
                     </button>
                 </PopoverContent>
