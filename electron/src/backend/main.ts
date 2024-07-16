@@ -13,7 +13,6 @@ import { ChildProcess, spawn, spawnSync } from 'child_process'
 import portfinder from 'portfinder'
 import fs from 'fs'
 import './plugins/editor'
-import axios from 'axios'
 
 const DEV_MODE = process.env.DEV_MODE ?? false
 
@@ -320,11 +319,11 @@ app.on('ready', () => {
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
-app.on('window-all-closed',async () => {
+app.on('window-all-closed', async () => {
     mainLogger.info('All windows closed. Quitting application.')
     // if (process.platform !== 'darwin') {
-    serverProcess.kill("SIGINT")
-    mainLogger.info("Killing server process with pid:", serverProcess.pid)
+    serverProcess.kill('SIGINT')
+    mainLogger.info('Killing server process with pid:', serverProcess.pid)
     await new Promise(resolve => setTimeout(resolve, 2000))
     app.quit()
     // }
@@ -362,13 +361,13 @@ app.on('activate', () => {
 //     }
 // })
 
-app.on('before-quit',() => {
+app.on('before-quit', () => {
     if (!serverProcess || serverProcess.killed) {
         mainLogger.info('No server process found. Quitting application.')
         return
     }
 
-    mainLogger.info("Killing server process with pid:", serverProcess.pid)
+    mainLogger.info('Killing server process with pid:', serverProcess.pid)
     if (serverProcess.pid) {
         mainLogger.info('Killing server process with pid:', serverProcess.pid)
         process.kill(serverProcess.pid, 'SIGTERM')
@@ -533,5 +532,66 @@ ipcMain.handle('delete-encrypted-data', async () => {
             error
         )
         return { success: false, message: 'Failed to delete encrypted data.' }
+    }
+})
+
+const settings = require('electron-settings')
+settings.configure({
+    fileName: 'app-settings.json',
+    prettify: true,
+})
+
+ipcMain.handle('get-user-setting', async (event, key) => {
+    try {
+        const res = await settings.get(key)
+        // Handle convert string booleans back into literals
+        if (res === 'true') {
+            return { success: true, data: true }
+        }
+        if (res === 'false') {
+            return { success: true, data: false }
+        }
+        return { success: true, data: res }
+    } catch (error) {
+        mainLogger.error(
+            '(IPC Event get-user-setting) Failed to get user settings:',
+            error
+        )
+        return { success: false, message: 'Failed to get user settings' }
+    }
+})
+
+ipcMain.handle('set-user-setting', async (event, setting) => {
+    try {
+        // Get existing settings and add to new
+        const res = await settings.get(setting.setting)
+        const existing = res ?? {}
+        await settings.set(setting.setting, {
+            ...existing,
+            [setting.key]: setting.value.toString(),
+        })
+        return { success: true }
+    } catch (error) {
+        mainLogger.error(
+            '(IPC Event set-user-setting) Failed to set user settings:',
+            error
+        )
+        return { success: false, message: 'Failed to set user settings' }
+    }
+})
+
+ipcMain.handle('has-user-setting', async (event, key) => {
+    try {
+        const res = await settings.get(key)
+        return { success: true, data: res }
+    } catch (error) {
+        mainLogger.error(
+            '(IPC Event has-user-setting) Failed to check if user settings exist:',
+            error
+        )
+        return {
+            success: false,
+            message: 'Failed to check if user settings exist',
+        }
     }
 })
