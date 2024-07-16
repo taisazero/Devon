@@ -211,7 +211,7 @@ const TimelinePanel = ({
                     } transition-all duration-300 ease-in-out`}
                 >
                     <h2
-                        className={`text-lg font-semibold overflow-hidden transition-all duration-300 ease-in-out`}
+                        className={`text-lg font-semibold overflow-hidden`}
                     >
                         Devon's Timeline
                     </h2>
