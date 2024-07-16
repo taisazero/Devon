@@ -206,9 +206,9 @@ const TimelinePanel = ({
                 <div
                     className={`flex justify-between ${
                         expanded || !hasCommits
-                            ? 'mb-5 gap-1'
+                            ? 'h-6 mb-5 gap-1'
                             : 'h-0 mb-0 overflow-hidden'
-                    }`}
+                    } transition-all duration-300 ease-in-out`}
                 >
                     <h2
                         className={`text-lg font-semibold overflow-hidden transition-all duration-300 ease-in-out`}
