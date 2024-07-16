@@ -185,7 +185,7 @@ const TimelinePanel = ({
                         />
                     ))
                 ) : (
-                    <div className="inset-0 flex">
+                    <div className="flex">
                         <p className="whitespace-nowrap text-center text-md text-gray-400">
                             Devon hasn't made any commits yet
                         </p>
@@ -193,8 +193,8 @@ const TimelinePanel = ({
                 )}
             </div>
             {expanded && hasCommits && (
-                <div className="flex flex-col gap-4 items-center pb-6">
-                    <p className="mt-4 flex">
+                <div className="flex flex-col gap-4 items-center pb-2 border-t border-outlinecolor">
+                    <p className="mt-4 flex whitespace-nowrap">
                         Sync changes with{' '}
                         <code className="bg-black px-[6px] py-[1px] rounded-md text-primary text-opacity-100 text-[0.9rem] mx-[4px]">
                             main
@@ -374,7 +374,13 @@ const Step: React.FC<{
                         className={`flex flex-col hover:opacity-90 hover:cursor-pointer`}
                     >
                         <div ref={contentRef} className="flex flex-col">
-                            <span className="text-white">{step.label}</span>
+                            <span
+                                className={`text-white min-h-10 ${
+                                    expanded ? 'line-clamp-2' : ''
+                                }`}
+                            >
+                                {expanded && step.label}
+                            </span>
                             <span className="mt-1 text-gray-400 whitespace-nowrap">
                                 {step.subtitle}
                             </span>
@@ -403,9 +409,10 @@ const Step: React.FC<{
                 <PopoverContent
                     side="right"
                     className="flex gap-2 items-center px-3 py-2 w-auto border-primary bg-night hover:bg-batman smooth-hover"
+                    asChild
                 >
-                    <Undo2 size={16} />
                     <button onClick={() => handleRevertStep(step)}>
+                        <Undo2 size={16} />
                         Revert to this commit
                     </button>
                 </PopoverContent>
