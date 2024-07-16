@@ -116,6 +116,11 @@ const TimelinePanel = ({
     const commits = SessionMachineContext.useSelector(
         state => state.context.serverEventContext.gitData.commits
     )
+    const agentConfig = SessionMachineContext.useSelector(state => state.context.agentConfig)
+    // Using this to reload the component, might not be necessary
+    const sessionReload = SessionMachineContext.useSelector(state => state.context?.sessionState?.path)
+    
+    console.log('Versioning type:', agentConfig?.versioning_type)
 
     // const hasCommits = true
     // const steps: StepType[] = exampleSteps
@@ -156,6 +161,15 @@ const TimelinePanel = ({
         }
     }, [activeStep, subStepFinished, steps.length])
 
+    function handleGitMerge() {
+        sessionActorRef.send({
+            type: 'session.sendEvent',
+            params: {
+                serverEventType: 'GitMerge',
+            },
+        })
+    }
+
     return (
         <div className="flex flex-col justify-between h-full">
             <div className="relative">
@@ -187,7 +201,7 @@ const TimelinePanel = ({
                 ) : (
                     <div className="flex">
                         <p className="whitespace-nowrap text-center text-md text-gray-400">
-                            Devon hasn't made any commits yet
+                            {agentConfig?.versioning_type === 'git' ? `Devon hasn't made any commits yet` : 'Git is disabled for this project'}
                         </p>
                     </div>
                 )}
@@ -203,7 +217,8 @@ const TimelinePanel = ({
                     </p>
                     <Button
                         className="w-fit"
-                        // onClick={handleMerge} disabled={!useGit}
+                        onClick={handleGitMerge}
+                        // disabled={!useGit}
                     >
                         Merge branch
                     </Button>
@@ -408,7 +423,7 @@ const Step: React.FC<{
                 </PopoverTrigger>
                 <PopoverContent
                     side="right"
-                    className="flex gap-2 items-center px-3 py-2 w-auto border-primary bg-night hover:bg-batman smooth-hover"
+                    className="flex gap-2 items-center pl-2 pr-3 py-2 w-auto border-primary bg-night hover:bg-batman smooth-hover"
                     asChild
                 >
                     <button onClick={() => handleRevertStep(step)}>

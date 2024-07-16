@@ -63,12 +63,12 @@ const GitErrorModal = () => {
                         </div>
                     </DialogTitle>
                     <DialogDescription asChild>
-                        <p className="text-sm text-gray-400 mt-2">
+                        <p className="text-sm text-gray-400 mt-2 leading-relaxed tracking-wide">
                             {unresolvedGitError}
                         </p>
                     </DialogDescription>
                 </DialogHeader>
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-4 mt-1">
                     <p className="text-sm">
                         There was a problem with git. How would you like to
                         proceed?

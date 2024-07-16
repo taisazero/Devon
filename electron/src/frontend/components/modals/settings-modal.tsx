@@ -27,6 +27,7 @@ import Combobox, { ComboboxItem } from '@/components/ui/combobox'
 import { SessionMachineContext } from '@/contexts/session-machine-context'
 import FolderPicker from '@/components/ui/folder-picker'
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden'
+import { getGitSettings } from '@/lib/app-settings'
 
 type ExtendedComboboxItem = Model & ComboboxItem & { company: string }
 
@@ -136,31 +137,37 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
     }, [selectedModel.id])
 
     function handleUseNewModel() {
-        sessionActorref.send({ type: 'session.delete' })
-        setUseModelName(selectedModel.id)
-        const _key = fetchApiKey()
-        sessionActorref.send({
-            type: 'session.create',
-            payload: {
-                path: folderPath,
-                agentConfig: {
-                    model: selectedModel.id,
-                    api_key: _key,
-                },
-            },
-        })
-        sessionActorref.on('session.creationComplete', () => {
+        async function updateMachine() {
+            const { versioning_type } = await getGitSettings()
             sessionActorref.send({
-                type: 'session.init',
+                type: 'session.create',
                 payload: {
-                    // path: folderPath,
+                    path: folderPath,
                     agentConfig: {
                         model: selectedModel.id,
                         api_key: _key,
+                        versioning_type,
                     },
                 },
             })
-        })
+            sessionActorref.on('session.creationComplete', () => {
+                sessionActorref.send({
+                    type: 'session.init',
+                    payload: {
+                        // path: folderPath,
+                        agentConfig: {
+                            model: selectedModel.id,
+                            api_key: _key,
+                            versioning_type,
+                        },
+                    },
+                })
+            })
+        }
+        sessionActorref.send({ type: 'session.delete' })
+        setUseModelName(selectedModel.id)
+        const _key = fetchApiKey()
+        updateMachine()
         setOpen(false)
     }
 
@@ -171,31 +178,36 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
 
     // use this when we implement the change directory button
     function handleNewChat() {
-        sessionActorref.send({ type: 'session.delete' })
-        setUseModelName(selectedModel.id)
-        const _key = fetchApiKey()
-        sessionActorref.send({
-            type: 'session.create',
-            payload: {
-                path: folderPath,
-                agentConfig: {
-                    model: selectedModel.id,
-                    api_key: _key,
-                },
-            },
-        })
-        sessionActorref.on('session.creationComplete', () => {
+        async function updateMachine() {
+            const { versioning_type } = await getGitSettings()
             sessionActorref.send({
-                type: 'session.init',
+                type: 'session.create',
                 payload: {
-                    // path: folderPath,
+                    path: folderPath,
                     agentConfig: {
                         model: selectedModel.id,
                         api_key: _key,
+                        versioning_type,
                     },
                 },
             })
-        })
+            sessionActorref.on('session.creationComplete', () => {
+                sessionActorref.send({
+                    type: 'session.init',
+                    payload: {
+                        // path: folderPath,
+                        agentConfig: {
+                            model: selectedModel.id,
+                            api_key: _key,
+                            versioning_type,
+                        },
+                    },
+                })
+            })
+        }
+        sessionActorref.send({ type: 'session.delete' })
+        setUseModelName(selectedModel.id)
+        const _key = fetchApiKey()
         setOpen(false)
     }
 
@@ -452,7 +464,29 @@ const GeneralSettingsCard = ({
 const VersionControlSettingsCard = () => {
     const [useGit, setUseGit] = useState<CheckedState>(true)
     const [createNewBranch, setCreateNewBranch] = useState<CheckedState>(true)
+    const [showChangesApplyInfoText, setShowChangesApplyInfoText] =
+        useState(false)
     const { toast } = useToast()
+
+    useEffect(() => {
+        const loadUserSettings = async () => {
+            const res = await window.api.invoke(
+                'get-user-setting',
+                'git.enabled'
+            )
+            if (res.success) {
+                setUseGit(res.data)
+            }
+            const res2 = await window.api.invoke(
+                'get-user-setting',
+                'git.create-new-branch'
+            )
+            if (res2.success) {
+                setCreateNewBranch(res2.data)
+            }
+        }
+        loadUserSettings()
+    }, [])
 
     const handleMerge = () => {
         // TODO: Implement merge logic
@@ -464,6 +498,28 @@ const VersionControlSettingsCard = () => {
                 'There are merge conflicts. Please resolve them in your editor and try again.',
             variant: 'destructive',
         })
+    }
+
+    async function handleUseGitChange(checked: boolean) {
+        setShowChangesApplyInfoText(true)
+        setUseGit(checked)
+        const data = {
+            setting: 'git',
+            key: 'enabled',
+            value: Boolean(checked),
+        }
+        const response = await window.api.invoke('set-user-setting', data)
+    }
+
+    async function handleCreateNewBranch(checked: boolean) {
+        setShowChangesApplyInfoText(true)
+        setCreateNewBranch(checked)
+        const data = {
+            setting: 'git',
+            key: 'create-new-branch',
+            value: Boolean(checked),
+        }
+        const response = await window.api.invoke('set-user-setting', data)
     }
 
     return (
@@ -489,7 +545,7 @@ const VersionControlSettingsCard = () => {
                         <Checkbox
                             id="use-git"
                             checked={useGit}
-                            onCheckedChange={setUseGit}
+                            onCheckedChange={handleUseGitChange}
                         />
                         <label
                             htmlFor="use-git"
@@ -507,7 +563,7 @@ const VersionControlSettingsCard = () => {
                             <Checkbox
                                 id="create-branch"
                                 checked={createNewBranch}
-                                onCheckedChange={setCreateNewBranch}
+                                onCheckedChange={handleCreateNewBranch}
                                 disabled={!useGit}
                             />
                             <label
@@ -522,6 +578,13 @@ const VersionControlSettingsCard = () => {
                             </label>
                         </div>
                     </div>
+                    {showChangesApplyInfoText && (
+                        <span className="text-sm text-green-500 mt-2 flex gap-1 items-center">
+                            <Info className="w-4 h-4" />
+                            Note: Changes will apply once a new session is
+                            created
+                        </span>
+                    )}
                 </div>
             </CardContent>
         </Card>

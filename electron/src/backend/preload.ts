@@ -27,6 +27,9 @@ type Channel = // Used for:
         | 'editor-file-changed' // Code editor
         | 'editor-add-open-file' // Code editor
         | 'unsubscribe' // Code editor
+        | 'get-user-setting' // To get user's settings for the app from app-settings.json
+        | 'set-user-setting' // To set user's settings for the app in app-settings.json
+        | 'has-user-setting' // To check existence of user's settings in app-settings.json
 
 const channels: { send: Channel[]; invoke: Channel[]; receive: Channel[] } = {
     send: ['get-file-path', 'ping', 'get-port', 'unsubscribe', 'log-error'],
@@ -42,6 +45,9 @@ const channels: { send: Channel[]; invoke: Channel[]; receive: Channel[] } = {
         'watch-dir',
         'editor-add-open-file',
         'open-logs-directory',
+        'get-user-setting',
+        'set-user-setting',
+        'has-user-setting',
     ],
     receive: [
         'server-error',

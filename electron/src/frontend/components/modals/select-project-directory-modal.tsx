@@ -9,6 +9,7 @@ import { newSessionMachine } from '@/lib/services/stateMachineService/stateMachi
 import { useSafeStorage } from '@/lib/services/safeStorageService'
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden'
 import IndexManagementModal from './index-management-modal'
+import { getGitSettings } from '@/lib/app-settings'
 
 const Dialog = lazy(() =>
     import('@/components/ui/dialog').then(module => ({
@@ -111,7 +112,9 @@ const SelectProjectDirectoryModal = ({
         return folderPath !== ''
     }
 
-    function afterSubmit() {
+    async function afterSubmit() {
+        const { versioning_type } = await getGitSettings()
+
         sessionActorref.send({
             type: 'session.create',
             payload: {
@@ -119,6 +122,7 @@ const SelectProjectDirectoryModal = ({
                 agentConfig: {
                     model: model,
                     api_key: apiKey,
+                    versioning_type,
                 },
                 indexing: {
                     shouldIndex: shouldIndex,
@@ -133,11 +137,26 @@ const SelectProjectDirectoryModal = ({
                     agentConfig: {
                         model: model,
                         api_key: apiKey,
+                        versioning_type,
                     },
                 },
             })
         })
         setOpen(false)
+    }
+
+    async function handleContinueChat() {
+        const { versioning_type } = await getGitSettings()
+        sessionActorref.send({
+            type: 'session.init',
+            payload: {
+                agentConfig: {
+                    model: model,
+                    api_key: apiKey,
+                    versioning_type,
+                },
+            },
+        })
     }
 
     function handleOpenChange(open: boolean) {
@@ -176,17 +195,7 @@ const SelectProjectDirectoryModal = ({
                             {state.matches('sessionReady') ? (
                                 <>
                                     <ExistingSessionFound
-                                        continueChat={() => {
-                                            sessionActorref.send({
-                                                type: 'session.init',
-                                                payload: {
-                                                    agentConfig: {
-                                                        model: model,
-                                                        api_key: apiKey,
-                                                    },
-                                                },
-                                            })
-                                        }}
+                                        continueChat={handleContinueChat}
                                         newChat={() => {
                                             sessionActorref.send({
                                                 type: 'session.delete',

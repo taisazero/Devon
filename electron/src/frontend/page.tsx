@@ -4,6 +4,7 @@ import { SessionContextProviderComponent } from '@/contexts/session-machine-cont
 import Landing from './landing'
 import { useBackendUrl } from '@/contexts/backend-url-context'
 import AtomLoader from '@/components/ui/atom-loader/atom-loader'
+import { loadAppSettings } from '@/lib/app-settings'
 
 const LOADING_TIMEOUT = 15000
 const MINIMUM_LOADING_DURATION = 3000
@@ -23,6 +24,8 @@ export default function IndexPage() {
         if (backendUrl) {
             setSessionMachineProps({ host: backendUrl, name: 'UI' })
         }
+        // Check and set initial user settings (set only if not set before)
+        loadAppSettings()
     }, [backendUrl])
 
     useEffect(() => {
