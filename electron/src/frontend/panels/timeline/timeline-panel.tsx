@@ -115,9 +115,9 @@ const TimelinePanel = ({
         null
     )
     const sessionActorRef = SessionMachineContext.useActorRef()
-    const commits = SessionMachineContext.useSelector(
-        state => state.context.serverEventContext.gitData.commits
-    )
+    // const commits = SessionMachineContext.useSelector(
+    //     state => state.context.serverEventContext.gitData.commits
+    // )
     const host = SessionMachineContext.useSelector(state => state.context.host)
     const name = SessionMachineContext.useSelector(state => state.context.name)
     const [config, setConfig] = useState<AgentConfig | null>(null)
@@ -132,8 +132,17 @@ const TimelinePanel = ({
         }
     }
 
+    const commits = config?.checkpoints.filter(checkpoint => checkpoint.commit_hash !== "no_commit").map(checkpoint => ({
+            hash: checkpoint.commit_hash,
+            message: checkpoint.commit_message,
+        })) ?? []
+
     useEffect(() => {
-        getSessionConfig().then(res => setConfig(res))
+        const interval = setInterval(() => {
+            getSessionConfig().then(res => setConfig(res))
+        }, 1000)
+        // Clean up the interval when the component unmounts
+        return () => clearInterval(interval)
     }, [expanded])
     // console.log('Versioning type:', agentConfig?.versioning_type)
 
