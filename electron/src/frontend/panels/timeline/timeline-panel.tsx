@@ -224,7 +224,7 @@ const TimelinePanel = ({
                                             {isString(
                                                 config?.versioning_metadata
                                                     ?.old_branch
-                                            ) ?? '(name not found)'}
+                                            ) ? config?.versioning_metadata?.old_branch : '(name not found)'}
                                         </code>
                                     </div>
                                 </TooltipTrigger>
@@ -270,7 +270,7 @@ const TimelinePanel = ({
                         <code className="bg-black px-[6px] py-[1px] rounded-md text-primary text-opacity-100 text-[0.9rem] mx-[4px]">
                             {isString(
                                 config?.versioning_metadata?.old_branch
-                            ) ?? '(name not found)'}
+                            ) ? config?.versioning_metadata?.old_branch : '(name not found)'}
                         </code>{' '}
                         branch?
                     </p>

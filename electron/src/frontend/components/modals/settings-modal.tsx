@@ -27,7 +27,6 @@ import Combobox, { ComboboxItem } from '@/components/ui/combobox'
 import { SessionMachineContext } from '@/contexts/session-machine-context'
 import FolderPicker from '@/components/ui/folder-picker'
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden'
-import { getGitSettings } from '@/lib/app-settings'
 import axios from 'axios'
 
 type ExtendedComboboxItem = Model & ComboboxItem & { company: string }
@@ -139,7 +138,6 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
 
     function handleUseNewModel() {
         async function updateMachine() {
-            const { versioning_type } = await getGitSettings()
             sessionActorref.send({
                 type: 'session.create',
                 payload: {
@@ -147,7 +145,6 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
                     agentConfig: {
                         model: selectedModel.id,
                         api_key: _key,
-                        versioning_type,
                     },
                 },
             })
@@ -159,7 +156,6 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
                         agentConfig: {
                             model: selectedModel.id,
                             api_key: _key,
-                            versioning_type,
                         },
                     },
                 })
@@ -180,7 +176,6 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
     // use this when we implement the change directory button
     function handleNewChat() {
         async function updateMachine() {
-            const { versioning_type } = await getGitSettings()
             sessionActorref.send({
                 type: 'session.create',
                 payload: {
@@ -188,7 +183,6 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
                     agentConfig: {
                         model: selectedModel.id,
                         api_key: _key,
-                        versioning_type,
                     },
                 },
             })
@@ -200,7 +194,6 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
                         agentConfig: {
                             model: selectedModel.id,
                             api_key: _key,
-                            versioning_type,
                         },
                     },
                 })

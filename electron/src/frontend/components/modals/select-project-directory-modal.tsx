@@ -9,7 +9,6 @@ import { newSessionMachine } from '@/lib/services/stateMachineService/stateMachi
 import { useSafeStorage } from '@/lib/services/safeStorageService'
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden'
 import IndexManagementModal from './index-management-modal'
-import { getGitSettings } from '@/lib/app-settings'
 
 const Dialog = lazy(() =>
     import('@/components/ui/dialog').then(module => ({
@@ -113,7 +112,6 @@ const SelectProjectDirectoryModal = ({
     }
 
     async function afterSubmit() {
-        const { versioning_type } = await getGitSettings()
 
         sessionActorref.send({
             type: 'session.create',
@@ -122,7 +120,6 @@ const SelectProjectDirectoryModal = ({
                 agentConfig: {
                     model: model,
                     api_key: apiKey,
-                    versioning_type,
                 },
                 indexing: {
                     shouldIndex: shouldIndex,
@@ -137,7 +134,6 @@ const SelectProjectDirectoryModal = ({
                     agentConfig: {
                         model: model,
                         api_key: apiKey,
-                        versioning_type,
                     },
                 },
             })
@@ -146,14 +142,12 @@ const SelectProjectDirectoryModal = ({
     }
 
     async function handleContinueChat() {
-        const { versioning_type } = await getGitSettings()
         sessionActorref.send({
             type: 'session.init',
             payload: {
                 agentConfig: {
                     model: model,
                     api_key: apiKey,
-                    versioning_type,
                 },
             },
         })

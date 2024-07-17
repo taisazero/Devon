@@ -13,7 +13,6 @@ import { SessionMachineContext } from '@/contexts/session-machine-context'
 import TimelinePanel from '@/panels/timeline/timeline-panel'
 import GitErrorModal from '@/components/modals/git-error-modal'
 import Sidebar from '@/components/sidebar/sidebar'
-import { getGitSettings } from '@/lib/app-settings'
 
 export default function Landing({
     smHealthCheckDone,
@@ -57,7 +56,6 @@ export default function Landing({
         _modelName: string,
         folderPath: string
     ) {
-        const { versioning_type } = await getGitSettings()
         sessionActorref.send({
             type: 'session.create',
             payload: {
@@ -65,7 +63,6 @@ export default function Landing({
                 agentConfig: {
                     model: _modelName,
                     api_key: apiKey,
-                    versioning_type,
                 },
             },
         })
@@ -77,7 +74,6 @@ export default function Landing({
                     agentConfig: {
                         model: _modelName,
                         api_key: apiKey,
-                        versioning_type,
                     },
                 },
             })

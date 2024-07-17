@@ -28,6 +28,7 @@ import {
     // createActor
 } from 'xstate'
 import type { Message } from '@/lib/types'
+import { getGitSettings } from '@/lib/app-settings'
 
 type ServerEvent = {
     type:
@@ -352,9 +353,13 @@ const createSessionActor = fromPromise(
         // sleep for 5 sec
         // await new Promise(resolve => setTimeout(resolve, 5000));
         try {
+            const { versioning_type } = await getGitSettings()
             const response = await axios.post(
                 `${input.host}/sessions/${input?.name}`,
-                input.agentConfig,
+                {
+                    versioning_type,
+                    ...input.agentConfig
+                },
                 {
                     params: {
                         // session: input?.name,
@@ -498,17 +503,6 @@ const sendMessage = async ({
     }
 }
 
-async function sessionTeardown({ host, name }: { host: string; name: string }) {
-    try {
-        const response = await axios.get(`${host}/sessions/${name}/teardown`)
-        console.log('Teardown:', response.data)
-        return response.data
-    } catch (error) {
-        console.error('Error fetching session config:', error)
-        throw error
-    }
-}
-
 export const fetchSessionState = async (host: string, sessionId: string) => {
     const { data } = await axios.get(
         `${host}/sessions/${encodeURIComponent(sessionId)}/state`
@@ -587,13 +581,11 @@ export const newSessionMachine = setup({
         ),
         deleteSession: fromPromise(
             async ({ input }: { input: { host: string; name: string } }) => {
-                // Perform teardown
-                const res = await sessionTeardown({
-                    host: input?.host,
-                    name: input?.name,
-                })
-                console.log('Teardown', res)
-                // pause session first
+                // Perform teardown (backend endpoint)
+                await axios.get(
+                    `${input?.host}/sessions/${input?.name}/teardown`
+                )
+                // Delete session
                 const response = await axios.delete(
                     `${input?.host}/sessions/${input?.name}`
                 )
