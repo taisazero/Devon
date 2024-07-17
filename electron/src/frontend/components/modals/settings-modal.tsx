@@ -367,12 +367,16 @@ const APIKeyComponent = ({
 
     const handleDelete = async () => {
         setIsSaving(true)
-        await removeApiKey(model.id)
+        await removeApiKey(model.id, false)
         setIsKeyStored(false)
-        setKey('')
+        const newKey = ''
+        setKey(newKey)
+        const config: UpdateConfig = {
+            api_key: newKey,
+            model: model.id,
+        }
         setIsSaving(false)
-        // Right now even if the current session isn't using the model, it will still reset the session once key deleted
-        sessionActorref.send({ type: 'session.delete' })
+        await updateSessionConfig(host, name, config)
     }
 
     return (

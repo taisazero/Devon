@@ -61,11 +61,11 @@ export const useSafeStorage = () => {
         return data ? data[keyName] : null
     }
 
-    const removeApiKey = async (keyName: string) => {
+    const removeApiKey = async (keyName: string, reload: boolean = true) => {
         const data = await loadData()
         if (data && data[keyName]) {
             delete data[keyName]
-            await saveData(data)
+            await saveData(data, reload)
         }
     }
 

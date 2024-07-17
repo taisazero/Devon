@@ -12,6 +12,7 @@ export const updateSessionConfig = async (
         model: config.model,
         api_key: config.api_key,
     })
+    return response.data
 }
 
 const getSessionConfig = async (host: string, name: string) => {

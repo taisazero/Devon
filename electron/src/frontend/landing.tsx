@@ -44,7 +44,7 @@ export default function Landing({
 
     const sessionActorref = SessionMachineContext.useActorRef()
     sessionActorref.subscribe(state => {
-        console.log("STATE", state.value)
+        console.log('STATE', state.value)
     })
     const state = SessionMachineContext.useSelector(
         state => state,
@@ -120,7 +120,7 @@ export default function Landing({
             </div>
             <GitErrorModal />
 
-            {smHealthCheckDone && (!modelName || !hasKey) && (
+            {smHealthCheckDone && !modelName && (
                 <OnboardingModal
                     setModelName={setModelName}
                     setOnboarded={setOnboarded}

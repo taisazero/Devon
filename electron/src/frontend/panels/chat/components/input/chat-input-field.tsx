@@ -140,7 +140,8 @@ const ChatInputField = ({
                 eventContext.modelLoading ||
                 eventContext.userRequest ||
                 sessionActorRef.getSnapshot().matches('paused') ||
-                sessionActorRef.getSnapshot().matches('running') || sessionActorRef.getSnapshot().matches('reverting')) && (
+                sessionActorRef.getSnapshot().matches('running') ||
+                sessionActorRef.getSnapshot().matches('reverting')) && (
                 <InformationBox
                     modelLoading={eventContext.modelLoading}
                     userRequested={eventContext.userRequest}
@@ -149,6 +150,7 @@ const ChatInputField = ({
                     pauseHandler={handlePause}
                 />
             )}
+            
             <CodeSnippet
                 snippets={codeSnippets}
                 onClose={handleRemoveSnippet}
@@ -263,6 +265,10 @@ const InformationBox = ({
                 <PauseButton paused={paused} pauseHandler={pauseHandler} />
             ),
         },
+        error: {
+            text: 'Something went wrong',
+            accessory: <></>,
+        }
     }
 
     let currentType
@@ -276,7 +282,7 @@ const InformationBox = ({
     } else if (userRequested) {
         currentType = types.userRequested
     } else {
-        currentType = types.loading
+        currentType = types.error
     }
 
     // console.log(currentType)
