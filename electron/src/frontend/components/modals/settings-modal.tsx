@@ -13,7 +13,7 @@ import {
 import { CircleHelp, Settings, Info } from 'lucide-react'
 import SafeStoragePopoverContent from '@/components/modals/safe-storage-popover-content'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Model, AgentConfig } from '@/lib/types'
+import { Model, AgentConfig, UpdateConfig } from '@/lib/types'
 import { models } from '@/lib/config'
 import {
     Dialog,
@@ -28,6 +28,7 @@ import { SessionMachineContext } from '@/contexts/session-machine-context'
 import FolderPicker from '@/components/ui/folder-picker'
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden'
 import axios from 'axios'
+import { updateSessionConfig } from '@/lib/services/sessionService/sessionService'
 
 type ExtendedComboboxItem = Model & ComboboxItem & { company: string }
 
@@ -40,8 +41,19 @@ const comboboxItems: ExtendedComboboxItem[] = models
         company: model.company,
     }))
 
-const SettingsModal = ({ trigger }: { trigger: JSX.Element }) => {
-    const [open, setOpen] = useState(false)
+const SettingsModal = ({
+    trigger,
+    isOpen,
+    setIsOpen,
+}: {
+    trigger: JSX.Element
+    isOpen?: boolean
+    setIsOpen?: (isOpen: boolean) => void
+}) => {
+    const [internalOpen, setInternalOpen] = useState(false)
+
+    const open = isOpen !== undefined ? isOpen : internalOpen
+    const setOpen = setIsOpen || setInternalOpen
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>{trigger}</DialogTrigger>
@@ -71,7 +83,11 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
         getApiKey,
     } = useSafeStorage()
     const sessionActorref = SessionMachineContext.useActorRef()
-    let state = SessionMachineContext.useSelector(state => state)
+    const path = SessionMachineContext.useSelector(
+        state => state?.context?.sessionState?.path
+    )
+    const host = SessionMachineContext.useSelector(state => state.context.host)
+    const name = SessionMachineContext.useSelector(state => state.context.name)
 
     const [originalModelName, setOriginalModelName] = useState(
         comboboxItems[0].id
@@ -94,17 +110,17 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
     }
 
     useEffect(() => {
-        if (!state?.context?.sessionState?.path) {
+        if (!path) {
             return
         }
-        setFolderPath(state.context.sessionState.path)
+        setFolderPath(path)
         if (!initialFolderPath.value) {
             setInitialFolderPath({
                 loading: false,
-                value: state.context.sessionState.path,
+                value: path,
             })
         }
-    }, [state?.context?.sessionState?.path])
+    }, [path])
 
     useEffect(() => {
         const check = async () => {
@@ -136,35 +152,14 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
         return res
     }, [selectedModel.id])
 
-    function handleUseNewModel() {
-        async function updateMachine() {
-            sessionActorref.send({
-                type: 'session.create',
-                payload: {
-                    path: folderPath,
-                    agentConfig: {
-                        model: selectedModel.id,
-                        api_key: _key,
-                    },
-                },
-            })
-            sessionActorref.on('session.creationComplete', () => {
-                sessionActorref.send({
-                    type: 'session.init',
-                    payload: {
-                        // path: folderPath,
-                        agentConfig: {
-                            model: selectedModel.id,
-                            api_key: _key,
-                        },
-                    },
-                })
-            })
-        }
-        sessionActorref.send({ type: 'session.delete' })
+    async function handleUseNewModel() {
         setUseModelName(selectedModel.id)
-        const _key = fetchApiKey()
-        updateMachine()
+        const _key: string = await fetchApiKey()
+        const config: UpdateConfig = {
+            api_key: _key,
+            model: selectedModel.id,
+        }
+        await updateSessionConfig(host, name, config)
         setOpen(false)
     }
 
@@ -274,6 +269,7 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
                         model={selectedModel}
                         sessionActorref={sessionActorref}
                         setModelHasSavedApiKey={setModelHasSavedApiKey}
+                        setOpen={setOpen}
                     />
                     {/* <Input
                         className="w-full"
@@ -316,10 +312,12 @@ const APIKeyComponent = ({
     model,
     sessionActorref,
     setModelHasSavedApiKey,
+    setOpen,
 }: {
     model: Model
     sessionActorref: any
     setModelHasSavedApiKey: (value: boolean) => void
+    setOpen: (value: boolean) => void
 }) => {
     const { addApiKey, getApiKey, removeApiKey, setUseModelName } =
         useSafeStorage()
@@ -327,6 +325,8 @@ const APIKeyComponent = ({
     const [isKeyStored, setIsKeyStored] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
     const [isSaving, setIsSaving] = useState(false)
+    const host = SessionMachineContext.useSelector(state => state.context.host)
+    const name = SessionMachineContext.useSelector(state => state.context.name)
 
     const fetchApiKey = useCallback(async () => {
         if (model.comingSoon) {
@@ -352,13 +352,17 @@ const APIKeyComponent = ({
 
     const handleSave = async () => {
         setIsSaving(true)
-        await addApiKey(model.id, key)
+        await addApiKey(model.id, key, false)
         // Update the model as well
         await setUseModelName(model.id)
-        setIsKeyStored(true)
+        const config: UpdateConfig = {
+            api_key: key,
+            model: model.id,
+        }
+        await updateSessionConfig(host, name, config)
         setIsSaving(false)
-        // Right now even if the current session isn't using the model, it will still reset the session once key deleted
-        sessionActorref.send({ type: 'session.delete' })
+        setOpen(false)
+        setIsKeyStored(true)
     }
 
     const handleDelete = async () => {

@@ -119,10 +119,8 @@ const OnboardingModal = ({
                 >
                     <div className="flex flex-col items-center justify-center my-8 mx-8">
                         <DialogHeader>
-                            <DialogTitle>
-                                <h1 className="text-3xl font-bold">
-                                    Welcome to Devon!
-                                </h1>
+                            <DialogTitle className="text-3xl font-bold">
+                                Welcome to Devon!
                             </DialogTitle>
                         </DialogHeader>
                         <DisabledWrapper
@@ -195,7 +193,11 @@ const OnboardingModal = ({
                                 <Input
                                     className="w-full"
                                     type="password"
-                                    value={isKeySaved ? '******************************' : apiKey}
+                                    value={
+                                        isKeySaved
+                                            ? '******************************'
+                                            : apiKey
+                                    }
                                     onChange={handleApiKeyInputChange}
                                     disabled={isKeySaved}
                                 />

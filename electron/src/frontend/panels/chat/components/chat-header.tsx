@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { SessionMachineContext } from '@/contexts/session-machine-context'
 import {
     CircleArrowDown,
@@ -9,6 +10,8 @@ import {
 } from 'lucide-react'
 import SettingsModal from '@/components/modals/settings-modal'
 import IndexesModal from '@/components/modals/indexes-modal'
+import { useSessionConfig } from '@/lib/services/sessionService/sessionService'
+import { models } from '@/lib/config'
 
 export default function ChatHeader({
     sessionId,
@@ -18,6 +21,9 @@ export default function ChatHeader({
     headerIcon?: JSX.Element
 }) {
     const sessionActorRef = SessionMachineContext.useActorRef()
+    const host = SessionMachineContext.useSelector(state => state.context.host)
+    const name = SessionMachineContext.useSelector(state => state.context.name)
+    const config = useSessionConfig(host, name)
 
     async function handleReset() {
         sessionActorRef.send({ type: 'session.reset' })
@@ -31,14 +37,32 @@ export default function ChatHeader({
         // sessionActorRef.send({ type: 'session.indexes' })
     }
 
+    const model = config?.model
+        ? models.filter(model => model.id === config.model)[0].name
+        : null
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+
     return (
-        <div className="relative pt-[2px] pb-2 border-outline-night shrink-0 items-left flex flex-row justify-between border-b mx-5">
-            <p className="text-lg font-semibold self-end">Chat</p>
-            <div className="flex gap-3 mb-[2px]">
+        <div className="relative pt-[1.5px] pb-2 border-outline-night shrink-0 items-left flex flex-row justify-between border-b mx-5">
+            <div className="flex flex-row gap-4 items-center">
+                <p className="text-lg font-semibold">Chat</p>
+                {model && (
+                    <button
+                        onClick={() => setIsSettingsOpen(true)}
+                        className="text-xs text-gray-400 py-[2px] px-[7px] text-ellipsis border border-primary rounded-md border-opacity-50 hover:text-gray-200 hover:border-opacity-100 transition-colors duration-100"
+                    >
+                        {model}
+                    </button>
+                )}
+            </div>
+            <div className="flex h-fit gap-3 mb-[2px] self-end">
                 {/* <IndexesButton indexesHandler={handleIndexes} /> */}
                 <RestartButton resetHandler={handleReset} />
                 {/* <StopButton stopHandler={handleStop} /> */}
-                <ConfigureButton />
+                <ConfigureButton
+                    isSettingsOpen={isSettingsOpen}
+                    setIsSettingsOpen={setIsSettingsOpen}
+                />
             </div>
             {headerIcon}
         </div>
@@ -83,9 +107,17 @@ const RestartButton = ({ resetHandler }: { resetHandler: () => void }) => {
     )
 }
 
-const ConfigureButton = () => {
+const ConfigureButton = ({
+    isSettingsOpen,
+    setIsSettingsOpen,
+}: {
+    isSettingsOpen: boolean
+    setIsSettingsOpen: (isOpen: boolean) => void
+}) => {
     return (
         <SettingsModal
+            isOpen={isSettingsOpen}
+            setIsOpen={setIsSettingsOpen}
             trigger={
                 <button className="group flex items-center gap-2 px-3 py-1 rounded-md mb-[-4px] -mr-2 smooth-hover min-w-0">
                     <Settings

@@ -456,7 +456,7 @@ const PathDisplay = ({
             selectedFileId ? 'bg-editor-night -mt-[2px]' : 'pt-[3px]'
         }`}
     >
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-neutral-500 text-ellipsis">
             {selectedFileId
                 ? convertPath(
                       selectedFileId.replace(getPathBeforeLastSlash(path), '')

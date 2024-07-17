@@ -51,3 +51,9 @@ type VersioningMetadata = {
     old_branch: string
     initial_commit: string
 }
+
+// Make sure this is up-to-date with server.py @app.patch("/sessions/{session}/update")
+export type UpdateConfig = {
+    model: string
+    api_key: string
+}

@@ -127,7 +127,7 @@ export default function Chat({
 const LoadingSkeleton = () => {
     return (
         <>
-            <div className="flex flex-col flex-2 relative h-full overflow-y-auto mx-6 mt-8 mr-10">
+            <div className="flex flex-col flex-2 relative h-full overflow-y-auto mx-6 mt-6 mr-10">
                 <div className="flex-1">
                     <div className="mb-8">
                         <div className="flex gap-5">

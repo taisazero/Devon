@@ -153,7 +153,8 @@ const TimelinePanel = ({
     // const hasCommits = true
     // const steps: StepType[] = exampleSteps
 
-    const hasCommits = config?.versioning_type === 'git' && commits && commits.length > 0
+    const hasCommits =
+        config?.versioning_type === 'git' && commits && commits.length > 0
 
     const steps: StepType[] = hasCommits
         ? commits.map((commit, index) => ({
@@ -224,7 +225,10 @@ const TimelinePanel = ({
                                             {isString(
                                                 config?.versioning_metadata
                                                     ?.old_branch
-                                            ) ? config?.versioning_metadata?.old_branch : '(name not found)'}
+                                            )
+                                                ? config?.versioning_metadata
+                                                      ?.old_branch
+                                                : '(name not found)'}
                                         </code>
                                     </div>
                                 </TooltipTrigger>
@@ -268,9 +272,9 @@ const TimelinePanel = ({
                     <p className="mt-4 flex whitespace-nowrap">
                         Sync changes with{' '}
                         <code className="bg-black px-[6px] py-[1px] rounded-md text-primary text-opacity-100 text-[0.9rem] mx-[4px]">
-                            {isString(
-                                config?.versioning_metadata?.old_branch
-                            ) ? config?.versioning_metadata?.old_branch : '(name not found)'}
+                            {isString(config?.versioning_metadata?.old_branch)
+                                ? config?.versioning_metadata?.old_branch
+                                : '(name not found)'}
                         </code>{' '}
                         branch?
                     </p>

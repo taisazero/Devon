@@ -17,7 +17,7 @@ export interface ChatMessages {
 
 const ChatMessages = ({ messages, spinning, paused }: ChatMessages) => {
     return (
-        <div className="relative px-6 mt-8">
+        <div className="relative px-6 mt-6">
             {messages && messages.length ? (
                 <>
                     {messages.map((message, index) => (
