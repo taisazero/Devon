@@ -66,8 +66,24 @@ export default function Sidebar() {
     }
 
     return (
-        <aside className={`flex flex-row bg-midnight ml-3 mb-6 overflow-hidden transition-all duration-300 ease-in-out rounded-l-lg ${expanded ? 'border border-outlinecolor rounded-lg' : 'border-none'}`}>
-            <nav className={`h-full flex flex-col border-outlinecolor ${expanded ? 'border-r' : 'rounded-lg border'}`}>
+        <aside
+            className={`flex flex-row ml-3 mb-6 overflow-hidden transition-all duration-300 ease-in-out rounded-l-lg border border-outlinecolor ${
+                expanded
+                    ? 'rounded-lg'
+                    : showMinimizedTimeline
+                    ? 'rounded-r-lg border-none'
+                    : 'rounded-r-lg border'
+            }`}
+        >
+            <nav
+                className={`h-full flex flex-col border-outlinecolor bg-midnight ${
+                    expanded
+                        ? 'border-r'
+                        : showMinimizedTimeline
+                        ? 'border rounded-lg'
+                        : 'rounded-lg'
+                }`}
+            >
                 <ul className="flex-1 flex flex-col justify-between pb-1 items-center">
                     <div>
                         {sidebarItems.map(item => (
@@ -102,7 +118,11 @@ export default function Sidebar() {
                         : 'w-[0px]'
                 }`}
             >
-                <div className={`h-full overflow-auto ${expanded ? 'bg-midnight p-4' : 'bg-night pl-4 py-2'}`}>
+                <div
+                    className={`h-full overflow-auto ${
+                        expanded ? 'bg-midnight p-4' : 'bg-night pl-4 py-2'
+                    }`}
+                >
                     {activeTabId === 'timeline' ? (
                         <TimelinePanel
                             expanded={expanded}
