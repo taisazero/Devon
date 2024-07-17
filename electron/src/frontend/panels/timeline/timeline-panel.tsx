@@ -153,7 +153,7 @@ const TimelinePanel = ({
     // const hasCommits = true
     // const steps: StepType[] = exampleSteps
 
-    const hasCommits = commits && commits.length > 0
+    const hasCommits = config?.versioning_type === 'git' && commits && commits.length > 0
 
     const steps: StepType[] = hasCommits
         ? commits.map((commit, index) => ({
