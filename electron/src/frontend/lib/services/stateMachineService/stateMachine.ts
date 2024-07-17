@@ -498,6 +498,17 @@ const sendMessage = async ({
     }
 }
 
+async function sessionTeardown({ host, name }: { host: string; name: string }) {
+    try {
+        const response = await axios.get(`${host}/sessions/${name}/teardown`)
+        console.log('Teardown:', response.data)
+        return response.data
+    } catch (error) {
+        console.error('Error fetching session config:', error)
+        throw error
+    }
+}
+
 export const fetchSessionState = async (host: string, sessionId: string) => {
     const { data } = await axios.get(
         `${host}/sessions/${encodeURIComponent(sessionId)}/state`
@@ -576,6 +587,12 @@ export const newSessionMachine = setup({
         ),
         deleteSession: fromPromise(
             async ({ input }: { input: { host: string; name: string } }) => {
+                // Perform teardown
+                const res = await sessionTeardown({
+                    host: input?.host,
+                    name: input?.name,
+                })
+                console.log('Teardown', res)
                 // pause session first
                 const response = await axios.delete(
                     `${input?.host}/sessions/${input?.name}`
@@ -1001,7 +1018,7 @@ export const newSessionMachine = setup({
                 onDone: {
                     target: 'paused',
                 },
-            }
+            },
         },
         stopped: {
             type: 'final',

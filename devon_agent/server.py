@@ -436,6 +436,16 @@ def get_session_config(session: str):
     }
     return config
 
+@app.get("/sessions/{session}/teardown")
+def teardown_session(session: str):
+    if session not in sessions:
+        raise fastapi.HTTPException(status_code=404, detail="Session not found")
+    session_obj = sessions.get(session)
+    if not session_obj:
+        raise fastapi.HTTPException(status_code=404, detail="Session not found")
+    session_obj.teardown()
+    return session
+
 @app.post("/sessions/{session}/response")
 def create_response(session: str, response: str):
     if session not in sessions:

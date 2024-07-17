@@ -124,7 +124,6 @@ const TimelinePanel = ({
     const getSessionConfig = async () => {
         try {
             const response = await axios.get(`${host}/sessions/${name}/config`)
-            console.log('Session config:', response.data)
             return response.data
         } catch (error) {
             console.error('Error fetching session config:', error)
@@ -150,7 +149,6 @@ const TimelinePanel = ({
         // Clean up the interval when the component unmounts
         return () => clearInterval(interval)
     }, [expanded])
-    // console.log('Versioning type:', agentConfig?.versioning_type)
 
     // const hasCommits = true
     // const steps: StepType[] = exampleSteps
@@ -210,9 +208,7 @@ const TimelinePanel = ({
                             : 'h-0 mb-0 overflow-hidden'
                     } transition-all duration-300 ease-in-out`}
                 >
-                    <h2
-                        className={`text-lg font-semibold overflow-hidden`}
-                    >
+                    <h2 className={`text-lg font-semibold overflow-hidden`}>
                         Devon's Timeline
                     </h2>
                     {config?.versioning_type === 'git' && (
@@ -225,9 +221,10 @@ const TimelinePanel = ({
                                                 size={16}
                                                 className="text-primary"
                                             />
-                                            {config?.versioning_metadata
-                                                ?.old_branch ??
-                                                '(name not found)'}
+                                            {isString(
+                                                config?.versioning_metadata
+                                                    ?.old_branch
+                                            ) ?? '(name not found)'}
                                         </code>
                                     </div>
                                 </TooltipTrigger>
@@ -271,8 +268,9 @@ const TimelinePanel = ({
                     <p className="mt-4 flex whitespace-nowrap">
                         Sync changes with{' '}
                         <code className="bg-black px-[6px] py-[1px] rounded-md text-primary text-opacity-100 text-[0.9rem] mx-[4px]">
-                            {config?.versioning_metadata?.old_branch ??
-                                '(name not found)'}
+                            {isString(
+                                config?.versioning_metadata?.old_branch
+                            ) ?? '(name not found)'}
                         </code>{' '}
                         branch?
                     </p>
@@ -388,7 +386,6 @@ const Step: React.FC<{
     `
 
     function handleRevertStep(step: StepType) {
-        console.log('r', step.hash)
         sessionActorRef.send({
             type: 'session.revert',
             params: { hash: step.hash },
@@ -575,6 +572,10 @@ const SubStep: React.FC<{
             )}
         </div>
     )
+}
+
+function isString(value: unknown) {
+    return typeof value === 'string' || value instanceof String
 }
 
 export default TimelinePanel
