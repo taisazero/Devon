@@ -12,6 +12,8 @@ import {
     Popover,
     PopoverContent,
     PopoverTrigger,
+    PopoverAnchor,
+    PopoverClose,
 } from '@/components/ui/popover'
 import { Undo2, GitBranch } from 'lucide-react'
 import { AgentConfig } from '@/lib/types'
@@ -139,12 +141,15 @@ const TimelinePanel = ({
         }
     }
 
-    const commits = config?.checkpoints.filter(checkpoint => checkpoint.commit_hash !== "no_commit").map(checkpoint => ({
-            hash: checkpoint.commit_hash,
-            message: checkpoint.commit_message,
-            checkpoint_id: checkpoint.checkpoint_id,
-        })) ?? []
-    
+    const commits =
+        config?.checkpoints
+            .filter(checkpoint => checkpoint.commit_hash !== 'no_commit')
+            .map(checkpoint => ({
+                hash: checkpoint.commit_hash,
+                message: checkpoint.commit_message,
+                checkpoint_id: checkpoint.checkpoint_id,
+            })) ?? []
+
     console.log('commits', commits)
 
     useEffect(() => {
@@ -451,16 +456,18 @@ const Step: React.FC<{
             >
                 <PopoverTrigger asChild>
                     <div
-                        className={`flex flex-col hover:opacity-90 hover:cursor-pointer`}
+                        className={`flex flex-col hover:opacity-90 hover:cursor-pointer w-full`}
                     >
                         <div ref={contentRef} className="flex flex-col">
-                            <span
-                                className={`text-white min-h-10 ${
-                                    expanded ? 'line-clamp-2' : ''
-                                }`}
-                            >
-                                {expanded && step.label}
-                            </span>
+                            <PopoverAnchor asChild>
+                                <span
+                                    className={`text-white min-h-10 ${
+                                        expanded ? 'line-clamp-2' : ''
+                                    }`}
+                                >
+                                    {expanded && step.label}
+                                </span>
+                            </PopoverAnchor>
                             <span className="mt-1 text-gray-400 whitespace-nowrap">
                                 {step.subtitle}
                             </span>
@@ -487,14 +494,19 @@ const Step: React.FC<{
                     </div>
                 </PopoverTrigger>
                 <PopoverContent
+                    align="end"
+                    alignOffset={7}
                     side="right"
+                    sideOffset={16}
                     className="flex gap-2 items-center pl-2 pr-3 py-2 w-auto border-primary bg-night hover:bg-batman smooth-hover"
                     asChild
                 >
-                    <button onClick={() => handleRevertStep(step)}>
-                        <Undo2 size={16} />
-                        Revert to this commit
-                    </button>
+                    <PopoverClose asChild>
+                        <button onClick={() => handleRevertStep(step)}>
+                            <Undo2 size={16} />
+                            Revert to this commit
+                        </button>
+                    </PopoverClose>
                 </PopoverContent>
             </Popover>
         )

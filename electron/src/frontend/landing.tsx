@@ -128,7 +128,7 @@ export default function Landing({
                 />
             )}
             <div className="dark">
-                {smHealthCheckDone && !justOnboarded && modelName && hasKey && (
+                {smHealthCheckDone && !justOnboarded && modelName && (
                     <SelectProjectDirectoryModal
                         openProjectModal={
                             !state.can({ type: 'session.toggle' }) &&
