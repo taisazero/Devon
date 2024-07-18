@@ -44,6 +44,7 @@ type Checkpoint = {
     commit_message: string
     agent_history: any[]
     event_id: number
+    checkpoint_id: number
 }
 
 type VersioningMetadata = {

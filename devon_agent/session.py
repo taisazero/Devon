@@ -6,6 +6,7 @@ import os
 import time
 import traceback
 from typing import Dict, List
+import copy
 
 from devon_agent.agents.conversational_agent import ConversationalAgent
 from devon_agent.config import Checkpoint, Config
@@ -173,11 +174,10 @@ class Session:
         self.status = "running"
 
     def revert(self,checkpoint_id):
-
+        print(self.config.checkpoints)
         for i,checkpoint in enumerate(self.config.checkpoints):
             if checkpoint.checkpoint_id == checkpoint_id:
-                checkpoint = checkpoint
-                print(checkpoint)
+                
                 if self.config.versioning_type == "git" and checkpoint.commit_hash != "no_commit":
                     print(self.versioning.revert_to_commit(checkpoint.commit_hash))
                 event_id = checkpoint.event_id
@@ -185,9 +185,7 @@ class Session:
                 self.event_id = event_id
                 self.event_log = event_log
                 self.config.state = checkpoint.state
-                # self.init_state(list(event_log))
-
-                # self.agent.agent_config.chat_history = list(checkpoint.agent_history)
+                print("STATE: ", self.config.state)
                 self.config.agent_configs[0].chat_history = list(checkpoint.agent_history)
                 print("CHAT HISTORY: ", self.config.agent_configs[0].chat_history)
                 self.setup()
@@ -268,7 +266,7 @@ class Session:
                     # self.config.versioning_metadata["commits"] = [commit_hash]
                     # print(commit_hash)
                     # if commit_hash[0] == True:
-                    self.config.checkpoints.append(Checkpoint(commit_message="initial commit", commit_hash=commit_hash[1], agent_history=self.config.agent_configs[0].chat_history, event_id=len(self.event_log), checkpoint_id=len(self.config.checkpoints), state=self.config.state))
+                    self.config.checkpoints.append(Checkpoint(commit_message="initial commit", commit_hash=commit_hash[1], agent_history=self.config.agent_configs[0].chat_history, event_id=len(self.event_log), checkpoint_id=len(self.config.checkpoints), state=json.loads(json.dumps(self.config.state))))
                     break
                 except Exception as e:
                     self.logger.error(f"Error committing files: {e}")
@@ -356,55 +354,39 @@ class Session:
                         }
                     )
 
-            case "GitEvent":
-                # if event["content"]["type"] == "revert":
-                #     print("REVERTING")
-                #     checkpoint_id = 0 
-                #     for i,checkpoint in enumerate(self.config.checkpoints):
-                #         if checkpoint.commit_hash == event["content"]["commit_to_revert"]:
-                #             print(checkpoint)
-                #             self.config.agent_configs[0].chat_history.append(                            (
-                # {"role": "user", "content": "The user rolled back code to this commit: " + checkpoint.commit_message, "agent": self.name}
-                # ))
-                #             checkpoint_id = i
-                #             if self.config.versioning_type == "git":
-                #                 res = self.versioning.revert_to_commit(event["content"]["commit_to_revert"])
-                #                 print(res)
-                #                 self.event_id = checkpoint.event_id - 1
-                #                 self.event_log = self.event_log[:checkpoint.event_id + 1]
-                #             print("REVERTED")
-                #             break
-                #     self.config.checkpoints = self.config.checkpoints[:checkpoint_id+1]
-                if event["content"]["type"] == "commitRequest":
-                    commit_message = event["content"]["message"]
-                    print("COMMIT MESSAGE: ", commit_message)
-                    if self.config.versioning_type == "git":
-                        success, message = self.versioning.commit_all_files(commit_message)
-                        if not (success == 0):
-                            self.config.checkpoints.append(Checkpoint(commit_message=commit_message, 
-                                                                      commit_hash="no_commit", 
-                                                                      agent_history=self.config.agent_configs[0].chat_history, 
-                                                                      event_id=self.event_id,
-                                                                      checkpoint_id=len(self.config.checkpoints),
-                                                                      state=self.config.state))
-                            self.logger.error(f"Error committing files: {message}")
-                            self.logger.error("why blocking")
-                        else:
-                            self.config.checkpoints.append(Checkpoint(commit_message=commit_message, 
-                                                                      commit_hash=message, 
-                                                                      agent_history=self.config.agent_configs[0].chat_history, 
-                                                                      event_id=self.event_id,
-                                                                      checkpoint_id=len(self.config.checkpoints),
-                                                                      state=self.config.state))
-                            new_events.append(
-                                {
-                                    "type": "GitEvent",
-                                    "content": {"type": "commit", "message": commit_message,
-                                                "commit_hash": message},
-                                    "producer": "",
-                                    "consumer":"",
-                                }
-                            )
+            # case "GitEvent":
+            #     if event["content"]["type"] == "commitRequest":
+            #         commit_message = event["content"]["message"]
+            #         print("COMMIT MESSAGE: ", commit_message)
+            #         if self.config.versioning_type == "git":
+            #             success, message = self.versioning.commit_all_files(commit_message)
+            #             if not (success == 0):
+            #                 print(copy.deepcopy(self.config.state))
+            #                 self.config.checkpoints.append(Checkpoint(commit_message=commit_message, 
+            #                                                           commit_hash="no_commit", 
+            #                                                           agent_history=self.config.agent_configs[0].chat_history, 
+            #                                                           event_id=self.event_id,
+            #                                                           checkpoint_id=len(self.config.checkpoints),
+            #                                                           state=copy.deepcopy(self.config.state)))
+            #                 self.logger.error(f"Error committing files: {message}")
+            #                 self.logger.error("why blocking")
+            #             else:
+            #                 print(copy.deepcopy(self.config.state))
+            #                 self.config.checkpoints.append(Checkpoint(commit_message=commit_message, 
+            #                                                           commit_hash=message, 
+            #                                                           agent_history=self.config.agent_configs[0].chat_history, 
+            #                                                           event_id=self.event_id,
+            #                                                           checkpoint_id=len(self.config.checkpoints),
+            #                                                           state=copy.deepcopy(self.config.state)))
+            #                 new_events.append(
+            #                     {
+            #                         "type": "GitEvent",
+            #                         "content": {"type": "commit", "message": commit_message,
+            #                                     "commit_hash": message},
+            #                         "producer": "",
+            #                         "consumer":"",
+            #                     }
+            #                 )
 
             case "GitMerge":
                 # self.versioning.checkout_branch(self.config.versioning_metadata["old_branch"])
@@ -501,24 +483,23 @@ class Session:
                                 print("COMMIT MESSAGE: ", commit_message)
                                 if self.config.versioning_type == "git":
                                     success, message = self.versioning.commit_all_files(commit_message)
-                                    print("SUCCESS: ", success)
-                                    print("MESSAGE: ", message)
                                     if not (success == 0):
+                                        print("STATE: ", copy.deepcopy(self.config.state))
                                         self.config.checkpoints.append(Checkpoint(commit_message=commit_message, 
                                                                                 commit_hash="no_commit", 
                                                                                 agent_history=self.config.agent_configs[0].chat_history, 
                                                                                 event_id=self.event_id,
                                                                                 checkpoint_id=len(self.config.checkpoints),
-                                                                                state=self.config.state))
+                                                                                state=json.loads(json.dumps(self.config.state))))
                                         self.logger.error(f"Error committing files: {message}")
                                         self.logger.error("why blocking")
                                     else:
                                         self.config.checkpoints.append(Checkpoint(commit_message=commit_message, 
-                                                                                commit_hash=message, 
-                                                                                agent_history=self.config.agent_configs[0].chat_history, 
-                                                                                event_id=self.event_id,
-                                                                                checkpoint_id=len(self.config.checkpoints),
-                                                                                state=self.config.state))
+                                        commit_hash=message, 
+                                        agent_history=self.config.agent_configs[0].chat_history, 
+                                        event_id=self.event_id,
+                                        checkpoint_id=len(self.config.checkpoints),
+                                        state=json.loads(json.dumps(self.config.state))))
                                         new_events.append(
                                             {
                                                 "type": "GitEvent",
@@ -627,9 +608,6 @@ class Session:
                             )
 
             case "ToolResponse":
-                # self.versioning.commit_all_files("commit")
-                # self.versioning.commit_all_files("commit")
-                # Sync the editor state
 
                 new_events.append(
                     {

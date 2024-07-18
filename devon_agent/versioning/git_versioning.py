@@ -119,6 +119,10 @@ class GitVersioning:
         result = subprocess.run(
             ["git", "reset", '--hard', commit_hash], cwd=self.project_path, capture_output=True, text=True, timeout=2
         )
+        # run git clean -fd
+        clean_result = subprocess.run(["git", "clean", "-fd"], cwd=self.project_path, capture_output=True, text=True)
+        if clean_result.returncode != 0:
+            return clean_result.returncode, clean_result.stderr
         return result.returncode, result.stdout if result.returncode == 0 else result.stderr
 
     def create_branch(self, branch_name):

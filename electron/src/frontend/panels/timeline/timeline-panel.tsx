@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, RefObject, MutableRefObject } from 'react'
+import { useEffect, useState, useRef, RefObject } from 'react'
 import axios from 'axios'
 import { SessionMachineContext } from '@/contexts/session-machine-context'
 import {
@@ -13,7 +13,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover'
-import { History, Undo, Undo2, GitBranch } from 'lucide-react'
+import { Undo2, GitBranch } from 'lucide-react'
 import { AgentConfig } from '@/lib/types'
 
 type SubStepType = {
