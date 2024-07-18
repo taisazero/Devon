@@ -5,8 +5,8 @@ from devon_agent.tools.retrieval.code_index import CodeIndex
 
 
 def setup_code_index(ctx, **kwargs):
-    if ctx["state"].code_index:
-        return ctx["state"].code_index
+    if ctx["state"]["code_index"]:
+        return ctx["state"]["code_index"]
     else:
         if "cache_path" in kwargs and os.path.exists(kwargs["cache_path"]):
             return CodeIndex.load_from_json(kwargs["cache_path"])

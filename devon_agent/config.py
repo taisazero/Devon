@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field, computed_field, field_serializer
 
@@ -21,6 +21,8 @@ class Checkpoint(BaseModel):
     commit_message: str
     agent_history: List[dict]
     event_id: int
+    checkpoint_id: int
+    state: Any
 
 class Config(BaseModel):
     name: str
@@ -30,6 +32,7 @@ class Config(BaseModel):
     default_environment: str
     name: str
     db_path: str
+    state: Any
 
     agent_configs: List[AgentConfig]
     task: Optional[str] = None

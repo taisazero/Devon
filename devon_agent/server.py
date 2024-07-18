@@ -43,6 +43,7 @@ uvicorn_logger = logging.getLogger("uvicorn.access")
 uvicorn_logger.addFilter(EndpointFilter(path=f"/start"))
 uvicorn_logger.addFilter(EndpointFilter(path=f"/update"))
 uvicorn_logger.addFilter(EndpointFilter(path=f"/state"))
+uvicorn_logger.addFilter(EndpointFilter(path=f"/config"))
 # API
 # SESSION
 # - get sessions
@@ -65,15 +66,19 @@ sessions: Dict[str, Session] = {}
 running_sessions: List[Session] = []
 
 
+blocked_sessions = []
 
 def get_user_input(session: str):
     if session not in session_buffers:
         while True:
             if session not in session_buffers:
-                print("blocking")
+                if session not in blocked_sessions:
+                    blocked_sessions.append(session)
+                print("blocking", session_buffers.keys())
                 sleep(0.1)
                 continue
             else:
+                blocked_sessions.remove(session)
                 break
 
         result = session_buffers[session]
@@ -278,6 +283,7 @@ def create_session(
             environments={"local": local_environment, "user": user_environment},
             default_environment="local",
             checkpoints=[],
+            state={},
             agent_configs=[
                 AgentConfig(
                     agent_name="Devon",
@@ -349,6 +355,27 @@ def start_session(
 
     return session
 
+@app.patch("/sessions/{session}/resume")
+def resume_session(session: str):
+    if session not in sessions:
+        raise fastapi.HTTPException(status_code=404, detail="Session not found")
+    sessions[session].start()
+    return session
+
+@app.patch("/sessions/{session}/revert")
+def revert_session(session: str, checkpoint_id: int, background_tasks: fastapi.BackgroundTasks):
+    if session not in sessions:
+        raise fastapi.HTTPException(status_code=404, detail="Session not found")
+    if session in blocked_sessions:
+        session_buffers[session] = "revert"
+
+    sessions[session].terminate()
+    # print(" session_buffers[session]", session_buffers[session])
+    sessions[session].revert(checkpoint_id)
+    sessions[session].pause()
+    background_tasks.add_task(sessions[session].run_event_loop,revert=True)
+    return session
+
 
 @app.patch("/sessions/{session}/pause")
 def pause_session(session: str):
@@ -414,7 +441,7 @@ def get_session_state(session: str):
     if not session_obj:
         raise fastapi.HTTPException(status_code=404, detail="Session not found")
 
-    state = session_obj.state.to_dict()
+    state = session_obj.config.state
     state["path"] = session_obj.base_path
     return state
 
@@ -467,6 +494,10 @@ def create_event(session: str, event: ServerEvent):
     if session not in sessions:
         raise fastapi.HTTPException(status_code=404, detail="Session not found")
     print(event)
+    if event.type == "GitEvent":
+        if event.content["type"] == "revert":
+            print("ignore")
+            session_buffers[session] = "ignore"
     # session_buffers[session] = "ignore"
     sessions[session].event_log.append(event.model_dump())
     return event
@@ -494,6 +525,7 @@ async def read_events_stream(session: str):
             current_index = len(session_obj.event_log)
             if current_index > initial_index:
                 for event in session_obj.event_log[initial_index:current_index]:
+                    print("STREAM:",event)
                     yield f"data: {json.dumps(event)}\n\n"
                 initial_index = current_index
             else:

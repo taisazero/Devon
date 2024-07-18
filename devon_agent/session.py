@@ -98,8 +98,8 @@ class Session:
         self.event_log = event_log
 
     def init_state(self, event_log: List[Dict] = []):
-        self.state = DotDict({})
-        self.state.PAGE_SIZE = 200
+        self.config.state = {}
+        self.config.state["PAGE_SIZE"] = 200
 
 
         self.config.task = None
@@ -115,7 +115,13 @@ class Session:
         for env in self.environments.values():
             env.event_log = event_log
 
-        self.event_log.append(
+        if Event(
+                type="Task",
+                content="ask user for what to do",
+                producer="system",
+                consumer="devon",
+            ) not in self.event_log:
+                self.event_log.append(
             Event(
                 type="Task",
                 content="ask user for what to do",
@@ -155,11 +161,6 @@ class Session:
 
         return instance
 
-    def get_last_task(self):
-        if self.state.task:
-            return self.state.task
-        return "Task unspecified ask user to specify task"
-
     def get_status(self):
         return self.status
 
@@ -171,6 +172,31 @@ class Session:
     def start(self):
         self.status = "running"
 
+    def revert(self,checkpoint_id):
+
+        for i,checkpoint in enumerate(self.config.checkpoints):
+            if checkpoint.checkpoint_id == checkpoint_id:
+                checkpoint = checkpoint
+                print(checkpoint)
+                if self.config.versioning_type == "git" and checkpoint.commit_hash != "no_commit":
+                    print(self.versioning.revert_to_commit(checkpoint.commit_hash))
+                event_id = checkpoint.event_id
+                event_log = self.event_log[:event_id+1]
+                self.event_id = event_id
+                self.event_log = event_log
+                self.config.state = checkpoint.state
+                # self.init_state(list(event_log))
+
+                # self.agent.agent_config.chat_history = list(checkpoint.agent_history)
+                self.config.agent_configs[0].chat_history = list(checkpoint.agent_history)
+                print("CHAT HISTORY: ", self.config.agent_configs[0].chat_history)
+                self.setup()
+                for env in self.environments.values():
+                    env.event_log = event_log
+                self.start()
+                break
+        self.config.checkpoints = self.config.checkpoints[:i+1]
+
     def terminate(self):
         if self.status == "terminated":
             return
@@ -179,8 +205,10 @@ class Session:
         while self.status != "terminated":
             time.sleep(2)
 
-    def run_event_loop(self):
-        if self.config.versioning_type == "git":
+    def run_event_loop(self,revert=False):
+        print("revert",revert)
+        if self.config.versioning_type == "git" and not revert:
+            print("IN GIT",self.config.versioning_type == "git" and not revert)
             self.versioning.initialize_git()
             if not self.config.versioning_metadata:
                 self.config.versioning_metadata = {}
@@ -240,7 +268,7 @@ class Session:
                     # self.config.versioning_metadata["commits"] = [commit_hash]
                     # print(commit_hash)
                     # if commit_hash[0] == True:
-                    self.config.checkpoints.append(Checkpoint(commit_message="initial commit", commit_hash=commit_hash[1], agent_history=self.config.agent_configs[0].chat_history, event_id=len(self.event_log)))
+                    self.config.checkpoints.append(Checkpoint(commit_message="initial commit", commit_hash=commit_hash[1], agent_history=self.config.agent_configs[0].chat_history, event_id=len(self.event_log), checkpoint_id=len(self.config.checkpoints), state=self.config.state))
                     break
                 except Exception as e:
                     self.logger.error(f"Error committing files: {e}")
@@ -277,7 +305,7 @@ class Session:
                 self.status = "terminated"
                 break
             elif event["type"] == "Stop" and event["content"]["type"] == "submit":
-                self.state.task = (
+                self.config.state["task"] = (
                     "You have completed your task, ask user for revisions or a new one."
                 )
                 self.event_log.append(
@@ -293,10 +321,10 @@ class Session:
             self.event_log.extend(events)
             print("done")
             self.event_id += 1
-        print("its over")
+        print("its over",self.event_id,len(self.event_log),self.event_log[-1])
         self.status = "terminated"
-        if self.config.versioning_type == "git":
-            self.versioning.checkout_branch(self.config.versioning_metadata["old_branch"])
+        # if self.config.versioning_type == "git":
+        #     self.versioning.checkout_branch(self.config.versioning_metadata["old_branch"])
 
     def step_event(self, event):
         new_events = []
@@ -329,33 +357,24 @@ class Session:
                     )
 
             case "GitEvent":
-                if event["content"]["type"] == "revert":
-                    print("REVERTING")
-                    checkpoint_id = 0 
-                    for i,checkpoint in enumerate(self.config.checkpoints):
-                        if checkpoint.commit_hash == event["content"]["commit_to_revert"]:
-                            # self.config.agent_configs[0].chat_history = checkpoint.agent_history
-                            print(checkpoint)
-                            # self.event_log = self.event_log[:checkpoint.event_id]
-                            # self.config.checkpoints = self.config.checkpoints[: i + 1]
-                            self.config.agent_configs[0].chat_history.append(                            (
-                {"role": "user", "content": "The user rolled back code to this commit: " + checkpoint.commit_message, "agent": self.name}
-                ))
-                            # message = "The user rolled back code to this commit: " + checkpoint.commit_message
-                            checkpoint_id = i
-                            # self.pause()
-                            if self.config.versioning_type == "git":
-                                res = self.versioning.revert_to_commit(event["content"]["commit_to_revert"])
-                                print(res)
-                            # new_events.append({
-                            #     "type" : "ModelRequest",
-                            #     "content" : message,
-                            #     "producer" : "system",
-                            #     "consumer" : "devon"
-                            # })
-                            print("REVERTED")
-                            break
-                    self.config.checkpoints = self.config.checkpoints[:checkpoint_id+1]
+                # if event["content"]["type"] == "revert":
+                #     print("REVERTING")
+                #     checkpoint_id = 0 
+                #     for i,checkpoint in enumerate(self.config.checkpoints):
+                #         if checkpoint.commit_hash == event["content"]["commit_to_revert"]:
+                #             print(checkpoint)
+                #             self.config.agent_configs[0].chat_history.append(                            (
+                # {"role": "user", "content": "The user rolled back code to this commit: " + checkpoint.commit_message, "agent": self.name}
+                # ))
+                #             checkpoint_id = i
+                #             if self.config.versioning_type == "git":
+                #                 res = self.versioning.revert_to_commit(event["content"]["commit_to_revert"])
+                #                 print(res)
+                #                 self.event_id = checkpoint.event_id - 1
+                #                 self.event_log = self.event_log[:checkpoint.event_id + 1]
+                #             print("REVERTED")
+                #             break
+                #     self.config.checkpoints = self.config.checkpoints[:checkpoint_id+1]
                 if event["content"]["type"] == "commitRequest":
                     commit_message = event["content"]["message"]
                     print("COMMIT MESSAGE: ", commit_message)
@@ -365,14 +384,18 @@ class Session:
                             self.config.checkpoints.append(Checkpoint(commit_message=commit_message, 
                                                                       commit_hash="no_commit", 
                                                                       agent_history=self.config.agent_configs[0].chat_history, 
-                                                                      event_id=len(self.event_log)))
+                                                                      event_id=self.event_id,
+                                                                      checkpoint_id=len(self.config.checkpoints),
+                                                                      state=self.config.state))
                             self.logger.error(f"Error committing files: {message}")
                             self.logger.error("why blocking")
                         else:
                             self.config.checkpoints.append(Checkpoint(commit_message=commit_message, 
                                                                       commit_hash=message, 
                                                                       agent_history=self.config.agent_configs[0].chat_history, 
-                                                                      event_id=len(self.event_log)))
+                                                                      event_id=self.event_id,
+                                                                      checkpoint_id=len(self.config.checkpoints),
+                                                                      state=self.config.state))
                             new_events.append(
                                 {
                                     "type": "GitEvent",
@@ -399,18 +422,18 @@ class Session:
             case "ModelRequest":
                 # TODO: Need some quantized timestep for saving persistence that isn't literally every 0.1s
                 self.persist()
-                if self.state.editor and self.state.editor.files:
-                    for file in self.state.editor.files:
-                        self.state.editor.files[file]["lines"] = read_file(
+                if self.config.state["editor"] and self.config.state["editor"]["files"]:
+                    for file in self.config.state["editor"]["files"]:
+                        self.config.state["editor"]["files"][file]["lines"] = read_file(
                             {
                                 "environment": self.default_environment,
                                 "session": self,
-                                "state": self.state,
+                                "state": self.config.state,
                             },
                             file,
                         )
                 thought, action, output = self.agent.predict(
-                    self.get_last_task(), event["content"], self
+                    self.config.state["task"], event["content"], self
                 )
 
                 if action == "hallucination":
@@ -484,13 +507,18 @@ class Session:
                                         self.config.checkpoints.append(Checkpoint(commit_message=commit_message, 
                                                                                 commit_hash="no_commit", 
                                                                                 agent_history=self.config.agent_configs[0].chat_history, 
-                                                                                event_id=len(self.event_log)))
+                                                                                event_id=self.event_id,
+                                                                                checkpoint_id=len(self.config.checkpoints),
+                                                                                state=self.config.state))
                                         self.logger.error(f"Error committing files: {message}")
+                                        self.logger.error("why blocking")
                                     else:
                                         self.config.checkpoints.append(Checkpoint(commit_message=commit_message, 
                                                                                 commit_hash=message, 
                                                                                 agent_history=self.config.agent_configs[0].chat_history, 
-                                                                                event_id=len(self.event_log)))
+                                                                                event_id=self.event_id,
+                                                                                checkpoint_id=len(self.config.checkpoints),
+                                                                                state=self.config.state))
                                         new_events.append(
                                             {
                                                 "type": "GitEvent",
@@ -514,7 +542,7 @@ class Session:
                                 {
                                     "environment": env,
                                     "config": self.config,
-                                    "state": self.state,
+                                    "state": self.config.state,
                                     "event_log": self.event_log,
                                     "raw_command": raw_command,
                                 },
@@ -549,7 +577,7 @@ class Session:
 
                                 response = self.default_environment.default_tool(
                                     {
-                                        "state": self.state,
+                                        "state": self.config.state,
                                         "environment": self.default_environment,
                                         "session": self,
                                         "raw_command": event["content"]["raw_command"],
@@ -702,7 +730,7 @@ class Session:
         return docs
 
     def setup(self):
-        self.state.task = self.config.task
+        self.config.state["task"] = self.config.task
 
         self.status = "paused"
 
@@ -716,7 +744,7 @@ class Session:
                     {
                         "environment": env,
                         "session": self,
-                        "state": self.state,
+                        "state": self.config.state,
                     }
                 )
 
@@ -738,7 +766,7 @@ class Session:
                     {
                         "environment": env,
                         "session": self,
-                        "state": self.state,
+                        "state": self.config.state,
                     }
                 )
         if self.config.versioning_type == "git":

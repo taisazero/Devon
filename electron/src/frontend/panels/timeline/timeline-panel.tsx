@@ -27,6 +27,7 @@ type StepType = {
     label: string
     subtitle?: string
     subSteps: SubStepType[]
+    checkpoint_id: number
 }
 
 const ANIMATE_DEMO = false
@@ -53,6 +54,7 @@ const exampleSteps: StepType[] = [
                 subtitle: 'Setup the project configuration',
             },
         ],
+        checkpoint_id: 1,
     },
     {
         hash: '2',
@@ -65,36 +67,42 @@ const exampleSteps: StepType[] = [
                 subtitle: 'Setup the game loop function',
             },
         ],
+        checkpoint_id: 2,
     },
     {
         hash: '3',
         label: 'Add snake logic',
         subtitle: 'Implement the snake movement and controls',
         subSteps: [],
+        checkpoint_id: 3,
     },
     {
         hash: '4',
         label: 'Implement the game board',
         subtitle: 'Design and code the game board layout',
         subSteps: [],
+        checkpoint_id: 4,
     },
     {
         hash: '5',
         label: 'Add collision detection',
         subtitle: 'Implement logic to detect collisions',
         subSteps: [],
+        checkpoint_id: 5,
     },
     {
         hash: '6',
         label: 'Add food and scoring',
         subtitle: 'Add food items and scoring mechanism',
         subSteps: [],
+        checkpoint_id: 6,
     },
     {
         hash: '7',
         label: 'Finalize the game',
         subtitle: 'Finish up and test the game',
         subSteps: [],
+        checkpoint_id: 7,
     },
 ]
 
@@ -131,16 +139,13 @@ const TimelinePanel = ({
         }
     }
 
-    const commits: {
-        hash: string
-        message: string
-    }[] =
-        config?.checkpoints
-            .filter(checkpoint => checkpoint.commit_hash !== 'no_commit')
-            .map(checkpoint => ({
-                hash: checkpoint.commit_hash,
-                message: checkpoint.commit_message,
-            })) ?? []
+    const commits = config?.checkpoints.filter(checkpoint => checkpoint.commit_hash !== "no_commit").map(checkpoint => ({
+            hash: checkpoint.commit_hash,
+            message: checkpoint.commit_message,
+            checkpoint_id: checkpoint.checkpoint_id,
+        })) ?? []
+    
+    console.log('commits', commits)
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -163,6 +168,7 @@ const TimelinePanel = ({
               hash: commit.hash,
               // subtitle: commit.author,
               subSteps: [],
+              checkpoint_id: commit.checkpoint_id,
           }))
         : exampleSteps
 
@@ -390,9 +396,10 @@ const Step: React.FC<{
     `
 
     function handleRevertStep(step: StepType) {
+        console.log('r', step, step.checkpoint_id)
         sessionActorRef.send({
             type: 'session.revert',
-            params: { hash: step.hash },
+            params: { checkpoint_id: step.checkpoint_id },
         })
     }
 

@@ -74,6 +74,7 @@ type ServerEventContext = {
 
 export const eventHandlingLogic = fromTransition(
     (state: ServerEventContext, event: ServerEvent) => {
+        console.log(event)
         switch (event.type) {
             case 'session.reset': {
                 return {
@@ -427,23 +428,11 @@ const revertSessionActor = fromPromise(
     async ({
         input,
     }: {
-        input: { host: string; name: string; hash: string }
+        input: { host: string; name: string; checkpoint_id: number }
     }) => {
-        sendEvent({
-            input: {
-                ...input,
-                event: {
-                    type: 'GitEvent',
-                    params: {
-                        serverEventType: 'GitEvent',
-                        content: {
-                            type: 'revert',
-                            commit_to_revert: input.hash,
-                        },
-                    },
-                },
-            },
-        })
+        console.log('reverting', input.checkpoint_id)
+        const response = await axios.patch(`${input?.host}/sessions/${input?.name}/revert?checkpoint_id=${input.checkpoint_id}`)
+        return response
     }
 )
 
@@ -593,6 +582,12 @@ export const newSessionMachine = setup({
             }
         ),
         revertSession: revertSessionActor,
+        resumeSession: fromPromise(
+            async ({ input }: { input: { host: string; name: string } }) => {
+                const response = await axios.patch(`${input?.host}/sessions/${input?.name}/resume`)
+                return response
+            }
+        ),
     },
 }).createMachine({
     context: ({ input }: { input: any }) => ({
@@ -974,6 +969,16 @@ export const newSessionMachine = setup({
                 },
             },
         },
+        resuming: {
+            invoke: {
+                id: 'resumeSession',
+                src: 'resumeSession',
+                input: ({ context: { host, name } }) => ({ host, name }),
+                onDone: {
+                    target: 'initializing',
+                },
+            },
+        },
         paused: {
             invoke: {
                 id: 'pauseSession',
@@ -1005,10 +1010,18 @@ export const newSessionMachine = setup({
                 input: ({ context: { host, name }, event }) => ({
                     host,
                     name,
-                    hash: event.params.hash,
+                    checkpoint_id: event.params.checkpoint_id,
                 }),
                 onDone: {
-                    target: 'paused',
+                    actions: [
+                        sendTo(EVENTSOURCE_ACTOR_ID, ({ self }) => {
+                            return {
+                                type: 'stopStream',
+                                sender: self,
+                            }
+                        }),
+                    ],
+                    target: 'resuming',
                 },
             },
         },

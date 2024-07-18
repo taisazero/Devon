@@ -61,7 +61,7 @@ class ConversationalAgent(Agent):
     def reset(self):
         self.agent_config.chat_history = []
         self.interrupt = ""
-        self.scratchpad = None
+        self.global_config.state["scratchpad"] = None
 
     def _initialize_model(self):
         return self.default_models[self.agent_config.model](
@@ -101,7 +101,7 @@ class ConversationalAgent(Agent):
             [self._format_editor_entry(k, v, PAGE_SIZE) for k, v in editor.items()]
         )
 
-    def _prepare_anthropic(self, task, editor, session):
+    def _prepare_anthropic(self, task, editor, session, scratchpad=None):
         command_docs = (
             "Custom Commands Documentation:\n"
             + anthropic_commands_to_command_docs(
@@ -119,18 +119,18 @@ class ConversationalAgent(Agent):
                 {
                     "session": session,
                     "environment": session.default_environment,
-                    "state": session.state,
+                    "state": session.config.state,
                 }
             ),
             session.base_path,
-            self.scratchpad,
+            scratchpad,
         )
 
         messages = [{"role": "user", "content": last_user_prompt}]
         return messages, system_prompt
 
-    def _prepare_openai(self, task, editor, session):
-        time.sleep(3)
+    def _prepare_openai(self, task, editor, session, scratchpad=None):
+        # time.sleep(3)
 
         command_docs = (
             "Custom Commands Documentation:\n"
@@ -157,7 +157,7 @@ class ConversationalAgent(Agent):
                 }
             ),
             session.base_path,
-            self.scratchpad,
+            scratchpad
         )
 
         messages = history + [{"role": "user", "content": last_user_prompt}]
@@ -177,7 +177,7 @@ class ConversationalAgent(Agent):
 
         try:
             editor = self._convert_editor_to_view(
-                session.state.editor.files, session.state.editor.PAGE_SIZE
+                session.config.state["editor"]["files"], session.config.state["editor"]["PAGE_SIZE"]
             )
 
             self.agent_config.chat_history.append(
@@ -196,8 +196,9 @@ class ConversationalAgent(Agent):
                     self.agent_config.model
                 ]["prompt_type"]
 
+
             messages, system_prompt = prompts[self.agent_config.prompt_type](
-                task, editor, session
+                task, editor, session, session.config.state["scratchpad"]
             )
             output = None
             while not output:
@@ -230,7 +231,7 @@ class ConversationalAgent(Agent):
             try:
                 thought, action, scratchpad = parse_response(output)
                 if scratchpad:
-                    self.scratchpad = scratchpad
+                    session.config.state["scratchpad"] = scratchpad
             except Exception:
                 raise Hallucination(f"Multiple actions found in response: {output}")
 

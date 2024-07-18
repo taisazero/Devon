@@ -285,7 +285,7 @@ class TaskAgent(Agent):
 
         try:
             editor = self._convert_editor_to_view(
-                session.state.editor.files, session.state.editor.PAGE_SIZE
+                session.state["editor"]["files"], session.state["editor"]["PAGE_SIZE"]
             )
 
             self.agent_config.chat_history.append(
