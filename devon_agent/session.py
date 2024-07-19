@@ -3,6 +3,7 @@ import inspect
 import json
 import logging
 import os
+import tempfile
 import time
 import traceback
 from typing import Dict, List
@@ -388,18 +389,6 @@ class Session:
             #                     }
             #                 )
 
-            case "GitMerge":
-                # self.versioning.checkout_branch(self.config.versioning_metadata["old_branch"])
-                # self.versioning.merge_branch(self.config.versioning_metadata["current_branch"])
-                # self.versioning.checkout_branch(self.config.versioning_metadata["current_branch"])
-                dest_commit = self.config.checkpoints[-1].commit_hash
-                src_commit = self.config.checkpoints[0].commit_hash
-                merge_patch = self.versioning.get_diff_patch(src_commit,dest_commit)
-                self.versioning.checkout_branch(self.config.versioning_metadata["old_branch"])
-                self.versioning.apply_patch(merge_patch)
-                self.versioning.commit_all_files(event["content"]["commit_message"])
-                self.versioning.checkout_branch(self.config.versioning_metadata["current_branch"])
-
 
             case "ModelRequest":
                 # TODO: Need some quantized timestep for saving persistence that isn't literally every 0.1s
@@ -757,6 +746,44 @@ class Session:
     def delete_from_db(self):
         if self.persist_to_db:
             asyncio.run(_delete_session_util(self.name))
+
+    def merge(self, commit_message):
+        # self.versioning.checkout_branch(self.config.versioning_metadata["old_branch"])
+        # self.versioning.merge_branch(self.config.versioning_metadata["current_branch"])
+        # self.versioning.checkout_branch(self.config.versioning_metadata["current_branch"])
+
+        # get last git commit
+        for commit in self.config.checkpoints[::-1]:
+            if commit.commit_hash != "no_commit":
+                dest_commit = commit.commit_hash
+                break
+
+        
+        src_branch = self.config.versioning_metadata["old_branch"]
+        
+        # get diff between dest_commit and src_branch
+        src_commit = self.versioning.get_last_commit(src_branch)[1]
+        merge_patch = self.versioning.get_diff_patch(src_commit,dest_commit)
+            
+        # get tempfile
+        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+            temp_file.write(merge_patch[1].encode())
+            temp_file.flush()
+
+        
+
+        # dest_commit = self.config.checkpoints[-1].commit_hash
+        # src_commit = self.config.checkpoints[0].commit_hash
+        # merge_patch = self.versioning.get_diff_patch(src_commit,dest_commit)
+        # print(merge_patch[1])
+        if merge_patch[0] == 0:
+            self.versioning.checkout_branch(self.config.versioning_metadata["old_branch"])
+            res = self.versioning.apply_patch(temp_file.name)
+            print(res)
+            res = self.versioning.commit_all_files(commit_message)
+            print(res)
+            res = self.versioning.checkout_branch(self.config.versioning_metadata["current_branch"])
+            print(res)
 
     # def error_handler(self, system, event):
     #     return [Event(

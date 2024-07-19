@@ -50,13 +50,13 @@ class GitVersioning:
             return 0, "none"
         add_result = subprocess.run(["git", "add", "."], cwd=self.project_path, capture_output=True, text=True)
         if add_result.returncode != 0:
-            return add_result.returncode, add_result.stderr
+            return add_result.returncode, add_result.stderr + add_result.stdout
 
         commit_result = subprocess.run(
             ["git", "commit", "-m", message], cwd=self.project_path, capture_output=True, text=True
         )
         if commit_result.returncode != 0:
-            return commit_result.returncode, commit_result.stderr
+            return commit_result.returncode, commit_result.stderr + commit_result.stdout
 
         hash_result = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.project_path, capture_output=True, text=True)
         return hash_result.returncode, hash_result.stdout.strip() if hash_result.returncode == 0 else hash_result.stderr
@@ -89,6 +89,12 @@ class GitVersioning:
             ["git", "commit", "-am", message], cwd=self.project_path, capture_output=True, text=True
         )
         return result.returncode, result.stdout if result.returncode == 0 else result.stderr
+    
+    def get_last_commit(self, branch_name):
+        if self.config.versioning_type == "none":
+            return 0, "none"
+        result = subprocess.run(["git", "rev-parse", branch_name], cwd=self.project_path, capture_output=True, text=True)
+        return result.returncode, result.stdout.strip() if result.returncode == 0 else result.stderr
 
     def get_diff_patch(self, commit_hash_src, commit_hash_dst):
         if self.config.versioning_type == "none":
@@ -96,10 +102,10 @@ class GitVersioning:
         result = subprocess.run(["git", "diff", commit_hash_src, commit_hash_dst], cwd=self.project_path, capture_output=True, text=True)
         return result.returncode, result.stdout if result.returncode == 0 else result.stderr
 
-    def apply_patch(self, patch):
+    def apply_patch(self, patchfile):
         if self.config.versioning_type == "none":
             return 0, "none"
-        result = subprocess.run(executable="git",args=["apply", patch], cwd=self.project_path, capture_output=True, text=True)
+        result = subprocess.run(["git", "apply", patchfile], cwd=self.project_path, capture_output=True, text=True)
         return result.returncode, result.stdout if result.returncode == 0 else result.stderr
 
     def list_commits(self):
