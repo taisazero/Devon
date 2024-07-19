@@ -85,15 +85,9 @@ class Session:
         if self.config.versioning_type == "git":
             self.versioning = GitVersioning(config.path, config)
 
-        self.base_path = config.path
-
         self.telemetry_client = Posthog()
 
-        self.exclude_files = config.exclude_files
-
         self.status = "paused"
-
-        self.db_path = config.db_path
 
         self.default_environment = self.environments["local"]
 
@@ -142,15 +136,8 @@ class Session:
     def from_config(cls, config: Config, event_log: List[Dict]):
         config = config
         instance = cls(config, event_log)
-
-        # instance.state = DotDict(data["state"])
-        instance.state = DotDict({})
-        instance.state.editor = {}
-        instance.state.editor["files"] = []
-        # instance.event_log = event_log
         instance.event_id = len(event_log)
 
-        # instance.environments["local"].communicate("cd " + data["cwd"])
 
         instance.event_log.append(
             Event(
@@ -175,20 +162,17 @@ class Session:
         self.status = "running"
 
     def revert(self,checkpoint_id):
-        print(self.config.checkpoints)
         for i,checkpoint in enumerate(self.config.checkpoints):
             if checkpoint.checkpoint_id == checkpoint_id:
                 
                 if self.config.versioning_type == "git" and checkpoint.commit_hash != "no_commit":
-                    print(self.versioning.revert_to_commit(checkpoint.commit_hash))
+                    self.versioning.revert_to_commit(checkpoint.commit_hash)
                 event_id = checkpoint.event_id
                 event_log = self.event_log[:event_id+1]
                 self.event_id = event_id
                 self.event_log = event_log
                 self.config.state = checkpoint.state
-                print("STATE: ", self.config.state)
                 self.config.agent_configs[0].chat_history = list(checkpoint.agent_history)
-                print("CHAT HISTORY: ", self.config.agent_configs[0].chat_history)
                 self.setup()
                 for env in self.environments.values():
                     env.event_log = event_log
@@ -205,9 +189,7 @@ class Session:
             time.sleep(2)
 
     def run_event_loop(self,revert=False):
-        print("revert",revert)
         if self.config.versioning_type == "git" and not revert:
-            print("IN GIT",self.config.versioning_type == "git" and not revert)
             self.versioning.initialize_git()
             if not self.config.versioning_metadata:
                 self.config.versioning_metadata = {}
@@ -236,8 +218,6 @@ class Session:
                                 self.config.versioning_type = "none"
                                 break
 
-            print("OLD BRANCH: ", self.config.versioning_metadata["old_branch"])
-            print("NEW BRANCH: ", self.versioning.get_branch_name()[1])
             # THIS PART IS STILL VERY JANKY. NEED A BETTER WAY TO HANDLE BLOCKING.
             if self.config.versioning_metadata["old_branch"] !=self.versioning.get_branch_name():
                 while True:
@@ -264,9 +244,6 @@ class Session:
                 try:
                     commit_hash = self.versioning.initial_commit()
                     self.config.versioning_metadata["initial_commit"] = commit_hash[1]
-                    # self.config.versioning_metadata["commits"] = [commit_hash]
-                    # print(commit_hash)
-                    # if commit_hash[0] == True:
                     self.config.checkpoints.append(Checkpoint(commit_message="initial commit", commit_hash=commit_hash[1], agent_history=self.config.agent_configs[0].chat_history, event_id=len(self.event_log), checkpoint_id=len(self.config.checkpoints), state=json.loads(json.dumps(self.config.state))))
                     break
                 except Exception as e:
@@ -282,8 +259,6 @@ class Session:
                         self.config.versioning_type = "none"
                         break
 
-
-
         while True and not (self.event_id == len(self.event_log)):
             self.logger.info("EVENT ID: %s, STATUS: %s", self.event_id, self.status)
             if self.status == "terminating":
@@ -296,11 +271,7 @@ class Session:
 
             event = self.event_log[self.event_id]
 
-            # self.logger.info(f"Event: {event}")
-            # self.logger.info(f"State: {self.state}")
-
             if event["type"] == "Stop" and event["content"]["type"] != "submit":
-                print("hopefully here")
                 self.status = "terminated"
                 break
             elif event["type"] == "Stop" and event["content"]["type"] == "submit":
@@ -318,12 +289,8 @@ class Session:
 
             events = self.step_event(event)
             self.event_log.extend(events)
-            print("done")
             self.event_id += 1
-        print("its over",self.event_id,len(self.event_log),self.event_log[-1])
         self.status = "terminated"
-        # if self.config.versioning_type == "git":
-        #     self.versioning.checkout_branch(self.config.versioning_metadata["old_branch"])
 
     def step_event(self, event):
         new_events = []
@@ -338,22 +305,6 @@ class Session:
                         "consumer": "user",
                     }
                 )
-
-            case "GitRequest":
-                if event["content"]["type"] == "revert_to_commit":
-                    # vgit
-                    # safely_revert_to_commit(self.default_environment, event["content"]["commit_to_revert"], event["content"]["commit_to_go_to"])
-
-                    new_events.append(
-                        {
-                            "type": "GitEvent",
-                            "content": {
-                                "type": "revert",
-                                "commit": event["content"]["commit_to_go_to"],
-                                "files": [],
-                            },
-                        }
-                    )
 
             case "ModelRequest":
                 # TODO: Need some quantized timestep for saving persistence that isn't literally every 0.1s
@@ -434,7 +385,6 @@ class Session:
 
                             if toolname == "ask_user" and len(args) == 2:
                                 commit_message = args[1]
-                                print("COMMIT MESSAGE: ", commit_message)
                                 if self.config.versioning_type == "git":
                                     success, message = self.versioning.commit_all_files(commit_message)
                                     if not (success == 0):
@@ -447,7 +397,6 @@ class Session:
                                                                                 state=json.loads(json.dumps(self.config.state))))
                                         
                                         self.logger.error(f"Error committing files: {message}")
-                                        self.logger.error("why blocking")
                                     else:
                                         self.config.checkpoints.append(Checkpoint(commit_message=commit_message, 
                                         commit_hash=message, 
@@ -647,7 +596,6 @@ class Session:
         return new_events
 
     def get_available_actions(self) -> list[str]:
-        # get all tools for all environments
 
         tools = []
         for env in self.environments.values():
@@ -729,7 +677,6 @@ class Session:
                 break
 
         src_branch = self.config.versioning_metadata["old_branch"]
-        
         src_commit = self.versioning.get_last_commit(src_branch)[1]
         merge_patch = self.versioning.get_diff_patch(src_commit,dest_commit)
             

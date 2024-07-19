@@ -220,7 +220,7 @@ def get_sessions():
     # TODO: figure out the right information to send
     print(sessions.keys())
     return [
-        {"name": session_name, "path": session_data.base_path}
+        {"name": session_name, "path": session_data.config.path}
         for session_name, session_data in sessions.items()
     ]
 
