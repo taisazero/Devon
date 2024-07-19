@@ -73,7 +73,6 @@ type ServerEventContext = {
 
 export const eventHandlingLogic = fromTransition(
     (state: ServerEventContext, event: ServerEvent) => {
-        console.log(event)
         switch (event.type) {
             case 'session.reset': {
                 return {

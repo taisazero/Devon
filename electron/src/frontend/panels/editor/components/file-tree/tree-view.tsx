@@ -97,7 +97,7 @@ export const TreeView = ({
                                 style={{ width }}
                                 className="overflow-y-auto pt-2"
                             >
-                                {Array.from({ length: 2 }).map((_, index) => (
+                                {Array.from({ length: 3 }).map((_, index) => (
                                     <div
                                         key={index}
                                         className="mb-3 flex gap-3 px-[12px] items-center"

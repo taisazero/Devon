@@ -11,6 +11,7 @@ import {
     FileId,
 } from '@/panels/chat/components/ui/code-snippet'
 import { getRelativePath, getFileName } from '@/lib/utils'
+import { getCheckpointDiff } from '@/lib/services/sessionService/sessionService'
 
 export const selectedCodeSnippetAtom = atom<ICodeSnippet | null>(null)
 
@@ -451,6 +452,7 @@ export default function CodeEditor({
         </div>
     )
 }
+import { SessionMachineContext } from '@/contexts/session-machine-context'
 
 const BothEditorTypes = ({
     file,
@@ -469,6 +471,7 @@ const BothEditorTypes = ({
     ) => void
     showInlineDiff: boolean
 }) => {
+    const [diffContent, setDiffContent] = useState(null)
     // Example original and modified values for the diff editor
     const originalValue = `function hello() {
     console.log("Hello, world!");
@@ -476,22 +479,90 @@ const BothEditorTypes = ({
     const modifiedValue = `function hello() {
     console.log("Hello, beautiful world!");
 }`
+    const host = SessionMachineContext.useSelector(state => state.context.host)
+    const name = SessionMachineContext.useSelector(state => state.context.name)
 
-    return showInlineDiff ? (
-        <DiffEditor
-            className="h-full"
-            theme="vs-dark"
-            original={originalValue}
-            modified={file?.value?.lines ?? file?.value ?? ''}
-            language={file?.language ?? 'python'}
-            onMount={handleDiffEditorDidMount}
-            options={{
-                readOnly: true,
-                fontSize: 10,
-                renderSideBySide: false, // This makes it an inline diff
-            }}
-        />
-    ) : (
+    useEffect(() => {
+        const fetchDiff = async () => {
+            if (showInlineDiff && file) {
+                try {
+                    const result = await getCheckpointDiff(host, name, 0, 1)
+                    console.log(result?.files)
+                    const fileDiff = result.files.find(
+                        f => f.file_path === getFileName(file.id)
+                    )
+                    if (fileDiff) {
+                        setDiffContent(fileDiff)
+                    } else {
+                        setDiffContent(null)
+                    }
+                } catch (error) {
+                    console.error('Error fetching diff:', error)
+                }
+            } else {
+                setDiffContent(null)
+            }
+        }
+
+        fetchDiff()
+    }, [showInlineDiff, file, host, name])
+
+    const customDiffEditorOptions = {
+        readOnly: true,
+        fontSize: 10,
+        renderSideBySide: false, // This makes it an inline diff
+        diffWordWrap: 'on',
+        // Remove line decorations (including +/- signs)
+        renderIndicators: false,
+        // Customize diff colors
+        diffAlgorithm: 'advanced',
+        originalEditable: false,
+        ignoreTrimWhitespace: false,
+        // Disable the overview ruler (scrollbar annotations)
+        overviewRulerLanes: 0,
+    }
+
+    const handleCustomDiffEditorDidMount = (editor, monaco) => {
+        handleDiffEditorDidMount(editor, monaco)
+
+        monaco.editor.defineTheme('custom-diff-theme', {
+            base: 'vs-dark',
+            inherit: true,
+            rules: [],
+            colors: {
+                'diffEditor.insertedTextBackground': '#2d592b',
+                'diffEditor.removedTextBackground': '#FF000030',
+                'diffEditor.insertedLineBackground': '#2d592b',
+                'diffEditor.removedLineBackground': '#FF000030',
+                'diffEditor.diagonalFill': '#00000000',
+            },
+        })
+        monaco.editor.setTheme('custom-diff-theme')
+
+        // Hide line numbers
+        const modifiedEditor = editor.getModifiedEditor()
+        modifiedEditor.updateOptions()
+        const originalEditor = editor.getOriginalEditor()
+        originalEditor.updateOptions({
+            lineNumbers: 'off',
+        })
+    }
+
+    if (showInlineDiff && diffContent) {
+        return (
+            <DiffEditor
+                className="h-full"
+                theme="vs-dark"
+                original={diffContent.before}
+                modified={diffContent.after}
+                language={file?.language ?? 'python'}
+                onMount={handleCustomDiffEditorDidMount}
+                options={customDiffEditorOptions}
+            />
+        )
+    }
+
+    return (
         <Editor
             className="h-full"
             theme="vs-dark"

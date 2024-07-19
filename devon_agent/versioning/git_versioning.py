@@ -223,8 +223,10 @@ class GitVersioning:
         
         diff_list = []
         for file in files:
-            before_content = self.get_file_content(commit1, file)
-            after_content = self.get_file_content(commit2, file)
+            if (file == "") or (file == None):
+                continue
+            status1, before_content = self.get_file_content(commit1, file)
+            status2, after_content = self.get_file_content(commit2, file)
             diff_list.append((file, before_content, after_content))
         
         return diff_list

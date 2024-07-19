@@ -65,6 +65,10 @@ const EditorPanel = ({
     const path = SessionMachineContext.useSelector(
         state => state.context?.sessionConfig?.path ?? ''
     )
+    const c = SessionMachineContext.useSelector(
+        state => state.context?.sessionConfig ?? ''
+    )
+    // console.log("config", c)
     const showEditorBorders = true
 
     const agentFiles: File[] = SessionMachineContext.useSelector(
@@ -247,7 +251,7 @@ const EditorPanel = ({
         [files, openFiles]
     )
 
-    const [showInlineDiff, setShowInlineDiff] = useState(true)
+    const [showInlineDiff, setShowInlineDiff] = useState(false)
 
     return (
         <div

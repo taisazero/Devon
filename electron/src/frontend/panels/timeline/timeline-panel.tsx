@@ -160,7 +160,7 @@ const TimelinePanel = ({
                 checkpoint_id: checkpoint.checkpoint_id,
             })) ?? []
 
-    console.log('commits', commits)
+    // console.log('commits', commits)
 
     // useEffect(() => {
     //     const interval = setInterval(() => {
@@ -176,7 +176,6 @@ const TimelinePanel = ({
     const versioning_type = SessionMachineContext.useSelector(
         state => state.context.sessionConfig?.versioning_type
     )
-    console.log('versioning_type', versioning_type)
     const hasCommits =
         versioning_type === 'git' && commits && commits.length > 0
 
