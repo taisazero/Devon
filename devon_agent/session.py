@@ -30,10 +30,10 @@ from devon_agent.tools.filesearchtools import FindFileTool, GetCwdTool, SearchDi
 from devon_agent.tools.filetools import FileTreeDisplay, SearchFileTool
 from devon_agent.tools.lifecycle import NoOpTool
 from devon_agent.tools.shelltool import ShellTool
-from devon_agent.tools.usertools import AskUserTool, AskUserToolWithCommit
+from devon_agent.tools.usertools import AskUserToolWithCommit
 from devon_agent.tools.utils import get_ignored_files, read_file
 from devon_agent.utils.telemetry import Posthog, SessionStartEvent
-from devon_agent.utils.utils import DotDict, Event, WholeFileDiff, WholeFileDiffResults
+from devon_agent.utils.utils import Event, WholeFileDiff, WholeFileDiffResults
 from devon_agent.versioning.git_versioning import GitVersioning
 
 
@@ -42,6 +42,35 @@ def waitForEvent(event_log: List[Dict], event_type: str):
         if event_log[-1]["type"] == event_type:
             return event_log[-1]
         time.sleep(1)
+
+
+def make_checkpoint(
+    commit_message: str, config: Config, event_id: int, versioning: GitVersioning
+):
+    success, message = versioning.commit_all_files(commit_message)
+    if not (success == 0):
+        config.checkpoints.append(
+            Checkpoint(
+                commit_message=commit_message,
+                commit_hash="no_commit",
+                agent_history=config.agent_configs[0].chat_history,
+                event_id=event_id,
+                checkpoint_id=len(config.checkpoints),
+                state=json.loads(json.dumps(config.state)),
+            )
+        )
+
+    else:
+        config.checkpoints.append(
+            Checkpoint(
+                commit_message=commit_message,
+                commit_hash=message,
+                agent_history=config.agent_configs[0].chat_history,
+                event_id=event_id,
+                checkpoint_id=len(config.checkpoints),
+                state=json.loads(json.dumps(config.state)),
+            )
+        )
 
 
 class Session:
@@ -429,7 +458,7 @@ class Session:
                         }
                     )
 
-                if toolname == "ask_user" and len(args) == 2:
+                if tool_name == "ask_user" and len(args) == 2:
                     commit_message = args[1]
                     if self.config.versioning_type == "git":
                         success, message = self.versioning.commit_all_files(
@@ -486,19 +515,17 @@ class Session:
                         )
 
                 try:
-                    toolname = event["content"]["toolname"]
-                    args = event["content"]["args"]
 
                     env = None
 
                     for _env in list(self.environments.values()):
-                        if toolname in _env.tools:
+                        if tool_name in _env.tools:
                             env = _env
 
                     if not env:
-                        raise ToolNotFoundException(toolname, self.environments)
+                        raise ToolNotFoundException(tool_name, self.environments)
 
-                    response = env.tools[toolname](
+                    response = env.tools[tool_name](
                         {
                             "environment": env,
                             "config": self.config,
@@ -513,7 +540,7 @@ class Session:
                         {
                             "type": "ToolResponse",
                             "content": response,
-                            "producer": toolname,
+                            "producer": tool_name,
                             "consumer": event["producer"],
                         }
                     )
@@ -758,14 +785,11 @@ class Session:
             self.versioning.checkout_branch(
                 self.config.versioning_metadata["old_branch"]
             )
-            res = self.versioning.apply_patch(temp_file.name)
-            print(res)
-            res = self.versioning.commit_all_files(commit_message)
-            print(res)
-            res = self.versioning.checkout_branch(
+            self.versioning.apply_patch(temp_file.name)
+            self.versioning.commit_all_files(commit_message)
+            self.versioning.checkout_branch(
                 self.config.versioning_metadata["current_branch"]
             )
-            print(res)
             os.remove(temp_file.name)
             return True
         else:
