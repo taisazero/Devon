@@ -423,6 +423,7 @@ def reset_session(session: str, background_tasks: fastapi.BackgroundTasks):
     return session
 
 
+
 @app.get("/sessions/{session}/status")
 def get_session_status(session: str):
     if session not in sessions:
@@ -433,17 +434,17 @@ def get_session_status(session: str):
     return session_obj.status
 
 
-@app.get("/sessions/{session}/state")
-def get_session_state(session: str):
-    if session not in sessions:
-        raise fastapi.HTTPException(status_code=404, detail="Session not found")
-    session_obj = sessions.get(session)
-    if not session_obj:
-        raise fastapi.HTTPException(status_code=404, detail="Session not found")
+# @app.get("/sessions/{session}/state")
+# def get_session_state(session: str):
+#     if session not in sessions:
+#         raise fastapi.HTTPException(status_code=404, detail="Session not found")
+#     session_obj = sessions.get(session)
+#     if not session_obj:
+#         raise fastapi.HTTPException(status_code=404, detail="Session not found")
 
-    state = session_obj.config.state
-    state["path"] = session_obj.base_path
-    return state
+#     state = session_obj.config.state
+#     state["path"] = session_obj.base_path
+#     return state
 
 @app.get("/sessions/{session}/config")
 def get_session_config(session: str):
@@ -453,13 +454,13 @@ def get_session_config(session: str):
     session_obj = sessions.get(session)
     if not session_obj:
         raise fastapi.HTTPException(status_code=404, detail="Session not found")
-    
     # Extract relevant config details
     config = {
         "model": session_obj.config.agent_configs[0].model,
         "versioning_type": session_obj.config.versioning_type,
         "checkpoints": session_obj.config.checkpoints,
         "versioning_metadata": session_obj.config.versioning_metadata,
+        "state": session_obj.config.state,
     }
     return config
 

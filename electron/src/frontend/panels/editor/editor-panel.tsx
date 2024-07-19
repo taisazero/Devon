@@ -62,19 +62,19 @@ const EditorPanel = ({
     const [files, setFiles] = useState<File<undefined>[]>([])
 
     const path = SessionMachineContext.useSelector(
-        state => state.context?.sessionState?.path ?? ''
+        state => state.context?.sessionConfig?.state?.path ?? ''
     )
     const showEditorBorders = true
 
     const agentFiles: File[] = SessionMachineContext.useSelector(
         state => {
             if (
-                state.context.sessionState?.editor &&
-                state.context.sessionState.editor.files
+                state.context.sessionConfig?.state?.editor &&
+                state.context.sessionConfig?.state?.editor.files
             ) {
                 // console.log(state.context.sessionState.editor.files)
 
-                return Object.keys(state.context.sessionState.editor.files).map(
+                return Object.keys(state.context.sessionConfig?.state?.editor.files).map(
                     filepath => {
                         window.api.invoke('editor-add-open-file', filepath)
                         return {
@@ -85,7 +85,7 @@ const EditorPanel = ({
                                 getLanguageFromFilename(
                                     filepath.split('/').pop() ?? ''
                                 ) ?? '',
-                            value: state.context.sessionState.editor.files[
+                            value: state.context.sessionConfig?.state?.editor.files[
                                 filepath
                             ],
                             icon:

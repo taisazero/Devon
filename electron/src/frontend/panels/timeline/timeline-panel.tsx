@@ -16,7 +16,6 @@ import {
     PopoverClose,
 } from '@/components/ui/popover'
 import { Undo2, GitBranch } from 'lucide-react'
-import { AgentConfig } from '@/lib/types'
 
 type SubStepType = {
     hash: string
@@ -128,22 +127,25 @@ const TimelinePanel = ({
     // const commits = SessionMachineContext.useSelector(
     //     state => state.context.serverEventContext.gitData.commits
     // )
-    const host = SessionMachineContext.useSelector(state => state.context.host)
-    const name = SessionMachineContext.useSelector(state => state.context.name)
-    const [config, setConfig] = useState<AgentConfig | null>(null)
-    const getSessionConfig = async () => {
-        try {
-            const response = await axios.get(`${host}/sessions/${name}/config`)
-            return response.data
-        } catch (error) {
-            console.error('Error fetching session config:', error)
-            throw error
-        }
-    }
+    // const host = SessionMachineContext.useSelector(state => state.context.host)
+    // const name = SessionMachineContext.useSelector(state => state.context.name)
+    // const [config, setConfig] = useState<AgentConfig | null>(null)
+    // const getSessionConfig = async () => {
+    //     try {
+    //         const response = await axios.get(`${host}/sessions/${name}/config`)
+    //         return response.data
+    //     } catch (error) {
+    //         console.error('Error fetching session config:', error)
+    //         throw error
+    //     }
+    // }
+
+    const checkpoints : Checkpoint[]= SessionMachineContext.useSelector(state => state.context.sessionConfig?.checkpoints,
+        (a, b) => a?.length === b?.length && a?.every((checkpoint: { checkpoint_id: any }, index: string | number) => checkpoint?.checkpoint_id === b[index]?.checkpoint_id)
+    )
 
     const commits =
-        config?.checkpoints
-            .filter(checkpoint => checkpoint.commit_hash !== 'no_commit')
+        checkpoints?.filter(checkpoint => checkpoint.commit_hash !== 'no_commit')
             .map(checkpoint => ({
                 hash: checkpoint.commit_hash,
                 message: checkpoint.commit_message,
@@ -152,19 +154,23 @@ const TimelinePanel = ({
 
     console.log('commits', commits)
 
-    useEffect(() => {
-        const interval = setInterval(() => {
-            getSessionConfig().then(res => setConfig(res))
-        }, 1000)
-        // Clean up the interval when the component unmounts
-        return () => clearInterval(interval)
-    }, [expanded])
+    // useEffect(() => {
+    //     const interval = setInterval(() => {
+    //         getSessionConfig().then(res => setConfig(res))
+    //     }, 1000)
+    //     // Clean up the interval when the component unmounts
+    //     return () => clearInterval(interval)
+    // }, [expanded])
 
     // const hasCommits = true
     // const steps: StepType[] = exampleSteps
 
+    const versioning_type = SessionMachineContext.useSelector(state => state.context.sessionConfig?.versioning_type)
+    console.log('versioning_type', versioning_type)
     const hasCommits =
-        config?.versioning_type === 'git' && commits && commits.length > 0
+        versioning_type === 'git' && commits && commits.length > 0
+
+    const old_branch = SessionMachineContext.useSelector(state => state.context.sessionConfig?.versioning_metadata?.old_branch)
 
     const steps: StepType[] = hasCommits
         ? commits.map((commit, index) => ({
@@ -226,7 +232,7 @@ const TimelinePanel = ({
                     <h2 className={`text-lg font-semibold overflow-hidden`}>
                         Devon's Timeline
                     </h2>
-                    {config?.versioning_type === 'git' && (
+                    {versioning_type === 'git' && (
                         <TooltipProvider delayDuration={100}>
                             <Tooltip>
                                 <TooltipTrigger>
@@ -237,10 +243,9 @@ const TimelinePanel = ({
                                                 className="text-primary"
                                             />
                                             {isString(
-                                                config?.versioning_metadata
-                                                    ?.old_branch
+                                                old_branch
                                             )
-                                                ? config?.versioning_metadata
+                                                ? old_branch
                                                       ?.old_branch
                                                 : '(name not found)'}
                                         </code>
@@ -274,7 +279,7 @@ const TimelinePanel = ({
                 ) : (
                     <div className="flex">
                         <p className="whitespace-nowrap text-center text-md text-gray-400">
-                            {config?.versioning_type === 'git'
+                            {versioning_type === 'git'
                                 ? `Devon hasn't made any commits yet`
                                 : 'Git is disabled for this project'}
                         </p>
@@ -286,8 +291,8 @@ const TimelinePanel = ({
                     <p className="mt-4 flex whitespace-nowrap">
                         Sync changes with{' '}
                         <code className="bg-black px-[6px] py-[1px] rounded-md text-primary text-opacity-100 text-[0.9rem] mx-[4px]">
-                            {isString(config?.versioning_metadata?.old_branch)
-                                ? config?.versioning_metadata?.old_branch
+                            {isString(old_branch)
+                                ? old_branch
                                 : '(name not found)'}
                         </code>{' '}
                         branch?

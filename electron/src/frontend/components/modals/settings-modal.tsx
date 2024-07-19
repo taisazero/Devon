@@ -84,7 +84,7 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
     } = useSafeStorage()
     const sessionActorref = SessionMachineContext.useActorRef()
     const path = SessionMachineContext.useSelector(
-        state => state?.context?.sessionState?.path
+        state => state?.context?.sessionConfig?.state?.path
     )
     const host = SessionMachineContext.useSelector(state => state.context.host)
     const name = SessionMachineContext.useSelector(state => state.context.name)

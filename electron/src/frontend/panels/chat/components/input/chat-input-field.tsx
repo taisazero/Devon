@@ -48,7 +48,7 @@ const ChatInputField = ({
 
     const sessionActorRef = SessionMachineContext.useActorRef()
     const projectPath = SessionMachineContext.useSelector(
-        state => state?.context?.sessionState?.path
+        state => state?.context?.sessionConfig?.state?.path
     )
 
     useEffect(() => {

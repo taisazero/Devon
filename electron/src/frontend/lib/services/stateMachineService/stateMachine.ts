@@ -22,9 +22,7 @@ import {
     assign,
     fromPromise,
     emit,
-    log,
-    AnyEventObject,
-    ParameterizedObject,
+    log
     // createActor
 } from 'xstate'
 import type { Message } from '@/lib/types'
@@ -49,6 +47,7 @@ type ServerEvent = {
         | 'GitEvent'
         | 'GitError'
         | 'GitResolve'
+        | 'Checkpoint'
     content: any
     identifier: string | null
 }
@@ -422,13 +421,13 @@ const startSessionActor = fromPromise(
             }
         )
 
-        const events = (
-            await axios.get(`${input?.host}/sessions/${input?.name}/events`)
-        ).data
+        // const events = (
+        //     await axios.get(`${input?.host}/sessions/${input?.name}/events`)
+        // ).data
 
-        const state = (
-            await axios.get(`${input?.host}/sessions/${input?.name}/state`)
-        ).data
+        // const state = (
+        //     await axios.get(`${input?.host}/sessions/${input?.name}/state`)
+        // ).data
 
         return response
     }
@@ -504,7 +503,7 @@ const sendMessage = async ({
 
 export const fetchSessionState = async (host: string, sessionId: string) => {
     const { data } = await axios.get(
-        `${host}/sessions/${encodeURIComponent(sessionId)}/state`
+        `${host}/sessions/${encodeURIComponent(sessionId)}/config`
     )
     return data
 }
@@ -521,7 +520,7 @@ export const newSessionMachine = setup({
             path: string
             serverEventContext: ServerEventContext
             agentConfig: any
-            sessionState: any
+            sessionConfig: any
             healthcheckRetry: number
         },
     },
@@ -569,11 +568,11 @@ export const newSessionMachine = setup({
                     `${input?.host}/sessions/${input?.name}/reset`
                 )
 
-                const state = (
-                    await axios.get(
-                        `${input?.host}/sessions/${input?.name}/state`
-                    )
-                ).data
+                // const state = (
+                //     await axios.get(
+                //         `${input?.host}/sessions/${input?.name}/state`
+                //     )
+                // ).data
 
                 return response
             }
@@ -606,7 +605,7 @@ export const newSessionMachine = setup({
         name: input.name,
         path: '',
         agentConfig: undefined,
-        sessionState: undefined,
+        sessionConfig: undefined,
         serverEventContext: {
             messages: [],
             ended: false,
@@ -968,8 +967,9 @@ export const newSessionMachine = setup({
                 'session.stateUpdate': {
                     target: 'running',
                     actions: assign(({ event }) => {
+                        console.log('stateUpdate', event.payload)
                         return {
-                            sessionState: event.payload,
+                            sessionConfig: event.payload,
                         }
                     }),
                     reenter: true,
