@@ -967,7 +967,7 @@ export const newSessionMachine = setup({
                 'session.stateUpdate': {
                     target: 'running',
                     actions: assign(({ event }) => {
-                        console.log('stateUpdate', event.payload)
+                        // console.log('stateUpdate', event.payload)
                         return {
                             sessionConfig: event.payload,
                         }

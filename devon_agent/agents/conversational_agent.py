@@ -122,7 +122,7 @@ class ConversationalAgent(Agent):
                     "state": session.config.state,
                 }
             ),
-            session.base_path,
+            session.config.path,
             scratchpad,
         )
 
@@ -156,7 +156,7 @@ class ConversationalAgent(Agent):
                     "state": session.state,
                 }
             ),
-            session.base_path,
+            session.config.path,
             scratchpad
         )
 

@@ -17,6 +17,7 @@ import {
     ResizablePanelGroup,
 } from '@/components/ui/resizable'
 import EditorPanelHeader from './components/editor-panel-header'
+import { Switch } from '@/components/ui/switch'
 
 const boilerplateFile = {
     id: 'main.py',
@@ -62,7 +63,7 @@ const EditorPanel = ({
     const [files, setFiles] = useState<File<undefined>[]>([])
 
     const path = SessionMachineContext.useSelector(
-        state => state.context?.sessionConfig?.state?.path ?? ''
+        state => state.context?.sessionConfig?.path ?? ''
     )
     const showEditorBorders = true
 
@@ -72,30 +73,28 @@ const EditorPanel = ({
                 state.context.sessionConfig?.state?.editor &&
                 state.context.sessionConfig?.state?.editor.files
             ) {
-                // console.log(state.context.sessionState.editor.files)
-
-                return Object.keys(state.context.sessionConfig?.state?.editor.files).map(
-                    filepath => {
-                        window.api.invoke('editor-add-open-file', filepath)
-                        return {
-                            id: filepath,
-                            name: filepath.split('/').pop() ?? 'unnamed_file',
-                            path: filepath,
-                            language:
-                                getLanguageFromFilename(
-                                    filepath.split('/').pop() ?? ''
-                                ) ?? '',
-                            value: state.context.sessionConfig?.state?.editor.files[
-                                filepath
-                            ],
-                            icon:
-                                getIconFromFilename(
-                                    filepath.split('/').pop() ?? ''
-                                ) ?? '',
-                            agentHasOpen: true,
-                        }
+                return Object.keys(
+                    state.context.sessionConfig?.state?.editor.files
+                ).map(filepath => {
+                    window.api.invoke('editor-add-open-file', filepath)
+                    return {
+                        id: filepath,
+                        name: filepath.split('/').pop() ?? 'unnamed_file',
+                        path: filepath,
+                        language:
+                            getLanguageFromFilename(
+                                filepath.split('/').pop() ?? ''
+                            ) ?? '',
+                        value: state.context.sessionConfig?.state?.editor.files[
+                            filepath
+                        ],
+                        icon:
+                            getIconFromFilename(
+                                filepath.split('/').pop() ?? ''
+                            ) ?? '',
+                        agentHasOpen: true,
                     }
-                )
+                })
             } else {
                 return [] as File[]
             }
@@ -142,7 +141,6 @@ const EditorPanel = ({
                     const fileMap = new Map(
                         prevFiles.map(file => [file.path, file])
                     )
-
                     events.files.forEach(file => {
                         fileMap.set(file, {
                             id: file,
@@ -249,6 +247,8 @@ const EditorPanel = ({
         [files, openFiles]
     )
 
+    const [showInlineDiff, setShowInlineDiff] = useState(true)
+
     return (
         <div
             className={`flex flex-col h-full w-full ${
@@ -292,6 +292,19 @@ const EditorPanel = ({
                                 defaultSize={80}
                                 className="flex-grow flex flex-col overflow-hidden"
                             >
+                                <div className="flex items-center justify-end p-2">
+                                    <label
+                                        htmlFor="inline-diff"
+                                        className="mr-2 text-sm text-gray-300"
+                                    >
+                                        Show Inline Diff
+                                    </label>
+                                    <Switch
+                                        id="inline-diff"
+                                        checked={showInlineDiff}
+                                        onCheckedChange={setShowInlineDiff}
+                                    />
+                                </div>
                                 <CodeEditor
                                     files={openFiles}
                                     selectedFileId={selectedFileId}
@@ -300,6 +313,8 @@ const EditorPanel = ({
                                     showEditorBorders={showEditorBorders}
                                     path={path}
                                     initialFiles={agentFiles}
+                                    showInlineDiff={showInlineDiff}
+                                    setShowInlineDiff={setShowInlineDiff}
                                 />
                             </ResizablePanel>
                         </ResizablePanelGroup>

@@ -16,6 +16,7 @@ import {
     PopoverClose,
 } from '@/components/ui/popover'
 import { Undo2, GitBranch } from 'lucide-react'
+import { Checkpoint } from '@/lib/types'
 
 type SubStepType = {
     hash: string
@@ -140,12 +141,19 @@ const TimelinePanel = ({
     //     }
     // }
 
-    const checkpoints : Checkpoint[]= SessionMachineContext.useSelector(state => state.context.sessionConfig?.checkpoints,
-        (a, b) => a?.length === b?.length && a?.every((checkpoint: { checkpoint_id: any }, index: string | number) => checkpoint?.checkpoint_id === b[index]?.checkpoint_id)
+    const checkpoints: Checkpoint[] = SessionMachineContext.useSelector(
+        state => state.context.sessionConfig?.checkpoints,
+        (a, b) =>
+            a?.length === b?.length &&
+            a?.every(
+                (checkpoint: { checkpoint_id: any }, index: string | number) =>
+                    checkpoint?.checkpoint_id === b[index]?.checkpoint_id
+            )
     )
 
     const commits =
-        checkpoints?.filter(checkpoint => checkpoint.commit_hash !== 'no_commit')
+        checkpoints
+            ?.filter(checkpoint => checkpoint.commit_hash !== 'no_commit')
             .map(checkpoint => ({
                 hash: checkpoint.commit_hash,
                 message: checkpoint.commit_message,
@@ -165,12 +173,16 @@ const TimelinePanel = ({
     // const hasCommits = true
     // const steps: StepType[] = exampleSteps
 
-    const versioning_type = SessionMachineContext.useSelector(state => state.context.sessionConfig?.versioning_type)
+    const versioning_type = SessionMachineContext.useSelector(
+        state => state.context.sessionConfig?.versioning_type
+    )
     console.log('versioning_type', versioning_type)
     const hasCommits =
         versioning_type === 'git' && commits && commits.length > 0
 
-    const old_branch = SessionMachineContext.useSelector(state => state.context.sessionConfig?.versioning_metadata?.old_branch)
+    const old_branch = SessionMachineContext.useSelector(
+        state => state.context.sessionConfig?.versioning_metadata?.old_branch
+    )
 
     const steps: StepType[] = hasCommits
         ? commits.map((commit, index) => ({
@@ -212,9 +224,9 @@ const TimelinePanel = ({
             type: 'session.sendEvent',
             params: {
                 serverEventType: 'GitMerge',
-                content:{
-                    "commit_message": "Merge branch"
-                }
+                content: {
+                    commit_message: 'Merge branch',
+                },
             },
         })
     }
@@ -242,11 +254,8 @@ const TimelinePanel = ({
                                                 size={16}
                                                 className="text-primary"
                                             />
-                                            {isString(
-                                                old_branch
-                                            )
+                                            {isString(old_branch)
                                                 ? old_branch
-                                                      ?.old_branch
                                                 : '(name not found)'}
                                         </code>
                                     </div>

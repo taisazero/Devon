@@ -120,17 +120,25 @@ function checkBackendExists(): { passed: boolean; message?: string } {
         const result = spawnSync('devon_agent', ['--version'])
         if (result.error) {
             mainLogger.error(
-                `Error checking devon_agent version: ${result.error}`
+                `Error checking devon_agent version: ${result.stderr.toString()}`
+            )
+            mainLogger.error(
+                `Error checking devon_agent version: ${JSON.stringify(
+                    result
+                ).toString()}`
             )
             throw result.error
         }
 
         const versionOutput = result.stdout.toString().trim()
         const versionMatch = versionOutput.match(/(\d+\.\d+\.\d+)/)
-
         if (!versionMatch) {
-            mainLogger.warn(
-                `devon_agent version not found or not parseable: ${versionOutput}`
+            mainLogger.error(
+                `devon_agent version not found or not parsable. ${
+                    versionOutput
+                        ? 'Found ' + versionOutput
+                        : '(No version found)'
+                }\n${result?.output?.toString()}`
             )
             return {
                 passed: false,
