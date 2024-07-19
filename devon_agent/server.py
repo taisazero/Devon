@@ -461,6 +461,7 @@ def get_session_config(session: str):
         "checkpoints": session_obj.config.checkpoints,
         "versioning_metadata": session_obj.config.versioning_metadata,
         "state": session_obj.config.state,
+        "path": session_obj.config.path,
     }
     return config
 
