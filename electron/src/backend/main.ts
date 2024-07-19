@@ -12,6 +12,7 @@ import path from 'path'
 import { ChildProcess, spawn, spawnSync } from 'child_process'
 import portfinder from 'portfinder'
 import fs from 'fs'
+import semver from 'semver'
 import './plugins/editor'
 
 const DEV_MODE = process.env.DEV_MODE ?? false
@@ -26,22 +27,54 @@ if (!fs.existsSync(logDir)) {
     fs.mkdirSync(logDir, { recursive: true })
 }
 
-function showErrorDialog(title: string, details?: string) {
-    dialog
-        .showMessageBox({
-            type: 'error',
-            message: title ?? 'Uncaught Exception:',
-            detail: details,
-            buttons: ['View Logs', 'Close'],
-            noLink: true,
-        })
-        .then(result => {
-            if (result.response === 0) {
-                shell.openPath(logDir)
-            } else {
-                app.quit()
-            }
-        })
+function showErrorDialog(title: string, details?: string): Promise<number> {
+    return new Promise(resolve => {
+        if (app.isReady()) {
+            const windowToUse = new BrowserWindow({
+                width: 400,
+                height: 300,
+                show: false,
+                alwaysOnTop: true,
+                webPreferences: {
+                    nodeIntegration: false,
+                    contextIsolation: true,
+                },
+            })
+
+            dialog
+                .showMessageBox(windowToUse, {
+                    type: 'error',
+                    message: title ?? 'Uncaught Exception:',
+                    detail: details,
+                    buttons: ['View Logs', 'Close'],
+                    noLink: true,
+                })
+                .then(result => {
+                    resolve(result.response)
+                    if (result.response === 1) {
+                        // Only close the window if 'Close' was clicked
+                        windowToUse.close()
+                    } else if (result.response === 0) {
+                        shell.openPath(logDir)
+                    }
+                })
+
+            windowToUse.show()
+        } else {
+            console.error(
+                'Cannot show error dialog before app is ready:',
+                title,
+                details
+            )
+            mainLogger.error(
+                `Error occurred before app was ready: ${title}\n${details}`
+            )
+            app.on('ready', async () => {
+                const response = await showErrorDialog(title, details)
+                resolve(response)
+            })
+        }
+    })
 }
 
 const createLogger = (service: string) => {
@@ -51,9 +84,21 @@ const createLogger = (service: string) => {
         format: winston.format.combine(
             winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
             winston.format.errors({ stack: true }),
-            winston.format.printf(({ level, message, timestamp, service }) => {
-                return `${timestamp} [${service}] ${level}: ${message}`
-            })
+            winston.format.printf(
+                ({
+                    level,
+                    message,
+                    timestamp,
+                    service,
+                }: {
+                    level: string
+                    message: string
+                    timestamp: string
+                    service: string
+                }) => {
+                    return `${timestamp} [${service}] ${level}: ${message}`
+                }
+            )
         ),
         defaultMeta: { service },
         transports: [
@@ -68,30 +113,84 @@ const createLogger = (service: string) => {
     })
 }
 
-function checkBackendExists() {
-    // Check if devon_agent exists and get its version synchronously
+const BACKEND_MINIMUM_VERSION = '0.1.21'
+
+function checkBackendExists(): { passed: boolean; message?: string } {
     try {
         const result = spawnSync('devon_agent', ['--version'])
         if (result.error) {
+            mainLogger.error(
+                `Error checking devon_agent version: ${result.error}`
+            )
             throw result.error
         }
-        const version = result.stdout.toString().trim()
-        mainLogger.info(
-            `devon_agent ${version ? 'v' + version : '(version not found)'}`
-        )
+
+        const versionOutput = result.stdout.toString().trim()
+        const versionMatch = versionOutput.match(/(\d+\.\d+\.\d+)/)
+
+        if (!versionMatch) {
+            mainLogger.warn(
+                `devon_agent version not found or not parseable: ${versionOutput}`
+            )
+            return {
+                passed: false,
+                message:
+                    'devon_agent version not found or not parseable. Please check your installation.',
+            }
+        }
+
+        const version = versionMatch[1]
+
+        if (!semver.valid(version)) {
+            mainLogger.warn(`Invalid devon_agent version: ${version}`)
+            return {
+                passed: false,
+                message: `Invalid devon_agent version: ${version}. Please check your installation.`,
+            }
+        }
+
+        if (semver.lt(version, BACKEND_MINIMUM_VERSION)) {
+            mainLogger.warn(
+                `devon_agent version ${version} is below the minimum required version ${BACKEND_MINIMUM_VERSION}`
+            )
+            return {
+                passed: false,
+                message: `devon_agent version ${version} is below the minimum required version ${BACKEND_MINIMUM_VERSION}. Please update devon_agent.`,
+            }
+        }
+
+        // mainLogger.info(
+        //     `devon_agent v${version} found and meets minimum version requirement.`
+        // )
+        mainLogger.info(`devon_agent v${version}`)
+        return { passed: true }
     } catch (error) {
-        mainLogger.error(
-            'Failed to get devon_agent version. Please make sure you `pipx install devon_agent`:',
-            error
-        )
-        // Handle the error (e.g., show a dialog, prevent app from continuing)
-        showErrorDialog(
-            'devon_agent not found or failed to run. Please check your installation.',
-            'Make sure you have devon_agent installed. To install, run:\npipx install devon_agent'
-        )
-        app.quit()
-        return
+        mainLogger.error('Failed to get devon_agent version:', error)
+        return {
+            passed: false,
+            message:
+                'Failed to get devon_agent version. Please make sure devon_agent is installed and accessible.',
+        }
     }
+}
+
+async function performInitialChecks(): Promise<boolean> {
+    const backendCheck = checkBackendExists()
+    if (!backendCheck.passed) {
+        const response = await showErrorDialog(
+            'devon_agent check failed',
+            backendCheck.message ||
+                'Unknown error occurred while checking devon_agent.'
+        )
+        if (response === 1) {
+            // User clicked 'Close'
+            return false
+        }
+        // If user clicked 'View Logs', the function will have already opened the logs
+        // and the dialog will remain open, so we return false to prevent app startup
+        return false
+    }
+    return true // Checks passed
 }
 
 const mainLogger = createLogger('devon')
@@ -103,7 +202,6 @@ mainLogger.info('Application started.')
 mainLogger.info(
     `devon-ui ${appVersion ? 'v' + appVersion : '(version not found)'}`
 )
-checkBackendExists()
 
 function clearLogFiles() {
     const logFiles = ['error.log', 'devon.log']
@@ -111,7 +209,7 @@ function clearLogFiles() {
         const logPath = path.join(logDir, file)
         fs.writeFileSync(logPath, '', { flag: 'w' })
     })
-    mainLogger.info('Log files cleared on startup.')
+    // mainLogger.info('Log files cleared on startup.')
 }
 
 // if (process.env.NODE_ENV !== 'production') {
@@ -141,170 +239,112 @@ process.on('uncaughtException', error => {
 ${error.message}
 ${error.stack}
 ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}
-    `.trim()
+`.trim()
 
     mainLogger.error(`Uncaught Exception in main process: ${detailedError}`)
 
     showErrorDialog(`Exception: ${error.message}`, error.stack)
 })
 
-const spawnAppWindow = async () => {
+async function setupServer(): Promise<{ success: boolean; message?: string }> {
     const db_path = path.join(app.getPath('userData'))
-    await portfinder
-        .getPortPromise()
-        .then((port: number) => {
-            use_port = port
-            // process.resourcesPath
 
-            // when we move to zip package
-            // let agent_path = path.join(__dirname, "devon_agent")
-            // if (fs.existsSync(path.join(process.resourcesPath, "devon_agent"))) {
-            //   agent_path = path.join(process.resourcesPath, "devon_agent")
-            // }
-            // fs.chmodSync(agent_path, '755');
-            serverProcess = spawn(
-                'devon_agent',
-                [
-                    'server',
-                    '--port',
-                    port.toString(),
-                    '--db_path',
-                    db_path,
-                    // '--model',
-                    // modelName as string,
-                    // '--api_key',
-                    // api_key as string,
-                    // '--api_base',
-                    // api_base as string,
-                    // '--prompt_type',
-                    // prompt_type as string,
-                ],
-                {
-                    signal: controller.signal,
-                }
-            )
+    try {
+        const port = await portfinder.getPortPromise()
+        use_port = port
 
-            serverProcess.stdout?.on('data', (data: string) => {
-                const message = data.toString()
-                if (message?.startsWith('INFO:')) {
-                    serverLogger.info(message.substring(5).trim())
-                } else {
-                    serverLogger.info(message)
-                }
-                console.log(data.toString())
-            })
+        serverProcess = spawn(
+            'devon_agent',
+            ['server', '--port', port.toString(), '--db_path', db_path],
+            { signal: controller.signal }
+        )
 
-            serverProcess.stderr?.on('data', (data: string) => {
-                const message = data.toString()
-                if (message?.startsWith('INFO:')) {
-                    serverLogger.info(message.substring(5).trim())
-                } else {
-                    serverLogger.error(message)
-                    if (appWindow) {
-                        // Displaying server errors in ui
-                        appWindow.webContents.send(
-                            'server-error',
-                            data.toString()
-                        )
-                    }
-                }
-                console.error('devon-agent', data.toString())
-            })
-
-            serverProcess.on('close', (code: unknown) => {
-                mainLogger.info(`Server process exited with code ${code}`)
-            })
-        })
-        .catch(error => {
-            mainLogger.error('Failed to find a free port:', error)
-            return { success: false, message: 'Failed to find a free port.' }
+        serverProcess.stdout?.on('data', (data: Buffer) => {
+            const message = data.toString().trim()
+            if (message.startsWith('INFO:')) {
+                serverLogger.info(message.substring(5).trim())
+            } else {
+                serverLogger.info(message)
+            }
         })
 
-    // const RESOURCES_PATH = electronIsDev
-    //   ? path.join(__dirname, '../../assets')
-    //   : path.join(process.resourcesPath, 'assets')
+        serverProcess.stderr?.on('data', (data: Buffer) => {
+            const message = data.toString().trim()
+            if (message.startsWith('INFO:')) {
+                serverLogger.info(message.substring(5).trim())
+            } else {
+                serverLogger.error(message)
+                // Assuming mainWindow is your BrowserWindow instance
+                mainWindow?.webContents.send('server-error', message)
+            }
+        })
 
-    // const getAssetPath = (...paths: string[]): string => {
-    //   return path.join(RESOURCES_PATH, ...paths)
-    // }
+        serverProcess.on('close', (code: number | null) => {
+            mainLogger.info(`Server process exited with code ${code}`)
+        })
 
-    const PRELOAD_PATH = path.join(__dirname, 'preload.js')
-
-    let appWindow = new BrowserWindow({
-        width: 800,
-        height: 600,
-        titleBarStyle: 'hidden',
-        trafficLightPosition: { x: 15, y: 10 },
-        // icon: getAssetPath('icon.png'),
-        show: false,
-        webPreferences: {
-            preload: PRELOAD_PATH,
-            contextIsolation: true,
-            nodeIntegration: false,
-            additionalArguments: [`--port=${use_port}`],
-        },
-    })
-
-    // and load the index.html of the app.
-    if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-        appWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL)
-    } else {
-        appWindow.loadFile(
-            path.join(
-                __dirname,
-                `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`
-            )
-        )
+        return { success: true }
+    } catch (error) {
+        mainLogger.error('Failed to setup server:', error)
+        return { success: false, message: 'Failed to setup server.' }
     }
-
-    // appWindow.loadURL(
-    //   electronIsDev
-    //     ? `http://localhost:3000?port=${use_port}`
-    //     : `file://${path.join(__dirname, '../../frontend/build/index.html')}`
-    // )
-    appWindow.maximize()
-    appWindow.setMenu(null)
-    appWindow.show()
-    // appWindow.webContents.openDevTools()
-    appWindow.on('closed', () => {
-        appWindow = null
-    })
 }
 
-const createWindow = () => {
-    // Create the browser window.
-    const mainWindow = new BrowserWindow({
-        width: 800,
-        height: 600,
-        webPreferences: {
-            preload: path.join(__dirname, 'preload.js'),
-        },
-    })
+let mainWindow: BrowserWindow | null = null
 
-    // and load the index.html of the app.
-    if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-        mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL)
-    } else {
-        mainWindow.loadFile(
-            path.join(
-                __dirname,
-                `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`
+function createOrShowWindow() {
+    if (mainWindow === null) {
+        mainWindow = new BrowserWindow({
+            width: 800,
+            height: 600,
+            titleBarStyle: 'hidden',
+            trafficLightPosition: { x: 15, y: 10 },
+            webPreferences: {
+                preload: path.join(__dirname, 'preload.js'),
+                contextIsolation: true,
+                nodeIntegration: false,
+                additionalArguments: [`--port=${use_port}`],
+            },
+        })
+
+        if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
+            mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL)
+        } else {
+            mainWindow.loadFile(
+                path.join(
+                    __dirname,
+                    `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`
+                )
             )
-        )
-    }
+        }
 
-    // Open the DevTools.
-    // mainWindow.webContents.openDevTools();
+        mainWindow.maximize()
+        mainWindow.setMenu(null)
+
+        mainWindow.on('closed', () => {
+            mainWindow = null
+        })
+    } else {
+        if (mainWindow.isMinimized()) mainWindow.restore()
+        mainWindow.focus()
+    }
 }
+
 const controller = new AbortController()
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.on('ready', () => {
-    clearLogFiles() // Clear logs on startup
+app.on('ready', async () => {
+    clearLogFiles()
 
-    // For safeStorage of secrets
+    const checksPass = await performInitialChecks()
+    if (!checksPass) {
+        mainLogger.error('Some checks failed. Exiting.')
+        app.quit()
+        return
+    }
+
     if (safeStorage.isEncryptionAvailable()) {
         mainLogger.info('Encryption is available and can be used.')
     } else {
@@ -314,7 +354,8 @@ app.on('ready', () => {
     }
 
     mainLogger.info('Application is ready. Spawning app window.')
-    spawnAppWindow()
+    await setupServer()
+    createOrShowWindow()
 })
 
 // Quit when all windows are closed, except on macOS. There, it's common
@@ -348,14 +389,18 @@ app.on('browser-window-blur', function () {
     globalShortcut.unregister('F5')
 })
 
-app.on('activate', () => {
-    // On OS X it's common to re-create a window in the app when the
-    // dock icon is clicked and there are no other windows open.
+app.on('activate', async () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-        createWindow()
+        const checksPass = await performInitialChecks()
+        if (checksPass) {
+            createOrShowWindow()
+        } else {
+            app.quit()
+        }
+    } else {
+        createOrShowWindow()
     }
 })
-
 // app.on('window-all-closed', () => {
 //     if (process.platform !== 'darwin') {
 //         app.quit()

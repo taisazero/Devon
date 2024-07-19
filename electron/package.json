@@ -99,11 +99,16 @@
         "react-textarea-autosize": "^8.5.3",
         "remark-gfm": "^4.0.0",
         "remark-math": "^6.0.0",
+        "semver": "^7.6.3",
         "tailwind-merge": "^2.3.0",
         "tailwindcss-animate": "^1.0.7",
         "unidiff": "^1.0.4",
         "use-resize-observer": "^9.1.0",
         "winston": "^3.13.0",
         "xstate": "^5.13.0"
+    },
+    "optionalDependencies": {
+        "@parcel/watcher-darwin-arm64": "^2.4.2-alpha.0",
+        "@parcel/watcher-darwin-x64": "^2.4.2-alpha.0"
     }
 }
