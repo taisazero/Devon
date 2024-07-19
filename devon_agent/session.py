@@ -748,34 +748,21 @@ class Session:
             asyncio.run(_delete_session_util(self.name))
 
     def merge(self, commit_message):
-        # self.versioning.checkout_branch(self.config.versioning_metadata["old_branch"])
-        # self.versioning.merge_branch(self.config.versioning_metadata["current_branch"])
-        # self.versioning.checkout_branch(self.config.versioning_metadata["current_branch"])
-
         # get last git commit
         for commit in self.config.checkpoints[::-1]:
             if commit.commit_hash != "no_commit":
                 dest_commit = commit.commit_hash
                 break
 
-        
         src_branch = self.config.versioning_metadata["old_branch"]
         
-        # get diff between dest_commit and src_branch
         src_commit = self.versioning.get_last_commit(src_branch)[1]
         merge_patch = self.versioning.get_diff_patch(src_commit,dest_commit)
             
-        # get tempfile
+
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
             temp_file.write(merge_patch[1].encode())
             temp_file.flush()
-
-        
-
-        # dest_commit = self.config.checkpoints[-1].commit_hash
-        # src_commit = self.config.checkpoints[0].commit_hash
-        # merge_patch = self.versioning.get_diff_patch(src_commit,dest_commit)
-        # print(merge_patch[1])
         if merge_patch[0] == 0:
             self.versioning.checkout_branch(self.config.versioning_metadata["old_branch"])
             res = self.versioning.apply_patch(temp_file.name)
@@ -784,6 +771,20 @@ class Session:
             print(res)
             res = self.versioning.checkout_branch(self.config.versioning_metadata["current_branch"])
             print(res)
+            os.remove(temp_file.name)
+            return True
+        else:
+            os.remove(temp_file.name)
+            return False
+        
+    def diff(self, src_checkpoint_id:int, dest_checkpoint_id:int):
+        src_commit = self.config.checkpoints[src_checkpoint_id].commit_hash
+        dest_commit = self.config.checkpoints[dest_checkpoint_id].commit_hash
+        status, diff = self.versioning.get_diff_patch(src_commit,dest_commit,format="unified")
+        if status == 0:
+            return diff
+        else:
+            return "Error getting diff"
 
     # def error_handler(self, system, event):
     #     return [Event(

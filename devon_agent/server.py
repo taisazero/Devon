@@ -480,7 +480,14 @@ def create_response(session: str, response: str):
     session_buffers[session] = response
     return session_buffers[session]
 
-
+@app.get("/sessions/{session}/diff")
+def get_checkpoint_diff(session: str,src_checkpoint_id:int,dest_checkpoint_id:int):
+    if session not in sessions:
+        raise fastapi.HTTPException(status_code=404, detail="Session not found")
+    diff =  sessions[session].diff(src_checkpoint_id,dest_checkpoint_id)
+    if diff == "Error getting diff":
+        raise fastapi.HTTPException(status_code=500, detail="Error getting diff")
+    return diff
 # Event State code
 class ServerEvent(BaseModel):
     type: str  # types: ModelResponse, ToolResponse, UserRequest, Interrupt, Stop

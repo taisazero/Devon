@@ -96,10 +96,11 @@ class GitVersioning:
         result = subprocess.run(["git", "rev-parse", branch_name], cwd=self.project_path, capture_output=True, text=True)
         return result.returncode, result.stdout.strip() if result.returncode == 0 else result.stderr
 
-    def get_diff_patch(self, commit_hash_src, commit_hash_dst):
+    def get_diff_patch(self, commit_hash_src, commit_hash_dst,format="patch"):
         if self.config.versioning_type == "none":
             return 0, "none"
-        result = subprocess.run(["git", "diff", commit_hash_src, commit_hash_dst], cwd=self.project_path, capture_output=True, text=True)
+        format = "-U" if format == "unified" else "-p"
+        result = subprocess.run(["git", "diff", format, commit_hash_src, commit_hash_dst], cwd=self.project_path, capture_output=True, text=True)
         return result.returncode, result.stdout if result.returncode == 0 else result.stderr
 
     def apply_patch(self, patchfile):
