@@ -28,7 +28,7 @@ from devon_agent.tools.shelltool import ShellTool
 from devon_agent.tools.usertools import AskUserTool, AskUserToolWithCommit
 from devon_agent.tools.utils import get_ignored_files, read_file
 from devon_agent.utils.telemetry import Posthog, SessionStartEvent
-from devon_agent.utils.utils import DotDict, Event
+from devon_agent.utils.utils import DotDict, Event, WholeFileDiff, WholeFileDiffResults
 from devon_agent.versioning.git_versioning import GitVersioning
 
 def waitForEvent(event_log: List[Dict], event_type: str):
@@ -786,14 +786,11 @@ class Session:
             os.remove(temp_file.name)
             return False
         
-    def diff(self, src_checkpoint_id:int, dest_checkpoint_id:int):
+    def diff(self, src_checkpoint_id:int, dest_checkpoint_id:int) -> WholeFileDiffResults:
         src_commit = self.config.checkpoints[src_checkpoint_id].commit_hash
         dest_commit = self.config.checkpoints[dest_checkpoint_id].commit_hash
-        status, diff = self.versioning.get_diff_patch(src_commit,dest_commit,format="unified")
-        if status == 0:
-            return diff
-        else:
-            return "Error getting diff"
+        diff_list = self.versioning.get_diff_list(src_commit,dest_commit)
+        return WholeFileDiffResults(files=[WholeFileDiff(file_path=file, before=before, after=after) for file, before, after in diff_list])
 
     # def error_handler(self, system, event):
     #     return [Event(

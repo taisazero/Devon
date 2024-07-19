@@ -208,3 +208,23 @@ class GitVersioning:
         if result.returncode == 0:
             self.current_branch = branch_name
         return result.returncode, result.stdout if result.returncode == 0 else result.stderr
+    
+    def get_file_content(self, commit, file):
+        if self.config.versioning_type == "none":
+            return 0, "none"
+        
+        result = subprocess.run(["git", "show", f'{commit}:{file}'], cwd=self.project_path, capture_output=True, text=True)
+        return result.returncode, result.stdout if result.returncode == 0 else result.stderr
+
+
+    def get_diff_list(self, commit1, commit2):
+        # Get the list of files that differ between the two commits
+        files = subprocess.run(["git", "diff", "--name-only", commit1, commit2], cwd=self.project_path, capture_output=True, text=True).stdout.split('\n')
+        
+        diff_list = []
+        for file in files:
+            before_content = self.get_file_content(commit1, file)
+            after_content = self.get_file_content(commit2, file)
+            diff_list.append((file, before_content, after_content))
+        
+        return diff_list

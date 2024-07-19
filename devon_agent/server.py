@@ -21,7 +21,7 @@ from devon_agent.environments.shell_environment import LocalShellEnvironment
 from devon_agent.environments.user_environment import UserEnvironment
 from devon_agent.session import Session
 from devon_agent.utils.config_utils import hydrate_config
-from devon_agent.utils.utils import LOGGER_NAME
+from devon_agent.utils.utils import LOGGER_NAME, WholeFileDiffResults
 
 # from devon_agent.semantic_search.code_graph_manager import CodeGraphManager
 
@@ -481,7 +481,7 @@ def create_response(session: str, response: str):
     return session_buffers[session]
 
 @app.get("/sessions/{session}/diff")
-def get_checkpoint_diff(session: str,src_checkpoint_id:int,dest_checkpoint_id:int):
+def get_checkpoint_diff(session: str,src_checkpoint_id:int,dest_checkpoint_id:int) -> WholeFileDiffResults:
     if session not in sessions:
         raise fastapi.HTTPException(status_code=404, detail="Session not found")
     diff =  sessions[session].diff(src_checkpoint_id,dest_checkpoint_id)
