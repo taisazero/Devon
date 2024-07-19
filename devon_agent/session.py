@@ -355,41 +355,6 @@ class Session:
                         }
                     )
 
-            # case "GitEvent":
-            #     if event["content"]["type"] == "commitRequest":
-            #         commit_message = event["content"]["message"]
-            #         print("COMMIT MESSAGE: ", commit_message)
-            #         if self.config.versioning_type == "git":
-            #             success, message = self.versioning.commit_all_files(commit_message)
-            #             if not (success == 0):
-            #                 print(copy.deepcopy(self.config.state))
-            #                 self.config.checkpoints.append(Checkpoint(commit_message=commit_message, 
-            #                                                           commit_hash="no_commit", 
-            #                                                           agent_history=self.config.agent_configs[0].chat_history, 
-            #                                                           event_id=self.event_id,
-            #                                                           checkpoint_id=len(self.config.checkpoints),
-            #                                                           state=copy.deepcopy(self.config.state)))
-            #                 self.logger.error(f"Error committing files: {message}")
-            #                 self.logger.error("why blocking")
-            #             else:
-            #                 print(copy.deepcopy(self.config.state))
-            #                 self.config.checkpoints.append(Checkpoint(commit_message=commit_message, 
-            #                                                           commit_hash=message, 
-            #                                                           agent_history=self.config.agent_configs[0].chat_history, 
-            #                                                           event_id=self.event_id,
-            #                                                           checkpoint_id=len(self.config.checkpoints),
-            #                                                           state=copy.deepcopy(self.config.state)))
-            #                 new_events.append(
-            #                     {
-            #                         "type": "GitEvent",
-            #                         "content": {"type": "commit", "message": commit_message,
-            #                                     "commit_hash": message},
-            #                         "producer": "",
-            #                         "consumer":"",
-            #                     }
-            #                 )
-
-
             case "ModelRequest":
                 # TODO: Need some quantized timestep for saving persistence that isn't literally every 0.1s
                 self.persist()
