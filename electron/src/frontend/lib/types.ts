@@ -29,6 +29,7 @@ export type Message = {
         | 'shellCommand'
         | 'shellResponse'
         | 'rateLimit'
+        | 'checkpoint'
 }
 
 // Make sure this is up-to-date with server.py @app.get("/sessions/{session}/config")

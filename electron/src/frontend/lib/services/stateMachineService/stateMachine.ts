@@ -138,6 +138,16 @@ export const eventHandlingLogic = fromTransition(
                         'Running command: ' + event.content.raw_command.trim(),
                 }
             }
+            case 'Checkpoint': {
+
+                return {
+                    ...state,
+                    messages: [
+                        ...state.messages,
+                        { text: event.content, type: 'checkpoint' } as Message,
+                    ],
+                }
+            }
             case 'ToolResponse': {
                 let tool_message =
                     state.toolMessage + '|START_RESPONSE|' + event.content

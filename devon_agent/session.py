@@ -480,6 +480,7 @@ class Session:
                                                                                 event_id=self.event_id,
                                                                                 checkpoint_id=len(self.config.checkpoints),
                                                                                 state=json.loads(json.dumps(self.config.state))))
+                                        
                                         self.logger.error(f"Error committing files: {message}")
                                         self.logger.error("why blocking")
                                     else:
@@ -498,6 +499,14 @@ class Session:
                                                 "consumer":"",
                                             }
                                         )
+                                    new_events.append(
+                                        {
+                                            "type": "Checkpoint",
+                                            "content": f"{len(self.config.checkpoints)}",
+                                            "producer": event["producer"],
+                                            "consumer": "user",
+                                        }
+                                    )
 
                             env = None
 
