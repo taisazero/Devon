@@ -363,10 +363,9 @@ class Session:
 
             case "ToolRequest":
                 tool_name, args = event["content"]["toolname"], event["content"]["args"]
-
-                match tool_name:
-                    case "submit" | "exit" | "stop" | "exit_error" | "exit_api":
-                        new_events.append(
+                raw_command = event["content"]["raw_command"]
+                if tool_name == "submit" or tool_name == "exit" or tool_name == "stop" or tool_name == "exit_error" or tool_name == "exit_api":
+                    new_events.append(
                             {
                                 "type": "Stop",
                                 "content": {
@@ -377,147 +376,147 @@ class Session:
                                 "consumer": "user",
                             }
                         )
-                    case _:
-                        try:
-                            toolname = event["content"]["toolname"]
-                            args = event["content"]["args"]
-                            raw_command = event["content"]["raw_command"]
-
-                            if toolname == "ask_user" and len(args) == 2:
-                                commit_message = args[1]
-                                if self.config.versioning_type == "git":
-                                    success, message = self.versioning.commit_all_files(commit_message)
-                                    if not (success == 0):
-                                        print("STATE: ", copy.deepcopy(self.config.state))
-                                        self.config.checkpoints.append(Checkpoint(commit_message=commit_message, 
-                                                                                commit_hash="no_commit", 
-                                                                                agent_history=self.config.agent_configs[0].chat_history, 
-                                                                                event_id=self.event_id,
-                                                                                checkpoint_id=len(self.config.checkpoints),
-                                                                                state=json.loads(json.dumps(self.config.state))))
-                                        
-                                        self.logger.error(f"Error committing files: {message}")
-                                    else:
-                                        self.config.checkpoints.append(Checkpoint(commit_message=commit_message, 
-                                        commit_hash=message, 
-                                        agent_history=self.config.agent_configs[0].chat_history, 
-                                        event_id=self.event_id,
-                                        checkpoint_id=len(self.config.checkpoints),
-                                        state=json.loads(json.dumps(self.config.state))))
-                                        new_events.append(
-                                            {
-                                                "type": "GitEvent",
-                                                "content": {"type": "commit", "message": commit_message,
-                                                            "commit_hash": message},
-                                                "producer": "",
-                                                "consumer":"",
-                                            }
-                                        )
-                                    new_events.append(
-                                        {
-                                            "type": "Checkpoint",
-                                            "content": f"{len(self.config.checkpoints)}",
-                                            "producer": event["producer"],
-                                            "consumer": "user",
-                                        }
-                                    )
-
-                            env = None
-
-                            for _env in list(self.environments.values()):
-                                if toolname in _env.tools:
-                                    env = _env
-
-                            if not env:
-                                raise ToolNotFoundException(toolname, self.environments)
-
-                            response = env.tools[toolname](
-                                {
-                                    "environment": env,
-                                    "config": self.config,
-                                    "state": self.config.state,
-                                    "event_log": self.event_log,
-                                    "raw_command": raw_command,
-                                },
-                                *args,
-                            )
-
+                    
+                
+                if toolname == "ask_user" and len(args) == 2:
+                    commit_message = args[1]
+                    if self.config.versioning_type == "git":
+                        success, message = self.versioning.commit_all_files(commit_message)
+                        if not (success == 0):
+                            print("STATE: ", copy.deepcopy(self.config.state))
+                            self.config.checkpoints.append(Checkpoint(commit_message=commit_message, 
+                                                                    commit_hash="no_commit", 
+                                                                    agent_history=self.config.agent_configs[0].chat_history, 
+                                                                    event_id=self.event_id,
+                                                                    checkpoint_id=len(self.config.checkpoints),
+                                                                    state=json.loads(json.dumps(self.config.state))))
+                            
+                            self.logger.error(f"Error committing files: {message}")
+                        else:
+                            self.config.checkpoints.append(Checkpoint(commit_message=commit_message, 
+                            commit_hash=message, 
+                            agent_history=self.config.agent_configs[0].chat_history, 
+                            event_id=self.event_id,
+                            checkpoint_id=len(self.config.checkpoints),
+                            state=json.loads(json.dumps(self.config.state))))
                             new_events.append(
                                 {
-                                    "type": "ToolResponse",
-                                    "content": response,
-                                    "producer": toolname,
-                                    "consumer": event["producer"],
+                                    "type": "GitEvent",
+                                    "content": {"type": "commit", "message": commit_message,
+                                                "commit_hash": message},
+                                    "producer": "",
+                                    "consumer":"",
                                 }
                             )
+                        new_events.append(
+                            {
+                                "type": "Checkpoint",
+                                "content": f"{len(self.config.checkpoints)}",
+                                "producer": event["producer"],
+                                "consumer": "user",
+                            }
+                        )
 
-                        except ToolNotFoundException as e:
-                            if not (
-                                self.default_environment
-                                and self.default_environment.default_tool
-                            ):
-                                raise e
+                try:
+                    toolname = event["content"]["toolname"]
+                    args = event["content"]["args"]
 
-                            try:
-                                new_events.append(
-                                    {
-                                        "type": "ShellRequest",
-                                        "content": event["content"]["raw_command"],
-                                        "producer": self.default_environment.name,
-                                        "consumer": event["producer"],
-                                    }
-                                )
+                    env = None
 
-                                response = self.default_environment.default_tool(
-                                    {
-                                        "state": self.config.state,
-                                        "environment": self.default_environment,
-                                        "session": self,
-                                        "raw_command": event["content"]["raw_command"],
-                                    },
-                                    event["content"]["toolname"],
-                                    event["content"]["args"],
-                                )
+                    for _env in list(self.environments.values()):
+                        if toolname in _env.tools:
+                            env = _env
 
-                                new_events.append(
-                                    {
-                                        "type": "ShellResponse",
-                                        "content": response,
-                                        "producer": self.default_environment.name,
-                                        "consumer": event["producer"],
-                                    }
-                                )
+                    if not env:
+                        raise ToolNotFoundException(toolname, self.environments)
 
-                                new_events.append(
-                                    {
-                                        "type": "ToolResponse",
-                                        "content": response,
-                                        "producer": self.default_environment.name,
-                                        "consumer": event["producer"],
-                                    }
-                                )
-                            except Exception as e:
-                                self.logger.error(traceback.format_exc())
-                                self.logger.error(f"Error routing tool call: {e}")
-                                new_events.append(
-                                    {
-                                        "type": "ToolResponse",
-                                        "content": f"Error calling command, command failed with: {e.args[0] if len(e.args) > 0 else 'unknown'}",
-                                        "producer": self.default_environment.name,
-                                        "consumer": event["producer"],
-                                    }
-                                )
-                        except Exception as e:
-                            self.logger.error(traceback.format_exc())
-                            self.logger.error(f"Error routing tool call: {e}")
-                            new_events.append(
-                                {
-                                    "type": "ToolResponse",
-                                    "content": e.args[0],
-                                    "producer": self.default_environment.name,
-                                    "consumer": event["producer"],
-                                }
-                            )
+                    response = env.tools[toolname](
+                        {
+                            "environment": env,
+                            "config": self.config,
+                            "state": self.config.state,
+                            "event_log": self.event_log,
+                            "raw_command": raw_command,
+                        },
+                        *args,
+                    )
+
+                    new_events.append(
+                        {
+                            "type": "ToolResponse",
+                            "content": response,
+                            "producer": toolname,
+                            "consumer": event["producer"],
+                        }
+                    )
+
+                except ToolNotFoundException as e:
+                    if not (
+                        self.default_environment
+                        and self.default_environment.default_tool
+                    ):
+                        raise e
+
+                    try:
+                        new_events.append(
+                            {
+                                "type": "ShellRequest",
+                                "content": event["content"]["raw_command"],
+                                "producer": self.default_environment.name,
+                                "consumer": event["producer"],
+                            }
+                        )
+
+                        response = self.default_environment.default_tool(
+                            {
+                                "state": self.config.state,
+                                "environment": self.default_environment,
+                                "session": self,
+                                "raw_command": event["content"]["raw_command"],
+                            },
+                            event["content"]["toolname"],
+                            event["content"]["args"],
+                        )
+
+                        new_events.append(
+                            {
+                                "type": "ShellResponse",
+                                "content": response,
+                                "producer": self.default_environment.name,
+                                "consumer": event["producer"],
+                            }
+                        )
+
+                        new_events.append(
+                            {
+                                "type": "ToolResponse",
+                                "content": response,
+                                "producer": self.default_environment.name,
+                                "consumer": event["producer"],
+                            }
+                        )
+                    except Exception as e:
+                        self.logger.error(traceback.format_exc())
+                        self.logger.error(f"Error routing tool call: {e}")
+                        new_events.append(
+                            {
+                                "type": "ToolResponse",
+                                "content": f"Error calling command, command failed with: {e.args[0] if len(e.args) > 0 else 'unknown'}",
+                                "producer": self.default_environment.name,
+                                "consumer": event["producer"],
+                            }
+                        )
+                except Exception as e:
+                    self.logger.error(traceback.format_exc())
+                    self.logger.error(f"Error routing tool call: {e}")
+                    new_events.append(
+                        {
+                            "type": "ToolResponse",
+                            "content": e.args[0],
+                            "producer": self.default_environment.name,
+                            "consumer": event["producer"],
+                        }
+                    )
 
             case "ToolResponse":
 
