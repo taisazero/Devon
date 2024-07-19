@@ -15,8 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 from devon_agent.config import AgentConfig, Config
-from devon_agent.data_models import (SingletonEngine, init_db, load_data,
-                                     set_db_engine)
+from devon_agent.data_models import SingletonEngine, init_db, load_data, set_db_engine
 from devon_agent.environments.shell_environment import LocalShellEnvironment
 from devon_agent.environments.user_environment import UserEnvironment
 from devon_agent.session import Session
@@ -39,22 +38,11 @@ class EndpointFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         return record.getMessage().find(self._path) == -1
 
+
 uvicorn_logger = logging.getLogger("uvicorn.access")
 uvicorn_logger.addFilter(EndpointFilter(path=f"/start"))
 uvicorn_logger.addFilter(EndpointFilter(path=f"/update"))
-uvicorn_logger.addFilter(EndpointFilter(path=f"/state"))
 uvicorn_logger.addFilter(EndpointFilter(path=f"/config"))
-# API
-# SESSION
-# - get sessions
-# - create session
-# - start session
-# respond session
-# interrupt session
-# stop session
-# delete session
-# get session event history
-# get session event stream
 
 
 origins = [
@@ -67,6 +55,7 @@ running_sessions: List[Session] = []
 
 
 blocked_sessions = []
+
 
 def get_user_input(session: str):
     if session not in session_buffers:
@@ -88,8 +77,6 @@ def get_user_input(session: str):
         result = session_buffers[session]
         del session_buffers[session]
         return result
-
-
 
 
 @asynccontextmanager
@@ -132,7 +119,6 @@ async def lifespan(app: fastapi.FastAPI):
     yield
     print("Terminating sessions")
     for session in sessions.values():
-        # session.terminate()
         session.teardown()
 
 
@@ -148,7 +134,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 session_buffers: Dict[str, str] = {}
 
@@ -239,6 +224,7 @@ def get_sessions():
         for session_name, session_data in sessions.items()
     ]
 
+
 @app.delete("/sessions")
 def delete_sessions():
     print("deleting sessions")
@@ -279,7 +265,9 @@ def create_session(
             logger_name=LOGGER_NAME,
             db_path=db_path,
             persist_to_db=app.persist,
-            versioning_type=config["versioning_type"] if "versioning_type" in config else "none",
+            versioning_type=(
+                config["versioning_type"] if "versioning_type" in config else "none"
+            ),
             environments={"local": local_environment, "user": user_environment},
             default_environment="local",
             checkpoints=[],
@@ -299,12 +287,12 @@ def create_session(
     )
 
     sessions[session].init_state()
-
     sessions[session].setup()
     background_tasks.add_task(sessions[session].run_event_loop)
     running_sessions.append(session)
 
     return session
+
 
 class UpdateConfig(BaseModel):
     model: str
@@ -318,6 +306,7 @@ def update_session(session: str, update_config: UpdateConfig):
     sessions[session].config.agent_configs[0].model = update_config.model
     sessions[session].config.agent_configs[0].api_key = update_config.api_key
     return sessions[session]
+
 
 @app.delete("/sessions/{session}")
 def delete_session(session: str):
@@ -355,6 +344,7 @@ def start_session(
 
     return session
 
+
 @app.patch("/sessions/{session}/resume")
 def resume_session(session: str):
     if session not in sessions:
@@ -362,18 +352,20 @@ def resume_session(session: str):
     sessions[session].start()
     return session
 
+
 @app.patch("/sessions/{session}/revert")
-def revert_session(session: str, checkpoint_id: int, background_tasks: fastapi.BackgroundTasks):
+def revert_session(
+    session: str, checkpoint_id: int, background_tasks: fastapi.BackgroundTasks
+):
     if session not in sessions:
         raise fastapi.HTTPException(status_code=404, detail="Session not found")
     if session in blocked_sessions:
         session_buffers[session] = "revert"
 
     sessions[session].terminate()
-    # print(" session_buffers[session]", session_buffers[session])
     sessions[session].revert(checkpoint_id)
     sessions[session].pause()
-    background_tasks.add_task(sessions[session].run_event_loop,revert=True)
+    background_tasks.add_task(sessions[session].run_event_loop, revert=True)
     return session
 
 
@@ -408,9 +400,7 @@ def reset_session(session: str, background_tasks: fastapi.BackgroundTasks):
     if session not in sessions:
         raise fastapi.HTTPException(status_code=404, detail="Session not found")
 
-    session_obj = sessions.get(session)
-
-    if not session_obj:
+    if not (session_obj := sessions.get(session)):
         raise fastapi.HTTPException(status_code=404, detail="Session not found")
     session_buffers[session] = "terminate"
     session_obj.terminate()
@@ -423,7 +413,6 @@ def reset_session(session: str, background_tasks: fastapi.BackgroundTasks):
     return session
 
 
-
 @app.get("/sessions/{session}/status")
 def get_session_status(session: str):
     if session not in sessions:
@@ -434,27 +423,14 @@ def get_session_status(session: str):
     return session_obj.status
 
 
-# @app.get("/sessions/{session}/state")
-# def get_session_state(session: str):
-#     if session not in sessions:
-#         raise fastapi.HTTPException(status_code=404, detail="Session not found")
-#     session_obj = sessions.get(session)
-#     if not session_obj:
-#         raise fastapi.HTTPException(status_code=404, detail="Session not found")
-
-#     state = session_obj.config.state
-#     state["path"] = session_obj.base_path
-#     return state
-
 @app.get("/sessions/{session}/config")
 def get_session_config(session: str):
     if session not in sessions:
         raise fastapi.HTTPException(status_code=404, detail="Session not found")
-    
+
     session_obj = sessions.get(session)
     if not session_obj:
         raise fastapi.HTTPException(status_code=404, detail="Session not found")
-    # Extract relevant config details
     config = {
         "model": session_obj.config.agent_configs[0].model,
         "versioning_type": session_obj.config.versioning_type,
@@ -464,6 +440,7 @@ def get_session_config(session: str):
         "path": session_obj.config.path,
     }
     return config
+
 
 @app.get("/sessions/{session}/teardown")
 def teardown_session(session: str):
@@ -475,6 +452,7 @@ def teardown_session(session: str):
     session_obj.teardown()
     return session
 
+
 @app.post("/sessions/{session}/response")
 def create_response(session: str, response: str):
     if session not in sessions:
@@ -482,14 +460,16 @@ def create_response(session: str, response: str):
     session_buffers[session] = response
     return session_buffers[session]
 
+
 @app.get("/sessions/{session}/diff")
-def get_checkpoint_diff(session: str,src_checkpoint_id:int,dest_checkpoint_id:int) -> WholeFileDiffResults:
+def get_checkpoint_diff(
+    session: str, src_checkpoint_id: int, dest_checkpoint_id: int
+) -> WholeFileDiffResults:
     if session not in sessions:
         raise fastapi.HTTPException(status_code=404, detail="Session not found")
-    diff =  sessions[session].diff(src_checkpoint_id,dest_checkpoint_id)
-    if diff == "Error getting diff":
-        raise fastapi.HTTPException(status_code=500, detail="Error getting diff")
-    return diff
+    return sessions[session].diff(src_checkpoint_id, dest_checkpoint_id)
+
+
 # Event State code
 class ServerEvent(BaseModel):
     type: str  # types: ModelResponse, ToolResponse, UserRequest, Interrupt, Stop
@@ -508,9 +488,7 @@ def create_event(session: str, event: ServerEvent):
         return event
     if event.type == "GitEvent":
         if event.content["type"] == "revert":
-            print("ignore")
             session_buffers[session] = "ignore"
-    # session_buffers[session] = "ignore"
     sessions[session].event_log.append(event.model_dump())
     return event
 
@@ -537,7 +515,7 @@ async def read_events_stream(session: str):
             current_index = len(session_obj.event_log)
             if current_index > initial_index:
                 for event in session_obj.event_log[initial_index:current_index]:
-                    print("STREAM:",event)
+                    print("STREAM:", event)
                     yield f"data: {json.dumps(event)}\n\n"
                 initial_index = current_index
             else:
