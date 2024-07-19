@@ -206,6 +206,7 @@ const TimelinePanel = ({
             type: 'session.sendEvent',
             params: {
                 serverEventType: 'GitMerge',
+                content:{}
             },
         })
     }

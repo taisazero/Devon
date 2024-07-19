@@ -99,7 +99,7 @@ class GitVersioning:
     def apply_patch(self, patch):
         if self.config.versioning_type == "none":
             return 0, "none"
-        result = subprocess.run(["git", "apply", patch], cwd=self.project_path, capture_output=True, text=True)
+        result = subprocess.run(executable="git",args=["apply", patch], cwd=self.project_path, capture_output=True, text=True)
         return result.returncode, result.stdout if result.returncode == 0 else result.stderr
 
     def list_commits(self):
