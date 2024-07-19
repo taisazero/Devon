@@ -1,10 +1,13 @@
 import errno
 import os
+import select
 import shutil
 import subprocess
 import tempfile
+import time
 import traceback
 from typing import TYPE_CHECKING, List
+import psutil
 
 from pydantic import Field
 
@@ -12,6 +15,54 @@ from devon_agent.environment import EnvironmentModule
 
 if TYPE_CHECKING:
     pass
+
+def read_with_timeout(container, pid_func, timeout_duration):
+    """
+    Read data from a subprocess with a timeout.
+    This function uses a file descriptor to read data from the subprocess in a non-blocking way.
+
+    Args:
+        container (subprocess.Popen): The subprocess container.
+        pid_func (function): A function that returns a list of process IDs (except the PID of the main process).
+        timeout_duration (int): The timeout duration in seconds.
+
+    Returns:
+        str: The data read from the subprocess, stripped of trailing newline characters.
+
+    Raises:
+        TimeoutError: If the timeout duration is reached while reading from the subprocess.
+    """
+    buffer = b""
+    fd = container.stdout.fileno()
+    end_time = time.time() + timeout_duration
+    while time.time() < end_time:
+        pids = pid_func()
+        if len(pids) > 0:
+            # There are still PIDs running
+            time.sleep(0.05)
+            continue
+        ready_to_read, _, _ = select.select([fd], [], [], 0.2)
+        if ready_to_read:
+            data = os.read(fd, 4096)
+            if data:
+                buffer += data
+        else:
+            # No more data to read
+            break
+        time.sleep(0.05)  # Prevents CPU hogging
+
+    if container.poll() is not None:
+        raise RuntimeError(
+            "Subprocess exited unexpectedly.\nCurrent buffer: {}".format(
+                buffer.decode()
+            )
+        )
+    if time.time() >= end_time:
+        # raise TimeoutError("Timeout reached while reading from subprocess.\nCurrent buffer: {}\nRunning PIDs: {}".format(buffer.decode(), pids))
+        print(traceback.print_exc())
+        raise TimeoutError("Timeout reached while reading from subprocess.")
+
+    return buffer.decode()
 
 
 class LocalShellEnvironment(EnvironmentModule):
@@ -33,15 +84,17 @@ class LocalShellEnvironment(EnvironmentModule):
         except Exception as e:
             print("Error changing directory", e)
 
-        # Start a new shell process
+
         self.process = subprocess.Popen(
-            ["/bin/bash"],
+            ["/bin/bash","-l"],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            shell=True,
+            # shell=True,
             text=True,
+            bufsize=1,
         )
+
 
     def teardown(self, **kwargs):
         os.chdir(self.old_dir)
@@ -59,39 +112,31 @@ class LocalShellEnvironment(EnvironmentModule):
                     "consumer": self.name,
                 }
             )
-
-            self.process.stdin.write(input + "\n")
-            self.process.stdin.write('echo "\n$?"\n')
-            self.process.stdin.write("echo 'EOL'\n")
-            self.process.stdin.write("echo 'EOL' >&2\n")
+            cmd = input if input.endswith("\n") else input + "\n"
+            self.process.stdin.write(cmd)
+            time.sleep(0.1)
             self.process.stdin.flush()
 
-            output = ""
-            error = ""
-
-            while (line := self.process.stdout.readline()) != "EOL\n":
-                output += line
-
-            while (line := self.process.stderr.readline()) != "EOL\n":
-                error += line
-
-            return_code = int(output.splitlines()[-1])
-            output = "\n".join(output.splitlines()[:-1])
-            output = output if return_code == 0 else output + error
-
-            self.event_log.append(
-                {
-                    "type": "EnvironmentResponse",
-                    "content": output,
-                    "producer": self.name,
-                    "consumer": "tool",
-                }
-            )
-
-            return output, return_code
+            buffer = read_with_timeout(self.process,lambda : self.get_child_pids(self.process.pid), timeout_duration)
+            print(buffer)
+            self.process.stdin.write("echo $?\n")
+            time.sleep(0.1)
+            self.process.stdin.flush()
+            exit_code = read_with_timeout(self.process,lambda : self.get_child_pids(self.process.pid), 5).strip()
+            return buffer, int(exit_code)
         except Exception as e:
             traceback.print_exc()
             return str(e), -1
+        
+    def get_child_pids(self, parent_pid):
+        try:
+            parent = psutil.Process(parent_pid)
+        except psutil.NoSuchProcess:
+            return []
+        
+        children = parent.children(recursive=True)
+        return [child.pid for child in children]
+
 
     def __enter__(self):
         self.setup()
@@ -126,7 +171,7 @@ class LocalShellEnvironment(EnvironmentModule):
 
 def copyanything(src, dst):
     try:
-        shutil.copytree(src, dst)
+        shutil.copytree(src, dst, dirs_exist_ok=True)
     except OSError as exc: # python >2.5
         if exc.errno in (errno.ENOTDIR, errno.EINVAL):
             shutil.copy(src, dst)
