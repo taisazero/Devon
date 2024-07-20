@@ -42,16 +42,15 @@ const TimelinePanel = ({
     )
 
     const commits: Checkpoint[] =
-        checkpoints?.filter(
-            checkpoint => checkpoint.commit_hash !== 'no_commit'
-        ) ?? []
+        checkpoints
+            ?.filter(checkpoint => checkpoint.commit_hash !== 'no_commit')
+            .map((checkpoint, index) => ({ ...checkpoint, index })) ?? []
 
     const versioning_type = SessionMachineContext.useSelector(
         state => state.context.sessionConfig?.versioning_type
     )
     const hasCommits =
         versioning_type === 'git' && commits && commits.length > 0
-
     const old_branch = SessionMachineContext.useSelector(
         state => state.context.sessionConfig?.versioning_metadata?.old_branch
     )
@@ -193,7 +192,11 @@ const TimelinePanel = ({
                         </code>{' '}
                         branch?
                     </p>
-                    <Button className="w-fit" onClick={handleGitMerge} disabled={selectedRevertStep !== null}>
+                    <Button
+                        className="w-fit"
+                        onClick={handleGitMerge}
+                        disabled={selectedRevertStep !== null}
+                    >
                         Merge branch
                     </Button>
                 </div>

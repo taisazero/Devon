@@ -64,6 +64,7 @@ const ChatInputField = ({
                 ...checkpointTracker,
                 selected: null,
             })
+            scrollToBottom()
         }
     }
 

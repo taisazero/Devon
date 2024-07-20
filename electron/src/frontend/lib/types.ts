@@ -46,6 +46,7 @@ export type Checkpoint = {
     agent_history: any[]
     event_id: number
     checkpoint_id: number
+    index: number
 }
 
 export type VersioningMetadata = {

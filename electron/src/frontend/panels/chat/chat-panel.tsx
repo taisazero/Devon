@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState, useCallback, useEffect, useMemo } from 'react'
 import ChatHeader from './components/chat-header'
 import { useScrollAnchor } from '@/panels/chat/lib/hooks/chat.use-scroll-anchor'
 import ChatMessages from './components/messages/chat-messages'
@@ -6,6 +6,8 @@ import ChatInputField from './components/input/chat-input-field'
 import { SessionMachineContext } from '@/contexts/session-machine-context'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Message } from '@/lib/types'
+import { useAtom } from 'jotai'
+import { checkpointTrackerAtom } from '@/panels/timeline/lib'
 
 export default function Chat({
     sessionId,
@@ -38,6 +40,33 @@ export default function Chat({
         .matches('paused')
 
     let messages: Message[] = eventState.messages
+    const memoizedMessages = useMemo(() => {
+        return messages
+    }, [messages.length])
+    const [checkpointTracker, setCheckpointTracker] = useAtom(
+        checkpointTrackerAtom
+    )
+    const [scrollToCheckpointNumber, setScrollToCheckpointNumber] = useState<
+        number | undefined
+    >(undefined)
+
+    const handleScrollComplete = useCallback(() => {
+        setScrollToCheckpointNumber(undefined)
+    }, [])
+
+    useEffect(() => {
+        if (checkpointTracker?.selected) {
+            const checkpointNumber = checkpointTracker.selected.index
+            if (checkpointNumber !== undefined) {
+                scrollToMessage(checkpointNumber)
+            }
+        }
+    }, [checkpointTracker?.selected])
+
+    // Function to trigger scrolling to a specific message
+    const scrollToMessage = useCallback((checkpointNumber: number) => {
+        setScrollToCheckpointNumber(checkpointNumber)
+    }, [])
     if (
         eventState.messages.length > 1 &&
         eventState.messages[0].type === 'task' &&
@@ -90,9 +119,13 @@ export default function Chat({
                             <LoadingSkeleton />
                         ) : (
                             <ChatMessages
-                                messages={messages}
+                                messages={memoizedMessages}
                                 spinning={eventState.modelLoading}
                                 paused={isPaused}
+                                scrollToCheckpointNumber={
+                                    scrollToCheckpointNumber
+                                }
+                                onScrollComplete={handleScrollComplete}
                             />
                         )}
                         <div className="h-px w-full" ref={visibilityRef}></div>
