@@ -74,8 +74,11 @@ const TimelinePanel = ({
                 current: commits[commits.length - 1],
                 selected,
             })
+            if (!selected) {
+                setSelectedRevertStep(null)
+            }
         }
-    }, [commits])
+    }, [commits, checkpointTracker?.selected])
 
     useEffect(() => {
         setShowMinimizedTimeline(hasCommits)
@@ -190,7 +193,7 @@ const TimelinePanel = ({
                         </code>{' '}
                         branch?
                     </p>
-                    <Button className="w-fit" onClick={handleGitMerge}>
+                    <Button className="w-fit" onClick={handleGitMerge} disabled={selectedRevertStep !== null}>
                         Merge branch
                     </Button>
                 </div>
