@@ -29,6 +29,7 @@ const TimelinePanel = ({
     const [selectedRevertStep, setSelectedRevertStep] = useState<number | null>(
         null
     )
+    const [animationKey, setAnimationKey] = useState(0)
     const sessionActorRef = SessionMachineContext.useActorRef()
     const checkpoints: Checkpoint[] = SessionMachineContext.useSelector(
         state => state.context.sessionConfig?.checkpoints,
@@ -164,6 +165,8 @@ const TimelinePanel = ({
                             selectedRevertStep={selectedRevertStep}
                             setSelectedRevertStep={setSelectedRevertStep}
                             sessionActorRef={sessionActorRef}
+                            animationKey={animationKey}
+                            setAnimationKey={setAnimationKey}
                         />
                     ))
                 ) : (

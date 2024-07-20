@@ -52,6 +52,9 @@ export default function CodeEditor({
     const [, setSelectedCodeSnippet] = useAtom<ICodeSnippet | null>(
         selectedCodeSnippetAtom
     )
+    const [checkpointTracker, setCheckpointTracker] = useAtom(
+        checkpointTrackerAtom
+    )
     const [showInlineDiff, setShowInlineDiff] = useState(false)
 
     useEffect(() => {
@@ -427,15 +430,17 @@ export default function CodeEditor({
                 <PathDisplay path={path} selectedFileId={selectedFileId} />
             )}
             <div className="flex-grow w-full bg-midnight rounded-b-lg mt-[-2px] overflow-auto">
-                <BothEditorTypes
-                    file={files?.find(f => f.id === selectedFileId)}
-                    projectPath={path}
-                    handleFileSelect={handleFileSelect}
-                    handleEditorDidMount={handleEditorDidMount}
-                    handleDiffEditorDidMount={handleDiffEditorDidMount}
-                    showInlineDiff={showInlineDiff}
-                    setShowInlineDiff={setShowInlineDiff}
-                />
+                {selectedFileId || checkpointTracker?.selected ? (
+                    <BothEditorTypes
+                        file={files?.find(f => f.id === selectedFileId)}
+                        projectPath={path}
+                        handleFileSelect={handleFileSelect}
+                        handleEditorDidMount={handleEditorDidMount}
+                        handleDiffEditorDidMount={handleDiffEditorDidMount}
+                        showInlineDiff={showInlineDiff}
+                        setShowInlineDiff={setShowInlineDiff}
+                    />
+                ) : null}
                 {popoverVisible && (
                     <button
                         onClick={handleAddCodeReference}
@@ -498,7 +503,6 @@ const BothEditorTypes = ({
         if (diffEditorRef.current) {
             setTimeout(() => {
                 if (!diffEditorRef?.current) return
-                console.log('GOT HERE')
                 const modifiedEditor = diffEditorRef.current.getModifiedEditor()
                 const originalEditor = diffEditorRef.current.getOriginalEditor()
 
@@ -512,51 +516,67 @@ const BothEditorTypes = ({
         }
     }, [diffContent])
 
-    useEffect(() => {
-        const fetchDiff = async () => {
-            if (showInlineDiff && checkpointTracker) {
-                try {
-                    let checkpoint = checkpointTracker.current
-                    if (checkpointTracker?.selected) {
-                        checkpoint = checkpointTracker.selected
-                    }
-                    const result = await getCheckpointDiff(
-                        host,
-                        name,
-                        checkpointTracker.initial.checkpoint_id,
-                        checkpoint.checkpoint_id
-                    )
-                    if (!result || result.files.length === 0) {
-                        setDiffContent(null)
-                        return
-                    }
-                    let fileInDiff = false
-                    if (file) {
-                        fileInDiff = result.files.find(
-                            f => f.file_path === file.id
-                        )
-                    }
-                    const s = result.files[0].file_path
-                    if (!fileInDiff) {
-                        const selectedFilePath = projectPath + '/' + s
-                        handleFileSelect(selectedFilePath)
-                    }
-                    const fileDiff = result.files.find(f => f.file_path === s)
-                    if (fileDiff) {
-                        setDiffContent(fileDiff)
-                    } else {
-                        setDiffContent(null)
-                    }
-                } catch (error) {
-                    console.error('Error fetching diff:', error)
-                }
+    const fetchDiff = async (autoSelectFile: boolean = false) => {
+        try {
+            if (!checkpointTracker) return
+            let checkpoint = checkpointTracker.current
+            if (checkpointTracker?.selected) {
+                checkpoint = checkpointTracker.selected
+            }
+            const result = await getCheckpointDiff(
+                host,
+                name,
+                checkpointTracker.initial.checkpoint_id,
+                checkpoint.checkpoint_id
+            )
+            if (!result || result.files.length === 0) {
+                setDiffContent(null)
+                return
+            }
+            let fileInDiff: any = false
+            if (file) {
+                fileInDiff = result.files.find(
+                    f => projectPath + '/' + f.file_path === file.id
+                )
+            }
+            console.log(result.files)
+            console.log(fileInDiff)
+            const p = fileInDiff
+                ? fileInDiff.file_path
+                : result.files[0].file_path
+            if (autoSelectFile && !fileInDiff) {
+                const selectedFilePath = projectPath + '/' + p
+                handleFileSelect(selectedFilePath)
+            }
+            const fileDiff = result.files.find(f => f.file_path === p)
+            if (fileDiff) {
+                setDiffContent(fileDiff)
             } else {
                 setDiffContent(null)
             }
+            return fileInDiff
+        } catch (error) {
+            console.error('Error fetching diff:', error)
         }
+        return false
+    }
 
-        fetchDiff()
-    }, [showInlineDiff, file, host, name])
+    useEffect(() => {
+        if (showInlineDiff) {
+            fetchDiff(true)
+        }
+    }, [showInlineDiff, host, name, checkpointTracker?.selected])
+
+    useEffect(() => {
+        console.log('FILE PATH CHANGE', file?.path)
+        // If there's a selected checkpoint, check if the current file has a diff associated with it
+        if (checkpointTracker?.selected) {
+            fetchDiff().then(r => {
+                console.log('RESULT', r)
+                setShowInlineDiff(r)
+            })
+        }
+    }, [file?.path, file?.value])
 
     const customDiffEditorOptions = {
         readOnly: true,

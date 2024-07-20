@@ -31,6 +31,8 @@ const Step: React.FC<{
     selectedRevertStep: number | null
     setSelectedRevertStep: (value: number | null) => void
     sessionActorRef: any
+    animationKey: number
+    setAnimationKey: (value: number) => void
 }> = ({
     step,
     index,
@@ -44,6 +46,8 @@ const Step: React.FC<{
     selectedRevertStep,
     setSelectedRevertStep,
     sessionActorRef,
+    animationKey,
+    setAnimationKey,
 }) => {
     const isPulsing = selectedRevertStep !== null && index > selectedRevertStep
     const lineBeforeShouldPulse =
@@ -54,6 +58,8 @@ const Step: React.FC<{
     const [connectorHeight, setConnectorHeight] = useState(0)
     const contentRef: RefObject<HTMLDivElement> = useRef(null)
     const pathRef: RefObject<SVGPathElement> = useRef(null)
+    const [checkpointTracker, setCheckpointTracker] =
+        useAtom<CheckpointTracker | null>(checkpointTrackerAtom)
     const PADDING_OFFSET = 10
     const CURVE_SVG_WIDTH = 40 + PADDING_OFFSET
     const CURVE_SVG_HEIGHT_OFFSET = 50 // Dynamic height not really working yet... this is needed if there's no subtitle
@@ -121,7 +127,6 @@ const Step: React.FC<{
     `
 
     function handleRevertStep(step: StepType) {
-        console.log('r', step, step.checkpoint_id)
         sessionActorRef.send({
             type: 'session.revert',
             params: { checkpoint_id: step.checkpoint_id },
@@ -163,11 +168,9 @@ const Step: React.FC<{
         )
     }
 
-    const [checkpointTracker, setCheckpointTracker] =
-        useAtom<CheckpointTracker | null>(checkpointTrackerAtom)
-
     function handleOpenChange(open: boolean) {
         if (open) {
+            setAnimationKey((prevKey: number) => prevKey + 1)
             setSelectedRevertStep(index)
             if (checkpointTracker) {
                 setCheckpointTracker({
@@ -178,14 +181,12 @@ const Step: React.FC<{
                 console.log('Failed to get existing checkpoint tracker')
             }
         } else {
-            setSelectedRevertStep(null)
-            setCheckpointTracker(null)
         }
     }
 
     const renderTextAndSubsteps = () => {
         return (
-            <Popover onOpenChange={handleOpenChange}>
+            <>
                 <PopoverTrigger asChild>
                     <div
                         className={`flex flex-col hover:opacity-90 hover:cursor-pointer w-full`}
@@ -240,55 +241,63 @@ const Step: React.FC<{
                         </button>
                     </PopoverClose>
                 </PopoverContent>
-            </Popover>
+            </>
         )
     }
 
     return (
-        <div className={`flex flex-row ${isPulsing ? 'animate-pulse2' : ''}`}>
-            <div className="relative flex-start">
-                {renderCircle()}
-                {/* This is the line */}
-                {index < stepsLength - 1 && (
-                    <div
-                        className={`absolute w-px ${
-                            activeStep > index ? 'h-[calc(100%-1.5rem)]' : 'h-0'
-                        } bg-white top-6 left-1/2 transform -translate-x-1/2 transition-all
+        <Popover onOpenChange={handleOpenChange}>
+            <div
+                key={isPulsing ? animationKey : undefined}
+                className={`flex flex-row ${isPulsing ? 'animate-pulse2' : ''}`}
+            >
+                <div className="relative flex-start">
+                    {renderCircle()}
+                    {/* This is the line */}
+                    {index < stepsLength - 1 && (
+                        <div
+                            key={`line-${animationKey}`}
+                            className={`absolute w-px ${
+                                activeStep > index
+                                    ? 'h-[calc(100%-1.5rem)]'
+                                    : 'h-0'
+                            } bg-white top-6 left-1/2 transform -translate-x-1/2 transition-all
                          ${
                              lineBeforeShouldPulse
                                  ? 'animate-pulse2 duration-2000'
                                  : 'duration-1000'
                          }`}
-                    ></div>
-                )}
-                {step.subSteps.length > 0 && subStepActiveIndex >= 0 && (
-                    <svg
-                        width={CURVE_SVG_WIDTH}
-                        height={connectorHeight}
-                        className="absolute"
-                    >
-                        <path
-                            ref={pathRef}
-                            d={connectorPath}
-                            className="stroke-white"
-                            fill="transparent"
-                            strokeWidth="1.5"
-                        />
-                    </svg>
-                )}
+                        ></div>
+                    )}
+                    {step.subSteps.length > 0 && subStepActiveIndex >= 0 && (
+                        <svg
+                            width={CURVE_SVG_WIDTH}
+                            height={connectorHeight}
+                            className="absolute"
+                        >
+                            <path
+                                ref={pathRef}
+                                d={connectorPath}
+                                className="stroke-white"
+                                fill="transparent"
+                                strokeWidth="1.5"
+                            />
+                        </svg>
+                    )}
+                </div>
+                <div
+                    className={`flex items-center ml-5 mb-3 ${
+                        !animateDemo || activeStep >= index
+                            ? 'opacity-100'
+                            : 'opacity-0'
+                    } transition-opacity duration-1000 ${
+                        animateDemo ? 'delay-800' : ''
+                    }`}
+                >
+                    {renderTextAndSubsteps()}
+                </div>
             </div>
-            <div
-                className={`flex items-center ml-5 mb-3 ${
-                    !animateDemo || activeStep >= index
-                        ? 'opacity-100'
-                        : 'opacity-0'
-                } transition-opacity duration-1000 ${
-                    animateDemo ? 'delay-800' : ''
-                }`}
-            >
-                {renderTextAndSubsteps()}
-            </div>
-        </div>
+        </Popover>
     )
 }
 
