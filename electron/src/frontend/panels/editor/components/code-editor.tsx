@@ -236,21 +236,14 @@ export default function CodeEditor({
                 colors: {},
             })
             monaco.editor.setTheme('theme')
+            reloadEditorForSyntaxHighlighting(editorRef)
         },
         []
     )
 
     useEffect(() => {
         if (editorRef.current) {
-            setTimeout(() => {
-                if (!editorRef.current) return
-                const modifiedEditor = editorRef.current
-
-                // Unfortunately this was the best fix I could figure out to make the editor show the diff
-                // Simulate a small scroll in both editors
-                modifiedEditor.setScrollTop(1)
-                modifiedEditor.setScrollTop(0)
-            }, 50) // Small delay to ensure content is loaded
+            reloadEditorForSyntaxHighlighting(editorRef)
         }
     }, [showInlineDiff, selectedFileId])
 
@@ -511,18 +504,7 @@ const BothEditorTypes = ({
 
     useEffect(() => {
         if (diffEditorRef.current) {
-            setTimeout(() => {
-                if (!diffEditorRef?.current) return
-                const modifiedEditor = diffEditorRef.current.getModifiedEditor()
-                const originalEditor = diffEditorRef.current.getOriginalEditor()
-
-                // Unfortunately this was the best fix I could figure out to make the editor show the diff
-                // Simulate a small scroll in both editors
-                modifiedEditor.setScrollTop(1)
-                modifiedEditor.setScrollTop(0)
-                originalEditor.setScrollTop(1)
-                originalEditor.setScrollTop(0)
-            }, 50) // Small delay to ensure content is loaded
+            reloadEditorForSyntaxHighlighting(diffEditorRef)
         }
     }, [diffContent, showInlineDiff, file?.id])
 
@@ -577,6 +559,8 @@ const BothEditorTypes = ({
     useEffect(() => {
         if (Boolean(checkpointTracker?.selected)) {
             fetchDiff(true)
+        } else {
+            setDiffContent(null)
         }
     }, [checkpointTracker?.selected])
 
@@ -652,21 +636,23 @@ const BothEditorTypes = ({
     }
 
     return (
-        <Editor
-            className="h-full"
-            theme="vs-dark"
-            defaultLanguage={'python'}
-            language={file?.language ?? 'python'}
-            defaultValue={''}
-            value={
-                diffContent
-                    ? diffContent.after
-                    : file?.value?.lines ?? file?.value ?? ''
-            }
-            onMount={handleEditorDidMount}
-            path={file?.path}
-            options={{ readOnly: true, fontSize: 10 }}
-        />
+        <>
+            <Editor
+                className="h-full"
+                theme="vs-dark"
+                defaultLanguage={'python'}
+                language={file?.language ?? 'python'}
+                defaultValue={''}
+                value={
+                    diffContent
+                        ? diffContent.after
+                        : file?.value?.lines ?? file?.value ?? ''
+                }
+                onMount={handleEditorDidMount}
+                path={file?.path}
+                options={{ readOnly: true, fontSize: 10 }}
+            />
+        </>
     )
 }
 
@@ -718,4 +704,35 @@ export function convertPath(path: string) {
     const customPath = filteredParts.join(' > ')
 
     return customPath
+}
+
+function isDiffEditor(editor: any): editor is editor.IDiffEditor {
+    return 'getModifiedEditor' in editor && 'getOriginalEditor' in editor
+}
+
+function reloadEditorForSyntaxHighlighting(
+    editorRef: React.RefObject<
+        editor.IDiffEditor | editor.IStandaloneCodeEditor
+    >
+) {
+    setTimeout(() => {
+        const currentEditor = editorRef.current
+        if (!currentEditor) return
+
+        if (isDiffEditor(currentEditor)) {
+            const modifiedEditor = currentEditor.getModifiedEditor()
+            const originalEditor = currentEditor.getOriginalEditor()
+            // Unfortunately this was the best fix I could figure out to make the editor show the diff
+            // Simulate a small scroll in both editors
+            modifiedEditor.setScrollTop(1)
+            modifiedEditor.setScrollTop(0)
+            originalEditor.setScrollTop(1)
+            originalEditor.setScrollTop(0)
+        } else {
+            // Unfortunately this was the best fix I could figure out to make the editor show the diff
+            // Simulate a small scroll in both editors
+            currentEditor.setScrollTop(1)
+            currentEditor.setScrollTop(0)
+        }
+    }, 50) // Small delay to ensure content is loaded
 }
