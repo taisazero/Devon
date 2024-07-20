@@ -241,6 +241,20 @@ export default function CodeEditor({
     )
 
     useEffect(() => {
+        if (editorRef.current) {
+            setTimeout(() => {
+                if (!editorRef.current) return
+                const modifiedEditor = editorRef.current
+
+                // Unfortunately this was the best fix I could figure out to make the editor show the diff
+                // Simulate a small scroll in both editors
+                modifiedEditor.setScrollTop(1)
+                modifiedEditor.setScrollTop(0)
+            }, 50) // Small delay to ensure content is loaded
+        }
+    }, [showInlineDiff, selectedFileId])
+
+    useEffect(() => {
         if (!editorRef.current || !monacoRef.current) return
 
         const editor = editorRef.current
@@ -510,7 +524,7 @@ const BothEditorTypes = ({
                 originalEditor.setScrollTop(0)
             }, 50) // Small delay to ensure content is loaded
         }
-    }, [diffContent])
+    }, [diffContent, showInlineDiff, file?.id])
 
     const fetchDiff = async (autoSelectFile: boolean = false) => {
         try {
@@ -541,8 +555,9 @@ const BothEditorTypes = ({
             // Rn this opens the most recent unless the current file open is already in the diff (prevent switching when clicking through timeline)
             if (autoSelectFile && !fileInDiff) {
                 const selectedFilePath = projectPath + '/' + p
-                console.log('selecting file', selectedFilePath)
                 handleFileSelect(selectedFilePath)
+            } else {
+                setShowInlineDiff(true)
             }
             const fileDiff = result.files.find(f => f.file_path === p)
             // Only set the diff if current file is in it... might change later to just fileDiff
@@ -643,7 +658,11 @@ const BothEditorTypes = ({
             defaultLanguage={'python'}
             language={file?.language ?? 'python'}
             defaultValue={''}
-            value={file?.value?.lines ?? file?.value ?? ''}
+            value={
+                diffContent
+                    ? diffContent.after
+                    : file?.value?.lines ?? file?.value ?? ''
+            }
             onMount={handleEditorDidMount}
             path={file?.path}
             options={{ readOnly: true, fontSize: 10 }}

@@ -127,6 +127,14 @@ const Step: React.FC<{
     `
 
     function handleRevertStep(step: StepType) {
+        // Go back to the present
+        if (checkpointTracker?.selected) {
+            setCheckpointTracker({
+                ...checkpointTracker,
+                selected: null,
+            })
+            // scrollToBottom() // TODO: Not working rn, because need to wait for revert to finish, then scroll
+        }
         sessionActorRef.send({
             type: 'session.revert',
             params: { checkpoint_id: step.checkpoint_id },
