@@ -63,7 +63,6 @@ def get_user_input(session: str):
             if session not in session_buffers:
                 if session not in blocked_sessions:
                     blocked_sessions.append(session)
-                print("blocking", session_buffers.keys())
                 sleep(0.1)
                 continue
             else:

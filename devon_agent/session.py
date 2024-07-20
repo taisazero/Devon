@@ -44,21 +44,6 @@ def waitForEvent(event_log: List[Dict], event_type: str):
         time.sleep(1)
 
 
-def make_checkpoint(
-    commit_message: str, config: Config, event_id: int, versioning: GitVersioning
-) -> Checkpoint:
-    success, message = versioning.commit_all_files(commit_message)
-
-    return Checkpoint(
-        commit_message=commit_message,
-        commit_hash="no_commit" if not (success == 0) else message,
-        agent_history=config.agent_configs[0].chat_history,
-        event_id=event_id,
-        checkpoint_id=len(config.checkpoints),
-        state=json.loads(json.dumps(config.state)),
-    )
-
-
 class Session:
     def __init__(self, config: Config, event_log: List[Dict]):
         self.name = config.name
@@ -443,20 +428,6 @@ class Session:
                             "consumer": "user",
                         }
                     )
-
-                if tool_name == "ask_user" and len(args) == 2:
-                    commit_message = args[1]
-                    if self.config.versioning_type == "git":
-                        checkpoint = make_checkpoint(commit_message,self.config, self.event_id, self.versioning)
-                        self.config.checkpoints.append(checkpoint)
-                        new_events.append(
-                            {
-                                "type": "Checkpoint",
-                                "content": f"{self.config.checkpoints[-1].checkpoint_id}",
-                                "producer": event["producer"],
-                                "consumer": "user",
-                            }
-                        )
                 try:
 
                     env = None

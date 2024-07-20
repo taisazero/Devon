@@ -16,7 +16,9 @@ from devon_agent.agents.prompts.openai_prompts import (
     openai_conversation_agent_last_user_prompt_template,
     openai_conversation_agent_system_prompt_template)
 from devon_agent.model import AnthropicModel, ModelArguments, OpenAiModel
+from devon_agent.tools import parse_command
 from devon_agent.tools.utils import get_cwd
+from devon_agent.utils.config_utils import make_checkpoint
 from devon_agent.utils.utils import LOGGER_NAME, Hallucination
 
 if TYPE_CHECKING:
@@ -230,10 +232,24 @@ class ConversationalAgent(Agent):
 
             try:
                 thought, action, scratchpad = parse_response(output)
+                toolname, args = parse_command(action)
+                if toolname == "ask_user" and len(args) == 2:
+                    commit_message = args[1]
+                    if session.config.versioning_type == "git":
+                        checkpoint = make_checkpoint(commit_message,session.config, session.event_id, session.versioning)
+                        session.config.checkpoints.append(checkpoint)
+                        session.event_log.append(
+                            {
+                                "type": "Checkpoint",
+                                "content": f"{session.config.checkpoints[-1].checkpoint_id}",
+                                "producer": "devon",
+                                "consumer": "user",
+                            }
+                        )
                 if scratchpad:
                     session.config.state["scratchpad"] = scratchpad
             except Exception:
-                raise Hallucination(f"Multiple actions found in response: {output}")
+                raise Hallucination(f"Multiple actions found in response or incorrect formatting: {output}")
 
             if not thought or not action:
                 raise Hallucination(
