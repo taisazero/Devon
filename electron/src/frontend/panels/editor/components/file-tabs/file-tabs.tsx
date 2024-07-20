@@ -44,6 +44,8 @@ const FileTabs = ({
     isExpandedVariant,
     loading = false,
     initialFiles,
+    diffEnabled,
+    setDiffEnabled
 }: {
     files: any[]
     selectedFileId: string | null
@@ -52,7 +54,9 @@ const FileTabs = ({
     className?: string
     isExpandedVariant: boolean
     loading?: boolean
-    initialFiles: File[]
+    initialFiles: File[],
+    diffEnabled: boolean,
+    setDiffEnabled: (value: boolean) => void
 }) => {
     const fileRefs = useRef(new Map<string, HTMLButtonElement>())
     const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -230,8 +234,8 @@ const FileTabs = ({
                           ))}
                 </div>
             </CustomScrollbar>
-            {/* <div className="flex pr-3 h-full gap-2 items-center pb-1">
-                {!isExpandedVariant && (
+            <div className="flex pr-3 h-full gap-2 items-center pb-1">
+                {/* {!isExpandedVariant && (
                     <ActionItem
                         active={false}
                         icon={
@@ -246,7 +250,7 @@ const FileTabs = ({
                             </DialogContent>
                         }
                     />
-                )}
+                )} */}
                 <ActionItem
                     active={diffEnabled}
                     icon={
@@ -254,7 +258,7 @@ const FileTabs = ({
                     }
                     clickAction={() => setDiffEnabled(!diffEnabled)}
                 />
-            </div> */}
+            </div>
         </div>
     )
 }

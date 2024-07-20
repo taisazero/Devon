@@ -40,7 +40,7 @@ export type AgentConfig = {
     versioning_metadata: VersioningMetadata
 }
 
-type Checkpoint = {
+export type Checkpoint = {
     commit_hash: string
     commit_message: string
     agent_history: any[]
@@ -48,7 +48,7 @@ type Checkpoint = {
     checkpoint_id: number
 }
 
-type VersioningMetadata = {
+export type VersioningMetadata = {
     current_branch: string
     old_branch: string
     initial_commit: string

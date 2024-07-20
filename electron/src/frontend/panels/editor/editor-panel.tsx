@@ -251,8 +251,6 @@ const EditorPanel = ({
         [files, openFiles]
     )
 
-    const [showInlineDiff, setShowInlineDiff] = useState(false)
-
     return (
         <div
             className={`flex flex-col h-full w-full ${
@@ -296,19 +294,6 @@ const EditorPanel = ({
                                 defaultSize={80}
                                 className="flex-grow flex flex-col overflow-hidden"
                             >
-                                <div className="flex items-center justify-end p-2">
-                                    <label
-                                        htmlFor="inline-diff"
-                                        className="mr-2 text-sm text-gray-300"
-                                    >
-                                        Show Inline Diff
-                                    </label>
-                                    <Switch
-                                        id="inline-diff"
-                                        checked={showInlineDiff}
-                                        onCheckedChange={setShowInlineDiff}
-                                    />
-                                </div>
                                 <CodeEditor
                                     files={openFiles}
                                     selectedFileId={selectedFileId}
@@ -317,8 +302,6 @@ const EditorPanel = ({
                                     showEditorBorders={showEditorBorders}
                                     path={path}
                                     initialFiles={agentFiles}
-                                    showInlineDiff={showInlineDiff}
-                                    setShowInlineDiff={setShowInlineDiff}
                                 />
                             </ResizablePanel>
                         </ResizablePanelGroup>

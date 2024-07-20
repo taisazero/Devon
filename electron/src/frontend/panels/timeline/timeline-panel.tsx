@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/popover'
 import { Undo2, GitBranch } from 'lucide-react'
 import { Checkpoint } from '@/lib/types'
+import { atom, useAtom } from 'jotai'
 
 type SubStepType = {
     hash: string
@@ -150,6 +151,8 @@ const TimelinePanel = ({
                     checkpoint?.checkpoint_id === b[index]?.checkpoint_id
             )
     )
+
+    console.log('CHECKPOINTS', checkpoints)
 
     const commits =
         checkpoints
@@ -314,6 +317,8 @@ const TimelinePanel = ({
     )
 }
 
+export const checkpointAtom = atom<any | null>(null)
+
 const Step: React.FC<{
     step: StepType
     index: number
@@ -459,17 +464,22 @@ const Step: React.FC<{
         )
     }
 
+    const [, setCheckpoint] = useAtom<any | null>(checkpointAtom)
+
+    function handleOpenChange(open: boolean) {
+        if (open) {
+            console.log(step.hash)
+            setSelectedRevertStep(index)
+            setCheckpoint(step.checkpoint_id)
+        } else {
+            setSelectedRevertStep(null)
+            setCheckpoint(null)
+        }
+    }
+
     const renderTextAndSubsteps = () => {
         return (
-            <Popover
-                onOpenChange={open => {
-                    if (open) {
-                        setSelectedRevertStep(index)
-                    } else {
-                        setSelectedRevertStep(null)
-                    }
-                }}
-            >
+            <Popover onOpenChange={handleOpenChange}>
                 <PopoverTrigger asChild>
                     <div
                         className={`flex flex-col hover:opacity-90 hover:cursor-pointer w-full`}

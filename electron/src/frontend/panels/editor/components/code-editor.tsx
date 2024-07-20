@@ -25,8 +25,6 @@ export default function CodeEditor({
     initialFiles,
     originalValue,
     modifiedValue,
-    showInlineDiff,
-    setShowInlineDiff,
 }: {
     files: File[]
     selectedFileId: string | null
@@ -37,8 +35,6 @@ export default function CodeEditor({
     initialFiles: File[]
     originalValue?: string
     modifiedValue?: string
-    showInlineDiff: boolean
-    setShowInlineDiff: (show: boolean) => void
 }): JSX.Element {
     const [popoverVisible, setPopoverVisible] = useState(false)
     const [popoverPosition, setPopoverPosition] = useState({ top: 0, left: 0 })
@@ -54,6 +50,7 @@ export default function CodeEditor({
     const [, setSelectedCodeSnippet] = useAtom<ICodeSnippet | null>(
         selectedCodeSnippetAtom
     )
+    const [showInlineDiff, setShowInlineDiff] = useState(false)
 
     useEffect(() => {
         if (
@@ -420,6 +417,8 @@ export default function CodeEditor({
                     className={showEditorBorders ? '' : ''}
                     isExpandedVariant={isExpandedVariant}
                     loading={files.length === 0}
+                    diffEnabled={showInlineDiff}
+                    setDiffEnabled={setShowInlineDiff}
                 />
             </div>
             {files && (
@@ -432,6 +431,7 @@ export default function CodeEditor({
                         handleEditorDidMount={handleEditorDidMount}
                         handleDiffEditorDidMount={handleDiffEditorDidMount}
                         showInlineDiff={showInlineDiff}
+                        setShowInlineDiff={setShowInlineDiff}
                     />
                 )}
                 {popoverVisible && (
@@ -453,12 +453,13 @@ export default function CodeEditor({
     )
 }
 import { SessionMachineContext } from '@/contexts/session-machine-context'
-
+import { checkpointAtom } from '@/panels/timeline/timeline-panel'
 const BothEditorTypes = ({
     file,
     handleEditorDidMount,
     handleDiffEditorDidMount,
     showInlineDiff,
+    setShowInlineDiff,
 }: {
     file: File | undefined
     handleEditorDidMount: (
@@ -470,23 +471,22 @@ const BothEditorTypes = ({
         monaco: Monaco
     ) => void
     showInlineDiff: boolean
+    setShowInlineDiff: (show: boolean) => void
 }) => {
+    const [checkpoint, setCheckpoint] = useAtom(checkpointAtom)
     const [diffContent, setDiffContent] = useState(null)
-    // Example original and modified values for the diff editor
-    const originalValue = `function hello() {
-    console.log("Hello, world!");
-}`
-    const modifiedValue = `function hello() {
-    console.log("Hello, beautiful world!");
-}`
     const host = SessionMachineContext.useSelector(state => state.context.host)
     const name = SessionMachineContext.useSelector(state => state.context.name)
 
     useEffect(() => {
+        setShowInlineDiff(Boolean(checkpoint))
+    }, [checkpoint])
+
+    useEffect(() => {
         const fetchDiff = async () => {
-            if (showInlineDiff && file) {
+            if (showInlineDiff && file && checkpoint !== null) {
                 try {
-                    const result = await getCheckpointDiff(host, name, 0, 1)
+                    const result = await getCheckpointDiff(host, name, 0, checkpoint)
                     console.log(result?.files)
                     const fileDiff = result.files.find(
                         f => f.file_path === getFileName(file.id)
