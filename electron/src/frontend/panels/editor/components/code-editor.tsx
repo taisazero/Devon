@@ -12,6 +12,8 @@ import {
 } from '@/panels/chat/components/ui/code-snippet'
 import { getRelativePath, getFileName } from '@/lib/utils'
 import { getCheckpointDiff } from '@/lib/services/sessionService/sessionService'
+import { SessionMachineContext } from '@/contexts/session-machine-context'
+import { checkpointTrackerAtom } from '@/panels/timeline/lib'
 
 export const selectedCodeSnippetAtom = atom<ICodeSnippet | null>(null)
 
@@ -425,15 +427,15 @@ export default function CodeEditor({
                 <PathDisplay path={path} selectedFileId={selectedFileId} />
             )}
             <div className="flex-grow w-full bg-midnight rounded-b-lg mt-[-2px] overflow-auto">
-                {selectedFileId && (
-                    <BothEditorTypes
-                        file={files?.find(f => f.id === selectedFileId)}
-                        handleEditorDidMount={handleEditorDidMount}
-                        handleDiffEditorDidMount={handleDiffEditorDidMount}
-                        showInlineDiff={showInlineDiff}
-                        setShowInlineDiff={setShowInlineDiff}
-                    />
-                )}
+                <BothEditorTypes
+                    file={files?.find(f => f.id === selectedFileId)}
+                    projectPath={path}
+                    handleFileSelect={handleFileSelect}
+                    handleEditorDidMount={handleEditorDidMount}
+                    handleDiffEditorDidMount={handleDiffEditorDidMount}
+                    showInlineDiff={showInlineDiff}
+                    setShowInlineDiff={setShowInlineDiff}
+                />
                 {popoverVisible && (
                     <button
                         onClick={handleAddCodeReference}
@@ -452,16 +454,19 @@ export default function CodeEditor({
         </div>
     )
 }
-import { SessionMachineContext } from '@/contexts/session-machine-context'
-import { checkpointTrackerAtom } from '@/panels/timeline/lib'
+
 const BothEditorTypes = ({
     file,
+    projectPath,
+    handleFileSelect,
     handleEditorDidMount,
     handleDiffEditorDidMount,
     showInlineDiff,
     setShowInlineDiff,
 }: {
     file: File | undefined
+    projectPath: string
+    handleFileSelect: (id: string) => void
     handleEditorDidMount: (
         editor: editor.IStandaloneCodeEditor,
         monaco: Monaco
@@ -493,7 +498,7 @@ const BothEditorTypes = ({
         if (diffEditorRef.current) {
             setTimeout(() => {
                 if (!diffEditorRef?.current) return
-                console.log("GOT HERE")
+                console.log('GOT HERE')
                 const modifiedEditor = diffEditorRef.current.getModifiedEditor()
                 const originalEditor = diffEditorRef.current.getOriginalEditor()
 
@@ -509,7 +514,7 @@ const BothEditorTypes = ({
 
     useEffect(() => {
         const fetchDiff = async () => {
-            if (showInlineDiff && file && checkpointTracker) {
+            if (showInlineDiff && checkpointTracker) {
                 try {
                     let checkpoint = checkpointTracker.current
                     if (checkpointTracker?.selected) {
@@ -521,11 +526,22 @@ const BothEditorTypes = ({
                         checkpointTracker.initial.checkpoint_id,
                         checkpoint.checkpoint_id
                     )
-                    console.log(result?.files)
-                    const fileDiff = result.files.find(
-                        f => f.file_path === getFileName(file.id)
-                    )
-                    console.log(fileDiff)
+                    if (!result || result.files.length === 0) {
+                        setDiffContent(null)
+                        return
+                    }
+                    let fileInDiff = false
+                    if (file) {
+                        fileInDiff = result.files.find(
+                            f => f.file_path === file.id
+                        )
+                    }
+                    const s = result.files[0].file_path
+                    if (!fileInDiff) {
+                        const selectedFilePath = projectPath + '/' + s
+                        handleFileSelect(selectedFilePath)
+                    }
+                    const fileDiff = result.files.find(f => f.file_path === s)
                     if (fileDiff) {
                         setDiffContent(fileDiff)
                     } else {

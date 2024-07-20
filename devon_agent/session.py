@@ -801,7 +801,7 @@ class Session:
     ) -> WholeFileDiffResults:
         src_commit = self.config.checkpoints[src_checkpoint_id].commit_hash
         dest_commit = self.config.checkpoints[dest_checkpoint_id].commit_hash
-        diff_list = self.versioning.get_diff_list(src_commit, dest_commit)
+        diff_list, error = self.versioning.get_diff_list(src_commit, dest_commit)
         return WholeFileDiffResults(
             files=[
                 WholeFileDiff(file_path=file, before=before, after=after)

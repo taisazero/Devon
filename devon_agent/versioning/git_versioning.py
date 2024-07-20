@@ -214,19 +214,58 @@ class GitVersioning:
             return 0, "none"
         
         result = subprocess.run(["git", "show", f'{commit}:{file}'], cwd=self.project_path, capture_output=True, text=True)
-        return result.returncode, result.stdout if result.returncode == 0 else result.stderr
-
+        
+        if result.returncode == 0:
+            return 0, result.stdout
+        
+        error_message = result.stderr.lower()
+        
+        if "exists on disk, but not in" in error_message:
+            # File doesn't exist in this commit
+            return 0, ""
+        elif "bad object" in error_message:
+            # Invalid commit hash
+            return 1, f"Error: Invalid commit hash '{commit}'"
+        elif "no such path" in error_message:
+            # File doesn't exist in the repository at all
+            return 0, ""
+        elif "ambiguous argument" in error_message:
+            # Ambiguous reference (could be multiple matches)
+            return 1, f"Error: Ambiguous reference '{commit}'"
+        elif "unknown revision" in error_message:
+            # Unknown revision or path
+            return 1, f"Error: Unknown revision or path '{commit}'"
+        else:
+            # Any other unexpected error
+            return 1, f"Unexpected error: {result.stderr}"
 
     def get_diff_list(self, commit1, commit2):
+        # Check if commits are valid
+        for commit in [commit1, commit2]:
+            result = subprocess.run(["git", "rev-parse", "--verify", commit], cwd=self.project_path, capture_output=True, text=True)
+            if result.returncode != 0:
+                return [], f"Error: Invalid commit '{commit}'"
+
         # Get the list of files that differ between the two commits
-        files = subprocess.run(["git", "diff", "--name-only", commit1, commit2], cwd=self.project_path, capture_output=True, text=True).stdout.split('\n')
+        diff_command = ["git", "diff", "--name-only", commit1, commit2]
+        result = subprocess.run(diff_command, cwd=self.project_path, capture_output=True, text=True)
+        
+        if result.returncode != 0:
+            return [], f"Error getting diff: {result.stderr}"
+
+        files = result.stdout.split('\n')
         
         diff_list = []
         for file in files:
-            if (file == "") or (file == None):
+            if not file:
                 continue
             status1, before_content = self.get_file_content(commit1, file)
             status2, after_content = self.get_file_content(commit2, file)
+            
+            if status1 == 1 or status2 == 1:
+                # If there was an error getting the content, return the error
+                return [], before_content if status1 == 1 else after_content
+            
             diff_list.append((file, before_content, after_content))
         
-        return diff_list
+        return diff_list, None  # Return None as the second item if there's no error
