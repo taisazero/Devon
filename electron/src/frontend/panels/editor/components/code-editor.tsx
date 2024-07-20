@@ -496,10 +496,6 @@ const BothEditorTypes = ({
     const name = SessionMachineContext.useSelector(state => state.context.name)
 
     useEffect(() => {
-        setShowInlineDiff(Boolean(checkpointTracker?.selected))
-    }, [checkpointTracker?.selected])
-
-    useEffect(() => {
         if (diffEditorRef.current) {
             setTimeout(() => {
                 if (!diffEditorRef?.current) return
@@ -539,17 +535,19 @@ const BothEditorTypes = ({
                     f => projectPath + '/' + f.file_path === file.id
                 )
             }
-            console.log(result.files)
-            console.log(fileInDiff)
             const p = fileInDiff
                 ? fileInDiff.file_path
-                : result.files[0].file_path
+                : result.files[result.files.length - 1].file_path
+            // Rn this opens the most recent unless the current file open is already in the diff (prevent switching when clicking through timeline)
             if (autoSelectFile && !fileInDiff) {
                 const selectedFilePath = projectPath + '/' + p
+                console.log('selecting file', selectedFilePath)
                 handleFileSelect(selectedFilePath)
             }
             const fileDiff = result.files.find(f => f.file_path === p)
-            if (fileDiff) {
+            // Only set the diff if current file is in it... might change later to just fileDiff
+            // Added the fileInDiff condition to prevent flashing
+            if (fileInDiff && fileDiff) {
                 setDiffContent(fileDiff)
             } else {
                 setDiffContent(null)
@@ -562,17 +560,21 @@ const BothEditorTypes = ({
     }
 
     useEffect(() => {
-        if (showInlineDiff) {
+        if (Boolean(checkpointTracker?.selected)) {
             fetchDiff(true)
         }
-    }, [showInlineDiff, host, name, checkpointTracker?.selected])
+    }, [checkpointTracker?.selected])
 
     useEffect(() => {
-        console.log('FILE PATH CHANGE', file?.path)
+        if (showInlineDiff) {
+            fetchDiff()
+        }
+    }, [host, name, showInlineDiff])
+
+    useEffect(() => {
         // If there's a selected checkpoint, check if the current file has a diff associated with it
-        if (checkpointTracker?.selected) {
+        if (checkpointTracker?.selected || showInlineDiff) {
             fetchDiff().then(r => {
-                console.log('RESULT', r)
                 setShowInlineDiff(r)
             })
         }
