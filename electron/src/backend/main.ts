@@ -14,6 +14,7 @@ import portfinder from 'portfinder'
 import fs from 'fs'
 import semver from 'semver'
 import './plugins/editor'
+import axios from 'axios'
 
 const DEV_MODE = process.env.DEV_MODE ?? false
 
@@ -369,15 +370,37 @@ app.on('ready', async () => {
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
-app.on('window-all-closed', async () => {
-    mainLogger.info('All windows closed. Quitting application.')
-    // if (process.platform !== 'darwin') {
-    serverProcess.kill('SIGINT')
-    mainLogger.info('Killing server process with pid:', serverProcess.pid)
+
+let asyncOperationDone = false;
+
+async function asyncOperation() {
+    await axios.get(`http://localhost:${use_port}/sessions/UI/teardown`)
     await new Promise(resolve => setTimeout(resolve, 2000))
-    app.quit()
-    // }
-})
+}
+
+app.on("window-all-closed", async (e: { preventDefault: () => void }) => {
+    mainLogger.info('All windows closed. Quitting application.')
+
+  if (!asyncOperationDone) {
+    e.preventDefault();
+    await asyncOperation();
+    asyncOperationDone = true;
+    console.log("async operation done, quitting");
+    serverProcess.kill('SIGINT')
+    mainLogger.info('Killing server process withpid:'+ serverProcess.pid)
+    app.quit();
+  }
+});
+
+// app.on('window-all-closed', async () => {
+//     mainLogger.info('All windows closed. Quitting application.')
+//     // if (process.platform !== 'darwin') {
+//     serverProcess.kill('SIGINT')
+//     mainLogger.info('Killing server process withpid:'+ serverProcess.pid)
+//     await new Promise(resolve => setTimeout(resolve, 2000))
+//     app.quit()
+//     // }
+// })
 
 app.on('browser-window-focus', function () {
     if (!DEV_MODE) {
@@ -421,9 +444,9 @@ app.on('before-quit', () => {
         return
     }
 
-    mainLogger.info('Killing server process with pid:', serverProcess.pid)
+    mainLogger.info('Killing server process with        pid:', serverProcess.pid)
     if (serverProcess.pid) {
-        mainLogger.info('Killing server process with pid:', serverProcess.pid)
+        mainLogger.info('Killing server process with       pid:', serverProcess.pid)
         process.kill(serverProcess.pid, 'SIGTERM')
     }
     serverProcess.kill(9) // Make sure to kill the server process when the app is closing

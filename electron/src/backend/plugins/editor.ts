@@ -222,7 +222,14 @@ ipcMain.handle('watch-dir', async (event, dirPath) => {
                 }
                 timeoutId = setTimeout(() => {
                     state = editorFileManager.handleEvent(updatedEvents)
-                    event.sender.send('editor-file-changed', state)
+                    try {
+                        if (event && event.sender && event.sender.send) {
+                            event.sender.send('editor-file-changed', state)
+                        }
+                    }
+                    catch (err) {
+                        console.error('Error sending editor-file-changed:', err)
+                    }
                 }, 500) // Adjust debounce timing as needed
             }
         )
