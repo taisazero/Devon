@@ -153,7 +153,7 @@ class ConversationalAgent(Agent):
                 {
                     "session": session,
                     "environment": session.default_environment,
-                    "state": session.state,
+                    "state": session.config.state,
                 }
             ),
             session.config.path,

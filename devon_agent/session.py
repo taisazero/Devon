@@ -46,31 +46,17 @@ def waitForEvent(event_log: List[Dict], event_type: str):
 
 def make_checkpoint(
     commit_message: str, config: Config, event_id: int, versioning: GitVersioning
-):
+) -> Checkpoint:
     success, message = versioning.commit_all_files(commit_message)
-    if not (success == 0):
-        config.checkpoints.append(
-            Checkpoint(
-                commit_message=commit_message,
-                commit_hash="no_commit",
-                agent_history=config.agent_configs[0].chat_history,
-                event_id=event_id,
-                checkpoint_id=len(config.checkpoints),
-                state=json.loads(json.dumps(config.state)),
-            )
-        )
 
-    else:
-        config.checkpoints.append(
-            Checkpoint(
-                commit_message=commit_message,
-                commit_hash=message,
-                agent_history=config.agent_configs[0].chat_history,
-                event_id=event_id,
-                checkpoint_id=len(config.checkpoints),
-                state=json.loads(json.dumps(config.state)),
-            )
-        )
+    return Checkpoint(
+        commit_message=commit_message,
+        commit_hash="no_commit" if not (success == 0) else message,
+        agent_history=config.agent_configs[0].chat_history,
+        event_id=event_id,
+        checkpoint_id=len(config.checkpoints),
+        state=json.loads(json.dumps(config.state)),
+    )
 
 
 class Session:
@@ -461,59 +447,16 @@ class Session:
                 if tool_name == "ask_user" and len(args) == 2:
                     commit_message = args[1]
                     if self.config.versioning_type == "git":
-                        success, message = self.versioning.commit_all_files(
-                            commit_message
-                        )
-                        if not (success == 0):
-                            print("STATE: ", copy.deepcopy(self.config.state))
-                            self.config.checkpoints.append(
-                                Checkpoint(
-                                    commit_message=commit_message,
-                                    commit_hash="no_commit",
-                                    agent_history=self.config.agent_configs[
-                                        0
-                                    ].chat_history,
-                                    event_id=self.event_id,
-                                    checkpoint_id=len(self.config.checkpoints),
-                                    state=json.loads(json.dumps(self.config.state)),
-                                )
-                            )
-
-                            self.logger.error(f"Error committing files: {message}")
-                        else:
-                            self.config.checkpoints.append(
-                                Checkpoint(
-                                    commit_message=commit_message,
-                                    commit_hash=message,
-                                    agent_history=self.config.agent_configs[
-                                        0
-                                    ].chat_history,
-                                    event_id=self.event_id,
-                                    checkpoint_id=len(self.config.checkpoints),
-                                    state=json.loads(json.dumps(self.config.state)),
-                                )
-                            )
-                            new_events.append(
-                                {
-                                    "type": "GitEvent",
-                                    "content": {
-                                        "type": "commit",
-                                        "message": commit_message,
-                                        "commit_hash": message,
-                                    },
-                                    "producer": "",
-                                    "consumer": "",
-                                }
-                            )
+                        checkpoint = make_checkpoint(commit_message,self.config, self.event_id, self.versioning)
+                        self.config.checkpoints.append(checkpoint)
                         new_events.append(
                             {
                                 "type": "Checkpoint",
-                                "content": f"{len(self.config.checkpoints)}",
+                                "content": f"{self.config.checkpoints[-1].checkpoint_id}",
                                 "producer": event["producer"],
                                 "consumer": "user",
                             }
                         )
-
                 try:
 
                     env = None
@@ -741,7 +684,7 @@ class Session:
             _, rc = self.default_environment.execute("test -f " + devonignore_path)
             if rc == 0:
                 self.config.exclude_files.extend(get_ignored_files(devonignore_path))
-        self.telemetry_client.capture(SessionStartEvent(self.name))
+        self.telemetry_client.capture(SessionStartEvent(self.config.name))
 
     def teardown(self):
         for env in self.environments.values():
@@ -760,12 +703,12 @@ class Session:
             )
 
     def persist(self):
-        if self.persist_to_db:
-            asyncio.run(_save_session_util(self.name, self.to_dict()))
+        if self.config.persist_to_db:
+            asyncio.run(_save_session_util(self.config.name, self.to_dict()))
 
     def delete_from_db(self):
-        if self.persist_to_db:
-            asyncio.run(_delete_session_util(self.name))
+        if self.config.persist_to_db:
+            asyncio.run(_delete_session_util(self.config.name))
 
     def merge(self, commit_message):
         # get last git commit

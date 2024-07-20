@@ -251,7 +251,7 @@ class DeleteFileTool(Tool):
 
         try:
             # Check if file already exists to avoid overwriting
-            abs_path = cwd_normalize_path(file_path)
+            abs_path = cwd_normalize_path(ctx,file_path)
 
             exists = file_exists(ctx, abs_path)
             if not exists:

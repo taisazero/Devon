@@ -96,7 +96,7 @@ class OpenAiModel:
 
     SHORTCUTS = {
         "gpt4-turbo": "gpt-4-turbo",
-        "gpt4-o": "gpt-4o",
+        "gpt4-o": "gpt-4o-mini",
         "gpt4": "gpt-4-0125-preview",
     }
 
