@@ -153,14 +153,14 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
     }, [selectedModel.id])
 
     async function handleUseNewModel() {
-        setUseModelName(selectedModel.id)
+        await setUseModelName(selectedModel.id, false)
+        setOpen(false)
         const _key: string = await fetchApiKey()
         const config: UpdateConfig = {
             api_key: _key,
             model: selectedModel.id,
         }
         await updateSessionConfig(host, name, config)
-        setOpen(false)
     }
 
     function handleChangePath() {
@@ -354,15 +354,15 @@ const APIKeyComponent = ({
         setIsSaving(true)
         await addApiKey(model.id, key, false)
         // Update the model as well
-        await setUseModelName(model.id)
+        await setUseModelName(model.id, false)
         const config: UpdateConfig = {
             api_key: key,
             model: model.id,
         }
-        await updateSessionConfig(host, name, config)
-        setIsSaving(false)
         setOpen(false)
+        setIsSaving(false)
         setIsKeyStored(true)
+        await updateSessionConfig(host, name, config)
     }
 
     const handleDelete = async () => {
