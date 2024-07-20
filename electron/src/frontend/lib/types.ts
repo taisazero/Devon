@@ -59,3 +59,10 @@ export type UpdateConfig = {
     model: string
     api_key: string
 }
+
+
+export type CheckpointTracker = {
+    initial: Checkpoint
+    current: Checkpoint
+    selected: Checkpoint | null
+}

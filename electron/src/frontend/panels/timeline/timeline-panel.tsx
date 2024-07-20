@@ -1,5 +1,6 @@
-import { useEffect, useState, useRef, RefObject } from 'react'
-import axios from 'axios'
+import { useEffect, useState } from 'react'
+import { GitBranch } from 'lucide-react'
+import { useAtom } from 'jotai'
 import { SessionMachineContext } from '@/contexts/session-machine-context'
 import {
     Tooltip,
@@ -8,108 +9,11 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-    PopoverAnchor,
-    PopoverClose,
-} from '@/components/ui/popover'
-import { Undo2, GitBranch } from 'lucide-react'
-import { Checkpoint } from '@/lib/types'
-import { atom, useAtom } from 'jotai'
-
-type SubStepType = {
-    hash: string
-    label: string
-    subtitle?: string
-}
-
-type StepType = {
-    hash: string
-    label: string
-    subtitle?: string
-    subSteps: SubStepType[]
-    checkpoint_id: number
-}
+import { Checkpoint, CheckpointTracker } from '@/lib/types'
+import { exampleSteps, StepType, checkpointTrackerAtom } from './lib'
+import Step from './components/step'
 
 const ANIMATE_DEMO = false
-
-const exampleSteps: StepType[] = [
-    {
-        hash: '1',
-        label: 'Initialize the project',
-        subtitle: 'Setting up the initial project structure',
-        subSteps: [
-            {
-                hash: '1.1',
-                label: 'Install dependencies',
-                subtitle: 'Add necessary packages',
-            },
-            {
-                hash: '1.2',
-                label: 'Create project files',
-                subtitle: 'Setup basic file structure',
-            },
-            {
-                hash: '1.3',
-                label: 'Initialize the project',
-                subtitle: 'Setup the project configuration',
-            },
-        ],
-        checkpoint_id: 1,
-    },
-    {
-        hash: '2',
-        label: 'Create the game loop',
-        subtitle: 'Implement the main game loop',
-        subSteps: [
-            {
-                hash: '2.1',
-                label: 'Define game loop logic',
-                subtitle: 'Setup the game loop function',
-            },
-        ],
-        checkpoint_id: 2,
-    },
-    {
-        hash: '3',
-        label: 'Add snake logic',
-        subtitle: 'Implement the snake movement and controls',
-        subSteps: [],
-        checkpoint_id: 3,
-    },
-    {
-        hash: '4',
-        label: 'Implement the game board',
-        subtitle: 'Design and code the game board layout',
-        subSteps: [],
-        checkpoint_id: 4,
-    },
-    {
-        hash: '5',
-        label: 'Add collision detection',
-        subtitle: 'Implement logic to detect collisions',
-        subSteps: [],
-        checkpoint_id: 5,
-    },
-    {
-        hash: '6',
-        label: 'Add food and scoring',
-        subtitle: 'Add food items and scoring mechanism',
-        subSteps: [],
-        checkpoint_id: 6,
-    },
-    {
-        hash: '7',
-        label: 'Finalize the game',
-        subtitle: 'Finish up and test the game',
-        subSteps: [],
-        checkpoint_id: 7,
-    },
-]
-
-// const steps: StepType[] = exampleSteps
 
 const TimelinePanel = ({
     expanded,
@@ -126,22 +30,6 @@ const TimelinePanel = ({
         null
     )
     const sessionActorRef = SessionMachineContext.useActorRef()
-    // const commits = SessionMachineContext.useSelector(
-    //     state => state.context.serverEventContext.gitData.commits
-    // )
-    // const host = SessionMachineContext.useSelector(state => state.context.host)
-    // const name = SessionMachineContext.useSelector(state => state.context.name)
-    // const [config, setConfig] = useState<AgentConfig | null>(null)
-    // const getSessionConfig = async () => {
-    //     try {
-    //         const response = await axios.get(`${host}/sessions/${name}/config`)
-    //         return response.data
-    //     } catch (error) {
-    //         console.error('Error fetching session config:', error)
-    //         throw error
-    //     }
-    // }
-
     const checkpoints: Checkpoint[] = SessionMachineContext.useSelector(
         state => state.context.sessionConfig?.checkpoints,
         (a, b) =>
@@ -152,29 +40,10 @@ const TimelinePanel = ({
             )
     )
 
-    console.log('CHECKPOINTS', checkpoints)
-
-    const commits =
-        checkpoints
-            ?.filter(checkpoint => checkpoint.commit_hash !== 'no_commit')
-            .map(checkpoint => ({
-                hash: checkpoint.commit_hash,
-                message: checkpoint.commit_message,
-                checkpoint_id: checkpoint.checkpoint_id,
-            })) ?? []
-
-    // console.log('commits', commits)
-
-    // useEffect(() => {
-    //     const interval = setInterval(() => {
-    //         getSessionConfig().then(res => setConfig(res))
-    //     }, 1000)
-    //     // Clean up the interval when the component unmounts
-    //     return () => clearInterval(interval)
-    // }, [expanded])
-
-    // const hasCommits = true
-    // const steps: StepType[] = exampleSteps
+    const commits: Checkpoint[] =
+        checkpoints?.filter(
+            checkpoint => checkpoint.commit_hash !== 'no_commit'
+        ) ?? []
 
     const versioning_type = SessionMachineContext.useSelector(
         state => state.context.sessionConfig?.versioning_type
@@ -188,14 +57,24 @@ const TimelinePanel = ({
 
     const steps: StepType[] = hasCommits
         ? commits.map((commit, index) => ({
-              id: index,
-              label: commit.message,
-              hash: commit.hash,
-              // subtitle: commit.author,
+              ...commit,
               subSteps: [],
-              checkpoint_id: commit.checkpoint_id,
           }))
         : exampleSteps
+
+    const [checkpointTracker, setCheckpointTracker] =
+        useAtom<CheckpointTracker | null>(checkpointTrackerAtom)
+
+    useEffect(() => {
+        if (commits.length > 0) {
+            const selected = checkpointTracker?.selected ?? null
+            setCheckpointTracker({
+                initial: commits[0],
+                current: commits[commits.length - 1],
+                selected,
+            })
+        }
+    }, [commits])
 
     useEffect(() => {
         setShowMinimizedTimeline(hasCommits)
@@ -272,7 +151,7 @@ const TimelinePanel = ({
                 {hasCommits ? (
                     steps.map((step, index) => (
                         <Step
-                            key={step.hash}
+                            key={step.checkpoint_id}
                             step={step}
                             index={index}
                             activeStep={activeStep}
@@ -312,312 +191,6 @@ const TimelinePanel = ({
                         Merge branch
                     </Button>
                 </div>
-            )}
-        </div>
-    )
-}
-
-export const checkpointAtom = atom<any | null>(null)
-
-const Step: React.FC<{
-    step: StepType
-    index: number
-    activeStep: number
-    setSubStepFinished: (value: boolean) => void
-    stepsLength: number
-    animateDemo: boolean
-    hasCommits: boolean
-    expanded: boolean
-    setExpanded: (value: boolean) => void
-    selectedRevertStep: number | null
-    setSelectedRevertStep: (value: number | null) => void
-    sessionActorRef: any
-}> = ({
-    step,
-    index,
-    activeStep,
-    setSubStepFinished,
-    stepsLength,
-    animateDemo,
-    hasCommits,
-    expanded,
-    setExpanded,
-    selectedRevertStep,
-    setSelectedRevertStep,
-    sessionActorRef,
-}) => {
-    const isPulsing = selectedRevertStep !== null && index > selectedRevertStep
-    const lineBeforeShouldPulse =
-        selectedRevertStep !== null && index === selectedRevertStep
-    const [subStepActiveIndex, setSubStepActiveIndex] = useState(
-        animateDemo ? -1 : step.subSteps.length - 1
-    )
-    const [connectorHeight, setConnectorHeight] = useState(0)
-    const contentRef: RefObject<HTMLDivElement> = useRef(null)
-    const pathRef: RefObject<SVGPathElement> = useRef(null)
-    const PADDING_OFFSET = 10
-    const CURVE_SVG_WIDTH = 40 + PADDING_OFFSET
-    const CURVE_SVG_HEIGHT_OFFSET = 50 // Dynamic height not really working yet... this is needed if there's no subtitle
-    const CURVE_SVG_ANIMATION_DURATION = 1000
-
-    const SUBITEM_LEFT_MARGIN = 50 // Only change this if you change the padding of each substep item
-
-    useEffect(() => {
-        if (contentRef.current) {
-            const totalHeight =
-                contentRef.current.clientHeight + CURVE_SVG_HEIGHT_OFFSET
-            setConnectorHeight(totalHeight)
-        }
-    }, [contentRef])
-
-    // New effect to handle non-animated case
-    useEffect(() => {
-        if (!animateDemo) {
-            setSubStepActiveIndex(step.subSteps.length - 1)
-        }
-    }, [animateDemo, step.subSteps.length])
-
-    // Modify the isActive check to consider non-animated case
-    const isActive = animateDemo ? index <= activeStep : true
-
-    useEffect(() => {
-        if (animateDemo && activeStep === index && step.subSteps.length > 0) {
-            const interval = setInterval(() => {
-                setSubStepActiveIndex(prevIndex => {
-                    if (prevIndex < step.subSteps.length - 1) {
-                        return prevIndex + 1
-                    }
-                    clearInterval(interval)
-                    /**
-                     * This setTimeout ensures setSubStepFinished is called after the state update
-                        Or else you get the error:
-                        Cannot update a component (`TimelinePanel`) while rendering a different component (`Step`). To locate the bad setState() call inside `Step`,
-                     */
-                    setTimeout(() => {
-                        setSubStepFinished(true)
-                    }, 0)
-                    return prevIndex
-                })
-            }, 1000)
-            return () => clearInterval(interval)
-        } else if (activeStep === index) {
-            setSubStepFinished(true)
-        }
-    }, [activeStep, index, setSubStepFinished, step.subSteps.length])
-
-    useEffect(() => {
-        if (pathRef.current) {
-            const pathLength = pathRef.current.getTotalLength()
-            pathRef.current.style.strokeDasharray = `${pathLength}`
-            pathRef.current.style.strokeDashoffset = `${pathLength}`
-            pathRef.current.getBoundingClientRect()
-            pathRef.current.style.transition = `stroke-dashoffset ${CURVE_SVG_ANIMATION_DURATION}ms ease-in-out`
-            pathRef.current.style.strokeDashoffset = '0'
-        }
-    }, [connectorHeight, subStepActiveIndex])
-
-    const connectorPath = `
-        M 12 0
-        Q 12 ${connectorHeight / 2} ${CURVE_SVG_WIDTH} ${connectorHeight / 2}
-    `
-
-    function handleRevertStep(step: StepType) {
-        console.log('r', step, step.checkpoint_id)
-        sessionActorRef.send({
-            type: 'session.revert',
-            params: { checkpoint_id: step.checkpoint_id },
-        })
-    }
-
-    const renderCircle = () => {
-        const circle = (
-            <div
-                className={`z-10 flex items-center justify-center w-6 h-6 bg-white rounded-full ${
-                    activeStep >= index ? 'opacity-100' : 'opacity-0'
-                } transition-opacity duration-1000`}
-            >
-                {hasCommits && activeStep === index ? (
-                    <div className="flex items-center justify-center relative">
-                        <div className="w-3 h-3 bg-primary rounded-full animate-pulse-size-lg"></div>
-                        <div className="absolute w-3 h-3 bg-primary rounded-full"></div>
-                        {/* <div className="absolute w-6 h-6 bg-primary rounded-full opacity-40"></div> */}
-                    </div>
-                ) : (
-                    <div className="w-2 h-2 bg-white rounded-full"></div>
-                )}
-            </div>
-        )
-        if (expanded) {
-            return circle
-        }
-        return (
-            <TooltipProvider delayDuration={100}>
-                <Tooltip>
-                    <TooltipTrigger onClick={() => setExpanded(!expanded)}>
-                        {circle}
-                    </TooltipTrigger>
-                    <TooltipContent side="right" align="end">
-                        <p>{step.label}</p>
-                    </TooltipContent>
-                </Tooltip>
-            </TooltipProvider>
-        )
-    }
-
-    const [, setCheckpoint] = useAtom<any | null>(checkpointAtom)
-
-    function handleOpenChange(open: boolean) {
-        if (open) {
-            console.log(step.hash)
-            setSelectedRevertStep(index)
-            setCheckpoint(step.checkpoint_id)
-        } else {
-            setSelectedRevertStep(null)
-            setCheckpoint(null)
-        }
-    }
-
-    const renderTextAndSubsteps = () => {
-        return (
-            <Popover onOpenChange={handleOpenChange}>
-                <PopoverTrigger asChild>
-                    <div
-                        className={`flex flex-col hover:opacity-90 hover:cursor-pointer w-full`}
-                    >
-                        <div ref={contentRef} className="flex flex-col">
-                            <PopoverAnchor asChild>
-                                <span
-                                    className={`text-white min-h-10 ${
-                                        expanded ? 'line-clamp-2' : ''
-                                    }`}
-                                >
-                                    {expanded && step.label}
-                                </span>
-                            </PopoverAnchor>
-                            <span className="mt-1 text-gray-400 whitespace-nowrap">
-                                {step.subtitle}
-                            </span>
-                        </div>
-                        {activeStep >= index && step.subSteps.length > 0 && (
-                            <div
-                                style={{
-                                    marginLeft: `calc(${CURVE_SVG_WIDTH}px - ${SUBITEM_LEFT_MARGIN}px)`,
-                                }}
-                                className="mt-3"
-                            >
-                                {step.subSteps.map((subStep, subIndex) => (
-                                    <SubStep
-                                        key={subStep.hash}
-                                        subStep={subStep}
-                                        showLine={
-                                            subIndex < step.subSteps.length - 1
-                                        }
-                                        active={subStepActiveIndex >= subIndex}
-                                    />
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </PopoverTrigger>
-                <PopoverContent
-                    align="end"
-                    alignOffset={7}
-                    side="right"
-                    sideOffset={16}
-                    className="flex gap-2 items-center pl-2 pr-3 py-2 w-auto border-primary bg-night hover:bg-batman smooth-hover"
-                    asChild
-                >
-                    <PopoverClose asChild>
-                        <button onClick={() => handleRevertStep(step)}>
-                            <Undo2 size={16} />
-                            Revert to this commit
-                        </button>
-                    </PopoverClose>
-                </PopoverContent>
-            </Popover>
-        )
-    }
-
-    return (
-        <div className={`flex flex-row ${isPulsing ? 'animate-pulse2' : ''}`}>
-            <div className="relative flex-start">
-                {renderCircle()}
-                {/* This is the line */}
-                {index < stepsLength - 1 && (
-                    <div
-                        className={`absolute w-px ${
-                            activeStep > index ? 'h-[calc(100%-1.5rem)]' : 'h-0'
-                        } bg-white top-6 left-1/2 transform -translate-x-1/2 transition-all
-                         ${
-                             lineBeforeShouldPulse
-                                 ? 'animate-pulse2 duration-2000'
-                                 : 'duration-1000'
-                         }`}
-                    ></div>
-                )}
-                {step.subSteps.length > 0 && subStepActiveIndex >= 0 && (
-                    <svg
-                        width={CURVE_SVG_WIDTH}
-                        height={connectorHeight}
-                        className="absolute"
-                    >
-                        <path
-                            ref={pathRef}
-                            d={connectorPath}
-                            className="stroke-white"
-                            fill="transparent"
-                            strokeWidth="1.5"
-                        />
-                    </svg>
-                )}
-            </div>
-            <div
-                className={`flex items-center ml-5 mb-3 ${
-                    !animateDemo || activeStep >= index
-                        ? 'opacity-100'
-                        : 'opacity-0'
-                } transition-opacity duration-1000 ${
-                    animateDemo ? 'delay-800' : ''
-                }`}
-            >
-                {renderTextAndSubsteps()}
-            </div>
-        </div>
-    )
-}
-
-const SubStep: React.FC<{
-    subStep: SubStepType
-    showLine: boolean
-    active: boolean
-}> = ({ subStep, showLine, active }) => {
-    return (
-        <div className="relative flex flex-col pb-3">
-            <div className="flex">
-                <div
-                    className={`z-10 flex items-center justify-center w-4 h-4 bg-gray-400 rounded-full translate-y-1 ${
-                        active ? 'opacity-100' : 'opacity-0'
-                    } transition-opacity duration-1000`}
-                >
-                    <div className="w-2 h-2 bg-white rounded-full"></div>
-                </div>
-                <div
-                    className={`ml-3 ${
-                        active ? 'opacity-100' : 'opacity-0'
-                    } transition-opacity duration-1000 delay-800`}
-                >
-                    <span className="text-white">{subStep.label}</span>
-                    <span className="block mt-1 text-gray-400">
-                        {subStep.subtitle}
-                    </span>
-                </div>
-            </div>
-            {showLine && (
-                <div
-                    className={`absolute w-px ${
-                        active ? 'h-full' : 'h-0'
-                    } bg-gray-400 left-2 transform translate-y-3 -translate-x-1/2 transition-all duration-1000 delay-800`}
-                ></div>
             )}
         </div>
     )

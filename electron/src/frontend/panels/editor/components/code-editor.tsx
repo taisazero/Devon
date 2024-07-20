@@ -453,7 +453,7 @@ export default function CodeEditor({
     )
 }
 import { SessionMachineContext } from '@/contexts/session-machine-context'
-import { checkpointAtom } from '@/panels/timeline/timeline-panel'
+import { checkpointTrackerAtom } from '@/panels/timeline/lib'
 const BothEditorTypes = ({
     file,
     handleEditorDidMount,
@@ -473,24 +473,59 @@ const BothEditorTypes = ({
     showInlineDiff: boolean
     setShowInlineDiff: (show: boolean) => void
 }) => {
-    const [checkpoint, setCheckpoint] = useAtom(checkpointAtom)
-    const [diffContent, setDiffContent] = useState(null)
+    const [checkpointTracker, setCheckpointTracker] = useAtom(
+        checkpointTrackerAtom
+    )
+    const [diffContent, setDiffContent] = useState<{
+        before: string
+        after: string
+        file: string
+    } | null>(null)
+    const diffEditorRef = useRef<editor.IDiffEditor | null>(null)
     const host = SessionMachineContext.useSelector(state => state.context.host)
     const name = SessionMachineContext.useSelector(state => state.context.name)
 
     useEffect(() => {
-        setShowInlineDiff(Boolean(checkpoint))
-    }, [checkpoint])
+        setShowInlineDiff(Boolean(checkpointTracker?.selected))
+    }, [checkpointTracker?.selected])
+
+    useEffect(() => {
+        if (diffEditorRef.current) {
+            setTimeout(() => {
+                if (!diffEditorRef?.current) return
+                console.log("GOT HERE")
+                const modifiedEditor = diffEditorRef.current.getModifiedEditor()
+                const originalEditor = diffEditorRef.current.getOriginalEditor()
+
+                // Unfortunately this was the best fix I could figure out to make the editor show the diff
+                // Simulate a small scroll in both editors
+                modifiedEditor.setScrollTop(1)
+                modifiedEditor.setScrollTop(0)
+                originalEditor.setScrollTop(1)
+                originalEditor.setScrollTop(0)
+            }, 50) // Small delay to ensure content is loaded
+        }
+    }, [diffContent])
 
     useEffect(() => {
         const fetchDiff = async () => {
-            if (showInlineDiff && file && checkpoint !== null) {
+            if (showInlineDiff && file && checkpointTracker) {
                 try {
-                    const result = await getCheckpointDiff(host, name, 0, checkpoint)
+                    let checkpoint = checkpointTracker.current
+                    if (checkpointTracker?.selected) {
+                        checkpoint = checkpointTracker.selected
+                    }
+                    const result = await getCheckpointDiff(
+                        host,
+                        name,
+                        checkpointTracker.initial.checkpoint_id,
+                        checkpoint.checkpoint_id
+                    )
                     console.log(result?.files)
                     const fileDiff = result.files.find(
                         f => f.file_path === getFileName(file.id)
                     )
+                    console.log(fileDiff)
                     if (fileDiff) {
                         setDiffContent(fileDiff)
                     } else {
@@ -524,6 +559,7 @@ const BothEditorTypes = ({
 
     const handleCustomDiffEditorDidMount = (editor, monaco) => {
         handleDiffEditorDidMount(editor, monaco)
+        diffEditorRef.current = editor
 
         monaco.editor.defineTheme('custom-diff-theme', {
             base: 'vs-dark',
