@@ -85,7 +85,7 @@ class GitVersioning:
             return add_result.returncode, add_result.stderr
 
         commit_result = subprocess.run(
-            ["git", "commit", "-m", "initial commit", "--allow-empty"], cwd=self.project_path, capture_output=True, text=True
+            ["git", "commit", "-m", "initial commit"], cwd=self.project_path, capture_output=True, text=True
         )
         if commit_result.returncode != 0:
             return commit_result.returncode, commit_result.stderr
