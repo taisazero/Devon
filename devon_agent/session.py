@@ -752,7 +752,7 @@ class Session:
             return False
 
     def diff(
-        self, src_checkpoint_id: int, dest_checkpoint_id: int
+        self, src_checkpoint_id: str, dest_checkpoint_id: str
     ) -> WholeFileDiffResults:
         for checkpoint in self.config.checkpoints:
             if checkpoint.checkpoint_id == src_checkpoint_id:

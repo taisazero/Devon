@@ -40,7 +40,7 @@ class GitVersioning:
             return init_result.returncode, init_result.stderr + init_result.stdout
         
         # make a main branch
-        result = subprocess.run(["git", "checkout", "-b", "main"], cwd=self.project_path, capture_output=True, text=True)
+        result = subprocess.run(["git", "switch", "-c", "main"], cwd=self.project_path, capture_output=True, text=True)
         if result.returncode != 0:
             return result.returncode, result.stderr + result.stdout
 
@@ -85,7 +85,7 @@ class GitVersioning:
             return add_result.returncode, add_result.stderr
 
         commit_result = subprocess.run(
-            ["git", "commit", "-m", "initial commit"], cwd=self.project_path, capture_output=True, text=True
+            ["git", "commit", "-m", "Initial commit","--allow-empty"], cwd=self.project_path, capture_output=True, text=True
         )
         if commit_result.returncode != 0:
             return commit_result.returncode, commit_result.stderr
@@ -164,14 +164,14 @@ class GitVersioning:
     def create_branch(self, branch_name):
         if self.config.versioning_type == "none":
             return 0, "none"
-        result = subprocess.run(["git", "checkout", "-b", branch_name], cwd=self.project_path, capture_output=True, text=True)
+        result = subprocess.run(["git", "switch", "-c", branch_name], cwd=self.project_path, capture_output=True, text=True)
         return result.returncode, result.stdout if result.returncode == 0 else result.stderr
 
     def switch_branch(self, branch_name):
         if self.config.versioning_type == "none":
             return 0, "none"
         result = subprocess.run(
-            ["git", "checkout", branch_name], cwd=self.project_path, capture_output=True, text=True
+            ["git", "switch", branch_name], cwd=self.project_path, capture_output=True, text=True
         )
         return result.returncode, result.stdout if result.returncode == 0 else result.stderr
 
@@ -233,7 +233,7 @@ class GitVersioning:
     def checkout_branch(self, branch_name):
         if self.config.versioning_type == "none":
             return 0, "none"
-        result = subprocess.run(["git", "checkout", branch_name], cwd=self.project_path, capture_output=True, text=True)
+        result = subprocess.run(["git", "switch", branch_name], cwd=self.project_path, capture_output=True, text=True)
         if result.returncode == 0:
             self.current_branch = branch_name
         return result.returncode, result.stdout if result.returncode == 0 else result.stderr
