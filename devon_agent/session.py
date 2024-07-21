@@ -274,6 +274,7 @@ class Session:
                                 self.versioning.get_branch_name()[1]
                             )
                         )
+
                         if result[0] != 0:
                             raise Exception(result[1])
                         self.config.versioning_metadata["current_branch"] = (
@@ -281,6 +282,7 @@ class Session:
                         )
                         break
                     except Exception as e:
+                        print("here")
                         self.logger.error(f"Error creating branch: {e}")
                         self.event_log.append(
                             {

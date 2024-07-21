@@ -38,8 +38,11 @@ class GitVersioning:
         init_result = subprocess.run(["git", "init"], cwd=self.project_path, capture_output=True, text=True)
         if init_result.returncode != 0:
             return init_result.returncode, init_result.stderr + init_result.stdout
+
+        init_repo = subprocess.run(["git", "commit", "--allow-empty", "-m", "Initialized Repo"], cwd=self.project_path, capture_output=True, text=True)
+        if init_repo.returncode != 0:
+            return init_repo.returncode, init_repo.stderr + init_repo.stdout
         
-        # make a main branch
         result = subprocess.run(["git", "switch", "-c", "main"], cwd=self.project_path, capture_output=True, text=True)
         if result.returncode != 0:
             return result.returncode, result.stderr + result.stdout
@@ -164,7 +167,7 @@ class GitVersioning:
     def create_branch(self, branch_name):
         if self.config.versioning_type == "none":
             return 0, "none"
-        result = subprocess.run(["git", "switch", "-c", branch_name], cwd=self.project_path, capture_output=True, text=True)
+        result = subprocess.run(["git", "switch","-c", branch_name], cwd=self.project_path, capture_output=True, text=True)
         return result.returncode, result.stdout if result.returncode == 0 else result.stderr
 
     def switch_branch(self, branch_name):
@@ -199,19 +202,24 @@ class GitVersioning:
         if current_branch[0] == 0 and current_branch[1].strip() == branch_name:
             return 0, "Branch already exists"
         
-        branch_exists = self.check_branch_exists(branch_name)
-        if branch_exists[0] != 0:
-            create_result = self.create_branch(branch_name)
-            if create_result[0] != 0:
-                return create_result
 
         old_branch = self.get_branch()
         if old_branch[0] != 0:
             return old_branch
+        
+        branch_exists = self.check_branch_exists(branch_name)
+        if branch_exists[0] != 0:
+            create_result = self.create_branch(branch_name)
+            print("create branch", create_result)
+            if create_result[0] != 0:
+                return create_result
 
-        checkout_result = self.checkout_branch(branch_name)
-        if checkout_result[0] != 0:
-            return checkout_result
+
+
+        # checkout_result = self.checkout_branch(branch_name)
+        # print("checkout branch", checkout_result)   
+        # if checkout_result[0] != 0:
+        #     return checkout_result
 
         merge_result = self.merge_branch(old_branch[1])
         if merge_result[0] != 0:
