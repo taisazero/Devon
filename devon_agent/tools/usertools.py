@@ -106,7 +106,7 @@ class AskUserToolWithCommit(Tool):
     def function(self, context: ToolContext, question: str, commit_message: str, **kwargs):
         """
         command_name: ask_user
-        description: The ask_user command asks the user for their input and provide a commit message for changes
+        description: The ask_user command asks the user for their input and provide a commit message for changes. The commit message should be relavent to the changes you did since the latest user requestion / task
         signature: ask_user "Some question here" "Some commit message here"
         example: `ask_user "What would you like me to do?" "Added a new feature"`
         """            

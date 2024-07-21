@@ -67,6 +67,7 @@ class AnthropicModel:
             self.api_key = os.getenv("ANTHROPIC_API_KEY")
 
     def query(self, messages: list[dict[str, str]], system_message: str = "") -> str:
+        
         model_completion = completion(
             messages=[{"role": "system", "content": system_message}] + messages,
             max_tokens=self.model_metadata["max_tokens"],
@@ -75,6 +76,17 @@ class AnthropicModel:
             stop=["</COMMAND>"],
             api_key=self.api_key,
         )
+
+        while model_completion.choices[0].finish_reason != "stop":
+            model_completion = completion(
+            messages=[{"role": "system", "content": system_message}] + messages + [{"role": "assistant", "content": model_completion.choices[0].message.content}],
+            max_tokens=self.model_metadata["max_tokens"],
+            model=self.api_model,
+            temperature=self.args.temperature,
+            stop=["</COMMAND>"],
+            api_key=self.api_key,
+        )
+
 
 
         response = model_completion.choices[0].message.content.rstrip("</COMMAND>")
