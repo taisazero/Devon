@@ -311,6 +311,14 @@ class Session:
                             event_id=len(self.event_log),
                             checkpoint_id=0,
                             state=json.loads(json.dumps(self.config.state)),
+                        ))
+                    
+                    self.event_log.append(
+                        Event(
+                            type="Checkpoint",
+                            content=0,
+                            producer="system",
+                            consumer="devon",
                         )
                     )
 
