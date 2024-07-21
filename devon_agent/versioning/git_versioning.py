@@ -76,7 +76,7 @@ class GitVersioning:
         if self.config.versioning_type == "none":
             return 0, "none"
         log_result = subprocess.run(["git", "log", "-1", "--pretty=%B"], cwd=self.project_path, capture_output=True, text=True)
-        if log_result.returncode == 0 and log_result.stdout.strip() == "initial commit":
+        if log_result.returncode == 0 and log_result.stdout.strip() == "Initial commit":
             hash_result = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.project_path, capture_output=True, text=True)
             return hash_result.returncode, hash_result.stdout.strip() if hash_result.returncode == 0 else hash_result.stderr
 

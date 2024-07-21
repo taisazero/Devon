@@ -306,7 +306,7 @@ class Session:
                     self.config.versioning_metadata["initial_commit"] = commit_hash[1]
                     self.config.checkpoints.append(
                         Checkpoint(
-                            commit_message="initial commit",
+                            commit_message="Initial commit",
                             commit_hash=commit_hash[1],
                             agent_history=self.config.agent_configs[0].chat_history,
                             event_id=len(self.event_log),
