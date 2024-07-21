@@ -265,9 +265,9 @@ class Session:
                     try:
                         # TODO: deal with situation where session is being loaded.
                         # stash changes
-                        result = self.versioning.stash_changes()
-                        if result[0] != 0:
-                            raise Exception(result[1])
+                        # result = self.versioning.stash_changes()
+                        # if result[0] != 0:
+                        #     raise Exception(result[1])
                         result = (
                             self.versioning.create_if_not_exists_and_checkout_branch(
                                 self.versioning.get_branch_name()[1]
@@ -297,7 +297,7 @@ class Session:
                 try:
                     
                     # apply stash on current branch
-                    result = self.versioning.apply_stash("devon_agent")
+                    # result = self.versioning.apply_stash("devon_agent")
                     # if result[0] != 0:
                     #     raise Exception(result[1])
 
