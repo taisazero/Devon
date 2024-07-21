@@ -14,7 +14,11 @@ import {
 } from '@/components/ui/popover'
 import { Undo2 } from 'lucide-react'
 import { useAtom } from 'jotai'
-import { StepType, checkpointTrackerAtom } from '../lib'
+import {
+    StepType,
+    checkpointTrackerAtom,
+    useCheckpointMessageMappings,
+} from '../lib'
 import { CheckpointTracker } from '@/lib/types'
 import SubStep from './substep'
 
@@ -125,6 +129,7 @@ const Step: React.FC<{
         M 12 0
         Q 12 ${connectorHeight / 2} ${CURVE_SVG_WIDTH} ${connectorHeight / 2}
     `
+    const checkpointMessageMappings = useCheckpointMessageMappings()
 
     function handleRevertStep(step: StepType) {
         // Go back to the present
@@ -132,9 +137,13 @@ const Step: React.FC<{
             setCheckpointTracker({
                 ...checkpointTracker,
                 selected: null,
+                consumeCommitMessage: checkpointMessageMappings.get(
+                    checkpointTracker.selected.checkpoint_id
+                ),
             })
             // scrollToBottom() // TODO: Not working rn, because need to wait for revert to finish, then scroll
         }
+
         sessionActorRef.send({
             type: 'session.revert',
             params: { checkpoint_id: step.checkpoint_id },

@@ -29,6 +29,7 @@ const ChatMessages = React.memo(
         onScrollComplete,
     }: ChatMessagesProps) => {
         console.log('Rerender')
+        // console.log('Rerender')
         const messageRefs = useRef<Map<number, HTMLDivElement>>(new Map())
         const [isScrolling, setIsScrolling] = useState(false)
         const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -90,6 +91,7 @@ const ChatMessages = React.memo(
                         if (el && message.type === 'checkpoint') {
                             messageRefs.current.set(
                                 parseInt(message.text) - 1,
+                                parseInt(message.text),
                                 el
                             )
                         } else if (el && index === 0) {

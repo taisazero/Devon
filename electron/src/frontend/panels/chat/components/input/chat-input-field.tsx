@@ -58,6 +58,17 @@ const ChatInputField = ({
         state => state?.context?.sessionConfig?.path
     )
 
+    useEffect(() => {
+        // For autofilling the input field after finished loading (after a revert)
+        if (checkpointTracker?.consumeCommitMessage) {
+            setInput(checkpointTracker.consumeCommitMessage)
+            setCheckpointTracker({
+                ...checkpointTracker,
+                consumeCommitMessage: undefined,
+            })
+        }
+    }, [checkpointTracker?.consumeCommitMessage, loading])
+
     function clearSelectedCheckpoint() {
         if (checkpointTracker?.selected) {
             setCheckpointTracker({
@@ -74,7 +85,9 @@ const ChatInputField = ({
         } else if (prevProjectPath.current !== projectPath) {
             // Clear Jotai snippets
             setCodeSnippets([])
+            setSelectedCodeSnippet(null)
             setInput('')
+            setCheckpointTracker(null)
             prevProjectPath.current = projectPath
         }
     }, [projectPath, setCodeSnippets])
@@ -208,7 +221,7 @@ const ChatInputField = ({
                                 onFocus={handleFocus}
                                 onBlur={() => setFocused(false)}
                                 onKeyDown={onKeyDown}
-                                value={input}
+                                value={timeTraveling || loading ? '' : input}
                                 onChange={e => setInput(e.target.value)}
                                 disabled={disableInput}
                                 codeSnippets={codeSnippets}
@@ -304,7 +317,8 @@ const InformationBox = ({
             accessory: <></>,
         },
         error: {
-            text: 'Something went wrong',
+            // text: 'Something went wrong',
+            text: 'Devon is cleaning up his desk...',
             accessory: <></>,
         },
     }

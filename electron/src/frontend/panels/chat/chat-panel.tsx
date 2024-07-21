@@ -56,7 +56,7 @@ export default function Chat({
 
     useEffect(() => {
         if (checkpointTracker?.selected) {
-            const checkpointNumber = checkpointTracker.selected.index
+            const checkpointNumber = checkpointTracker.selected.checkpoint_id
             if (checkpointNumber !== undefined) {
                 scrollToMessage(checkpointNumber)
             }

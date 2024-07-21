@@ -22,7 +22,7 @@ import {
     assign,
     fromPromise,
     emit,
-    log
+    log,
     // createActor
 } from 'xstate'
 import type { Message } from '@/lib/types'
@@ -73,7 +73,7 @@ type ServerEventContext = {
 
 export const eventHandlingLogic = fromTransition(
     (state: ServerEventContext, event: ServerEvent) => {
-        console.log('event', event)
+        // console.log('event', event)
         switch (event.type) {
             case 'session.reset': {
                 return {
@@ -138,7 +138,6 @@ export const eventHandlingLogic = fromTransition(
                 }
             }
             case 'Checkpoint': {
-
                 return {
                     ...state,
                     messages: [
@@ -368,7 +367,7 @@ const createSessionActor = fromPromise(
                 `${input.host}/sessions/${input?.name}`,
                 {
                     versioning_type,
-                    ...input.agentConfig
+                    ...input.agentConfig,
                 },
                 {
                     params: {
@@ -440,7 +439,9 @@ const revertSessionActor = fromPromise(
         input: { host: string; name: string; checkpoint_id: number }
     }) => {
         console.log('reverting', input.checkpoint_id)
-        const response = await axios.patch(`${input?.host}/sessions/${input?.name}/revert?checkpoint_id=${input.checkpoint_id}`)
+        const response = await axios.patch(
+            `${input?.host}/sessions/${input?.name}/revert?checkpoint_id=${input.checkpoint_id}`
+        )
         return response
     }
 )
@@ -593,7 +594,9 @@ export const newSessionMachine = setup({
         revertSession: revertSessionActor,
         resumeSession: fromPromise(
             async ({ input }: { input: { host: string; name: string } }) => {
-                const response = await axios.patch(`${input?.host}/sessions/${input?.name}/resume`)
+                const response = await axios.patch(
+                    `${input?.host}/sessions/${input?.name}/resume`
+                )
                 return response
             }
         ),

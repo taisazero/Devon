@@ -66,4 +66,5 @@ export type CheckpointTracker = {
     initial: Checkpoint
     current: Checkpoint
     selected: Checkpoint | null
+    consumeCommitMessage?: string
 }

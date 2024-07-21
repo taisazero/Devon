@@ -304,7 +304,7 @@ let mainWindow: BrowserWindow | null = null
 function createOrShowWindow() {
     if (mainWindow === null) {
         mainWindow = new BrowserWindow({
-            // show: false,
+            show: false,
             titleBarStyle: 'hidden',
             backgroundColor: '#16161c',
             trafficLightPosition: { x: 15, y: 10 },
@@ -316,6 +316,7 @@ function createOrShowWindow() {
             },
         })
         mainWindow.maximize()
+        mainWindow.show()
         if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
             mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL)
         } else {

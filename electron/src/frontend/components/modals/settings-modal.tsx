@@ -570,7 +570,7 @@ const VersionControlSettingsCard = () => {
                             Use git as version control system
                         </label>
                     </div>
-                    <div
+                    {/* <div
                         className={`flex flex-col gap-4 ${
                             !useGit ? 'opacity-50 hover:cursor-not-allowed' : ''
                         }`}
@@ -593,10 +593,10 @@ const VersionControlSettingsCard = () => {
                                 Create a new branch when starting a new session
                             </label>
                         </div>
-                    </div>
+                    </div> */}
                     {((useGit && config?.versioning_type !== 'git') ||
                         (!useGit && config?.versioning_type === 'git')) && (
-                        <span className="text-sm text-green-500 mt-2 flex gap-1 items-center">
+                        <span className="text-sm text-green-500 mt-0 flex gap-1 items-center">
                             <Info className="w-4 h-4" />
                             Note: Changes will apply once a new session is
                             created
