@@ -24,6 +24,11 @@ const config: Setting[] = [
         key: 'create-new-branch',
         value: true,
     },
+    {
+        setting: 'git',
+        key: 'merge-use-default-commit-message',
+        value: false,
+    },
 ]
 
 async function setUserSettingIfNotExist(data: Setting) {

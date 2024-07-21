@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Checkpoint, CheckpointTracker } from '@/lib/types'
 import { exampleSteps, StepType, checkpointTrackerAtom } from './lib'
 import Step from './components/step'
+import MergeBranchModal from '@/components/modals/merge-branch-modal'
 
 const ANIMATE_DEMO = false
 
@@ -30,6 +31,7 @@ const TimelinePanel = ({
         null
     )
     const [animationKey, setAnimationKey] = useState(0)
+    const [mergeBranchModalOpen, setMergeBranchModalOpen] = useState(false)
     const sessionActorRef = SessionMachineContext.useActorRef()
     const checkpoints: Checkpoint[] = SessionMachineContext.useSelector(
         state => state.context.sessionConfig?.checkpoints,
@@ -102,18 +104,6 @@ const TimelinePanel = ({
             setActiveStep(steps.length - 1)
         }
     }, [activeStep, subStepFinished, steps.length])
-
-    function handleGitMerge() {
-        sessionActorRef.send({
-            type: 'session.sendEvent',
-            params: {
-                serverEventType: 'GitMerge',
-                content: {
-                    commit_message: 'Merge branch',
-                },
-            },
-        })
-    }
 
     return (
         <div className="flex flex-col justify-between h-full">
@@ -192,13 +182,19 @@ const TimelinePanel = ({
                         </code>{' '}
                         branch?
                     </p>
-                    <Button
-                        className="w-fit"
-                        onClick={handleGitMerge}
-                        disabled={selectedRevertStep !== null}
-                    >
-                        Merge branch
-                    </Button>
+
+                    <MergeBranchModal
+                        branchName={isString(old_branch) ? old_branch : ''}
+                        trigger={
+                            <Button
+                                className="w-fit"
+                                onClick={() => setMergeBranchModalOpen(true)}
+                                disabled={selectedRevertStep !== null}
+                            >
+                                Merge branch
+                            </Button>
+                        }
+                    />
                 </div>
             )}
         </div>
