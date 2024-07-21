@@ -13,6 +13,11 @@ class GitVersioning:
             return 0, "none"
         result = subprocess.run(["git", "--version"], capture_output=True, text=True)
         return result.returncode, result.stdout.strip() if result.returncode == 0 else result.stderr
+    
+
+    def is_git_repo(self):
+        result = subprocess.run(["git", "rev-parse", "--is-inside-work-tree"], cwd=self.project_path, capture_output=True, text=True)
+        return result.returncode == 0
 
     def initialize_git(self):
         if self.config.versioning_type == "none":
@@ -31,7 +36,13 @@ class GitVersioning:
             return 0, "This directory is already a Git repository. Skipping initialization."
         
         init_result = subprocess.run(["git", "init"], cwd=self.project_path, capture_output=True, text=True)
-        return init_result.returncode, init_result.stdout if init_result.returncode == 0 else init_result.stderr
+        if init_result.returncode != 0:
+            return init_result.returncode, init_result.stderr + init_result.stdout
+        
+        # make a main branch
+        result = subprocess.run(["git", "checkout", "-b", "main"], cwd=self.project_path, capture_output=True, text=True)
+        if result.returncode != 0:
+            return result.returncode, result.stderr + result.stdout
 
     def get_branch(self):
         if self.config.versioning_type == "none":
@@ -74,7 +85,7 @@ class GitVersioning:
             return add_result.returncode, add_result.stderr
 
         commit_result = subprocess.run(
-            ["git", "commit", "-m", "initial commit", "--allow-empty"], cwd=self.project_path, capture_output=True, text=True
+            ["git", "commit", "-m", "initial commit"], cwd=self.project_path, capture_output=True, text=True
         )
         if commit_result.returncode != 0:
             return commit_result.returncode, commit_result.stderr
@@ -118,6 +129,24 @@ class GitVersioning:
             capture_output=True,
             text=True,
         )
+        return result.returncode, result.stdout if result.returncode == 0 else result.stderr
+
+    def stash_changes(self, message="devon_agent"):
+        if self.config.versioning_type == "none":
+            return 0, "none"
+        result = subprocess.run(["git", "stash", "save", "-u", message], cwd=self.project_path, capture_output=True, text=True)
+        return result.returncode, result.stdout if result.returncode == 0 else result.stderr
+    
+    def apply_stash(self, stash_name):
+        if self.config.versioning_type == "none":
+            return 0, "none"
+        result = subprocess.run(["git", "stash", "apply", stash_name], cwd=self.project_path, capture_output=True, text=True)
+        return result.returncode, result.stdout if result.returncode == 0 else result.stderr
+    
+    def pop_stash(self, stash_name):
+        if self.config.versioning_type == "none":
+            return 0, "none"
+        result = subprocess.run(["git", "stash", "pop", stash_name], cwd=self.project_path, capture_output=True, text=True)
         return result.returncode, result.stdout if result.returncode == 0 else result.stderr
 
     def revert_to_commit(self, commit_hash):

@@ -19,8 +19,10 @@ export default function IndexPage() {
     const [smHealthCheckDone, setSmHealthCheckDone] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const [startFadeIn, setStartFadeIn] = useState(false)
 
     useEffect(() => {
+        setStartFadeIn(true)
         if (backendUrl) {
             setSessionMachineProps({ host: backendUrl, name: 'UI' })
         }
@@ -86,7 +88,11 @@ export default function IndexPage() {
                 </SessionContextProviderComponent>
             )}
             {!sessionMachineProps || isLoading || !smHealthCheckDone ? (
-                <div className="absolute top-0 left-0 w-full h-full bg-night z-50">
+                <div
+                    className={`absolute top-0 left-0 w-full h-full bg-night z-50 transition-opacity duration-1000 ${
+                        startFadeIn ? 'opacity-100' : 'opacity-0'
+                    }`}
+                >
                     <div className="fixed left-[50%] top-[50%] grid translate-x-[-50%] translate-y-[-50%]">
                         <div className="flex items-center justify-center flex-col gap-10">
                             <AtomLoader size="lg" />

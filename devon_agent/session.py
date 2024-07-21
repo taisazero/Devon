@@ -202,7 +202,20 @@ class Session:
 
     def run_event_loop(self, revert=False):
         if self.config.versioning_type == "git" and not revert:
-            self.versioning.initialize_git()
+            if not self.versioning.is_git_repo():
+                self.event_log.append(
+                    {
+                        "type": "GitInit",
+                        "content": f"This directory is not a git repository. Do you want Devon to initialize a git repository?",
+                        "producer": "system",
+                        "consumer": "user",
+                    }
+                )
+                resolved = waitForEvent(self.event_log, "GitResolve")
+                if resolved["content"]["action"] == "nogit":
+                    self.config.versioning_type = "none"
+                if resolved["content"]["action"] == "git":
+                    self.versioning.initialize_git()
             if not self.config.versioning_metadata:
                 self.config.versioning_metadata = {}
             if "old_branch" not in self.config.versioning_metadata:
@@ -251,6 +264,10 @@ class Session:
                 while True:
                     try:
                         # TODO: deal with situation where session is being loaded.
+                        # stash changes
+                        result = self.versioning.stash_changes()
+                        if result[0] != 0:
+                            raise Exception(result[1])
                         result = (
                             self.versioning.create_if_not_exists_and_checkout_branch(
                                 self.versioning.get_branch_name()[1]
@@ -278,6 +295,12 @@ class Session:
                             break
             while True:
                 try:
+                    
+                    # apply stash on current branch
+                    result = self.versioning.apply_stash("devon_agent")
+                    # if result[0] != 0:
+                    #     raise Exception(result[1])
+
                     commit_hash = self.versioning.initial_commit()
                     self.config.versioning_metadata["initial_commit"] = commit_hash[1]
                     self.config.checkpoints.append(
@@ -286,10 +309,27 @@ class Session:
                             commit_hash=commit_hash[1],
                             agent_history=self.config.agent_configs[0].chat_history,
                             event_id=len(self.event_log),
-                            checkpoint_id=len(self.config.checkpoints),
+                            checkpoint_id=0,
                             state=json.loads(json.dumps(self.config.state)),
+                        ))
+                    
+                    self.event_log.append(
+                        Event(
+                            type="Checkpoint",
+                            content=0,
+                            producer="system",
+                            consumer="devon",
                         )
                     )
+
+                    self.versioning.checkout_branch(self.config.versioning_metadata["old_branch"])
+                    result = self.versioning.pop_stash("devon_agent")
+                    # if result[0] != 0:
+                    #     raise Exception(result[1])
+                    result = self.versioning.checkout_branch(self.versioning.get_branch_name()[1])
+                    if result[0] != 0:
+                        raise Exception(result[1])
+
                     break
                 except Exception as e:
                     self.logger.error(f"Error committing files: {e}")
