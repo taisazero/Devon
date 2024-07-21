@@ -82,7 +82,8 @@ const SelectProjectDirectoryModal = ({
                 setApiKey(value)
             }
         })
-    }, [open])
+    }, [])
+    // }, [open])
 
     function checkIndexExists(s: string) {
         return true

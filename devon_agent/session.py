@@ -32,6 +32,7 @@ from devon_agent.tools.lifecycle import NoOpTool
 from devon_agent.tools.shelltool import ShellTool
 from devon_agent.tools.usertools import AskUserToolWithCommit
 from devon_agent.tools.utils import get_ignored_files, read_file
+from devon_agent.utils.config_utils import get_checkpoint_id
 from devon_agent.utils.telemetry import Posthog, SessionStartEvent
 from devon_agent.utils.utils import Event, WholeFileDiff, WholeFileDiffResults
 from devon_agent.versioning.git_versioning import GitVersioning
@@ -309,21 +310,21 @@ class Session:
                             commit_hash=commit_hash[1],
                             agent_history=self.config.agent_configs[0].chat_history,
                             event_id=len(self.event_log),
-                            checkpoint_id=0,
+                            checkpoint_id=get_checkpoint_id(),
                             state=json.loads(json.dumps(self.config.state)),
                         ))
                     
                     self.event_log.append(
                         Event(
                             type="Checkpoint",
-                            content=0,
+                            content=self.config.checkpoints[0].checkpoint_id,
                             producer="system",
                             consumer="devon",
                         )
                     )
 
                     self.versioning.checkout_branch(self.config.versioning_metadata["old_branch"])
-                    result = self.versioning.pop_stash("devon_agent")
+                    # result = self.versioning.pop_stash("devon_agent")
                     # if result[0] != 0:
                     #     raise Exception(result[1])
                     result = self.versioning.checkout_branch(self.versioning.get_branch_name()[1])
@@ -753,8 +754,13 @@ class Session:
     def diff(
         self, src_checkpoint_id: int, dest_checkpoint_id: int
     ) -> WholeFileDiffResults:
-        src_commit = self.config.checkpoints[src_checkpoint_id].commit_hash
-        dest_commit = self.config.checkpoints[dest_checkpoint_id].commit_hash
+        for checkpoint in self.config.checkpoints:
+            if checkpoint.checkpoint_id == src_checkpoint_id:
+                src_commit = checkpoint.commit_hash
+            if checkpoint.checkpoint_id == dest_checkpoint_id:
+                dest_commit = checkpoint.commit_hash
+        # src_commit = self.config.checkpoints[src_checkpoint_id].commit_hash
+        # dest_commit = self.config.checkpoints[dest_checkpoint_id].commit_hash
         diff_list, error = self.versioning.get_diff_list(src_commit, dest_commit)
         return WholeFileDiffResults(
             files=[

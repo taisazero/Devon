@@ -21,7 +21,7 @@ class Checkpoint(BaseModel):
     commit_message: str
     agent_history: List[dict]
     event_id: int
-    checkpoint_id: int
+    checkpoint_id: str
     state: Any
 
 class Config(BaseModel):
