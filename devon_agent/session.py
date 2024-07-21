@@ -202,7 +202,20 @@ class Session:
 
     def run_event_loop(self, revert=False):
         if self.config.versioning_type == "git" and not revert:
-            self.versioning.initialize_git()
+            if not self.versioning.is_git_repo():
+                self.event_log.append(
+                    {
+                        "type": "GitInit",
+                        "content": f"This directory is not a git repository. Do you want Devon to initialize a git repository?",
+                        "producer": "system",
+                        "consumer": "user",
+                    }
+                )
+                resolved = waitForEvent(self.event_log, "GitResolve")
+                if resolved["content"]["action"] == "nogit":
+                    self.config.versioning_type = "none"
+                if resolved["content"]["action"] == "git":
+                    self.versioning.initialize_git()
             if not self.config.versioning_metadata:
                 self.config.versioning_metadata = {}
             if "old_branch" not in self.config.versioning_metadata:
