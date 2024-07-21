@@ -24,18 +24,3 @@ command = """edit_file
 +    # Add more test cases if needed
 +    # print(translate("This is a test."))
 >>>"""
-
-# print(parse_command(command))
-
-
-# edit_tool = EditFileTool()
-
-
-# def test_edit_tool(test_config):
-#     # command = ""
-#     ctx = {
-#         "config": test_config,
-#         "environment": test_config.environments[test_config.default_environment],
-#         "state": {},
-#         "raw_command": command,
-#     }
