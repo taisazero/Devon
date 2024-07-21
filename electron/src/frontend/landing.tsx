@@ -10,8 +10,8 @@ import {
 } from '@/components/ui/resizable'
 import EditorPanel from '@/panels/editor/editor-panel'
 import { SessionMachineContext } from '@/contexts/session-machine-context'
-import TimelinePanel from '@/panels/timeline/timeline-panel'
 import GitErrorModal from '@/components/modals/git-error-modal'
+import GitInitModal from '@/components/modals/git-init-modal'
 import Sidebar from '@/components/sidebar/sidebar'
 
 export default function Landing({
@@ -119,6 +119,7 @@ export default function Landing({
                 </ResizablePanelGroup>
             </div>
             <GitErrorModal />
+            <GitInitModal />
 
             {smHealthCheckDone && !modelName && (
                 <OnboardingModal

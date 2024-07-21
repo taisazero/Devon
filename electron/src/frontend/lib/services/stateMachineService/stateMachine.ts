@@ -47,6 +47,7 @@ type ServerEvent = {
         | 'GitEvent'
         | 'GitError'
         | 'GitResolve'
+        | 'GitInit'
         | 'Checkpoint'
     content: any
     identifier: string | null
@@ -69,6 +70,7 @@ type ServerEventContext = {
         }[]
     }
     gitError: string | null
+    gitInit: string | null
 }
 
 export const eventHandlingLogic = fromTransition(
@@ -267,7 +269,12 @@ export const eventHandlingLogic = fromTransition(
                     gitError: null,
                 }
             }
-
+            case 'GitInit': {
+                return {
+                    ...state,
+                    gitInit: event.content ?? null,
+                }
+            }
             default: {
                 return state
             }
@@ -284,6 +291,7 @@ export const eventHandlingLogic = fromTransition(
             commits: [],
         },
         gitError: null,
+        gitInit: null,
     }
 )
 
