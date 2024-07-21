@@ -131,6 +131,24 @@ class GitVersioning:
         )
         return result.returncode, result.stdout if result.returncode == 0 else result.stderr
 
+    def stash_changes(self, message="devon_agent"):
+        if self.config.versioning_type == "none":
+            return 0, "none"
+        result = subprocess.run(["git", "stash", "save", "-u", message], cwd=self.project_path, capture_output=True, text=True)
+        return result.returncode, result.stdout if result.returncode == 0 else result.stderr
+    
+    def apply_stash(self, stash_name):
+        if self.config.versioning_type == "none":
+            return 0, "none"
+        result = subprocess.run(["git", "stash", "apply", stash_name], cwd=self.project_path, capture_output=True, text=True)
+        return result.returncode, result.stdout if result.returncode == 0 else result.stderr
+    
+    def pop_stash(self, stash_name):
+        if self.config.versioning_type == "none":
+            return 0, "none"
+        result = subprocess.run(["git", "stash", "pop", stash_name], cwd=self.project_path, capture_output=True, text=True)
+        return result.returncode, result.stdout if result.returncode == 0 else result.stderr
+
     def revert_to_commit(self, commit_hash):
         if self.config.versioning_type == "none":
             return 0, "none"
