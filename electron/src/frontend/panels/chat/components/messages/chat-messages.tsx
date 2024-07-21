@@ -16,7 +16,7 @@ export interface ChatMessagesProps {
     messages: Message[]
     spinning: boolean
     paused: boolean
-    scrollToCheckpointNumber?: number
+    scrollToCheckpointHash?: number
     onScrollComplete?: () => void
 }
 
@@ -25,12 +25,12 @@ const ChatMessages = React.memo(
         messages,
         spinning,
         paused,
-        scrollToCheckpointNumber,
+        scrollToCheckpointHash,
         onScrollComplete,
     }: ChatMessagesProps) => {
         console.log('Rerender')
         // console.log('Rerender')
-        const messageRefs = useRef<Map<number, HTMLDivElement>>(new Map())
+        const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map())
         const [isScrolling, setIsScrolling] = useState(false)
         const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
         const { scrollRef, isAtBottom, scrollToBottom } = useScrollAnchor()
@@ -42,15 +42,15 @@ const ChatMessages = React.memo(
         }, [spinning, isAtBottom, scrollToBottom])
 
         const scrollToMessage = useCallback(
-            (checkpointNumber: number) => {
-                const messageElement = messageRefs.current.get(checkpointNumber)
+            (checkpointHash: string) => {
+                const messageElement = messageRefs.current.get(checkpointHash)
                 if (messageElement && !isScrolling) {
                     setIsScrolling(true)
 
                     messageElement.scrollIntoView({
                         behavior: 'instant',
                         // behavior: 'smooth', // Not working rn, I think due to rerenders it stops scrolling prematurely
-                        block: 'start',
+                        block: 'end',
                     })
 
                     if (scrollTimeoutRef.current) {
@@ -67,11 +67,11 @@ const ChatMessages = React.memo(
         )
 
         useEffect(() => {
-            if (scrollToCheckpointNumber !== undefined && !isScrolling) {
-                console.log(scrollToCheckpointNumber)
-                scrollToMessage(scrollToCheckpointNumber)
+            if (scrollToCheckpointHash !== undefined && !isScrolling) {
+                console.log(scrollToCheckpointHash)
+                scrollToMessage(scrollToCheckpointHash)
             }
-        }, [scrollToCheckpointNumber, isScrolling])
+        }, [scrollToCheckpointHash, isScrolling])
 
         useEffect(() => {
             return () => {
@@ -89,14 +89,14 @@ const ChatMessages = React.memo(
                     index={index}
                     setRef={el => {
                         if (el && message.type === 'checkpoint') {
-                            messageRefs.current.set(
-                                parseInt(message.text) - 1,
-                                parseInt(message.text),
+                            console.log("CHECKPOINT", message.text)
+                            messageRefs.current.set(message.text,
                                 el
                             )
-                        } else if (el && index === 0) {
-                            messageRefs.current.set(index, el)
                         }
+                        // else if (el && index === 0) {
+                        //     messageRefs.current.set(index, el)
+                        // }
                     }}
                 />
             ))

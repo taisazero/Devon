@@ -46,26 +46,26 @@ export default function Chat({
     const [checkpointTracker, setCheckpointTracker] = useAtom(
         checkpointTrackerAtom
     )
-    const [scrollToCheckpointNumber, setScrollToCheckpointNumber] = useState<
-        number | undefined
+    const [scrollToCheckpointHash, setScrollToCheckpointHash] = useState<
+        string | undefined
     >(undefined)
 
     const handleScrollComplete = useCallback(() => {
-        setScrollToCheckpointNumber(undefined)
+        setScrollToCheckpointHash(undefined)
     }, [])
 
     useEffect(() => {
         if (checkpointTracker?.selected) {
-            const checkpointNumber = checkpointTracker.selected.checkpoint_id
-            if (checkpointNumber !== undefined) {
-                scrollToMessage(checkpointNumber)
+            const checkpointHash = checkpointTracker.selected.checkpoint_id
+            if (checkpointHash !== undefined) {
+                scrollToMessage(checkpointHash)
             }
         }
     }, [checkpointTracker?.selected])
 
     // Function to trigger scrolling to a specific message
-    const scrollToMessage = useCallback((checkpointNumber: number) => {
-        setScrollToCheckpointNumber(checkpointNumber)
+    const scrollToMessage = useCallback((checkpointHash: string) => {
+        setScrollToCheckpointHash(checkpointHash)
     }, [])
     if (
         eventState.messages.length > 1 &&
@@ -122,9 +122,7 @@ export default function Chat({
                                 messages={memoizedMessages}
                                 spinning={eventState.modelLoading}
                                 paused={isPaused}
-                                scrollToCheckpointNumber={
-                                    scrollToCheckpointNumber
-                                }
+                                scrollToCheckpointHash={scrollToCheckpointHash}
                                 onScrollComplete={handleScrollComplete}
                             />
                         )}
