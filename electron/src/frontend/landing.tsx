@@ -85,7 +85,6 @@ export default function Landing({
         state &&
         !state.matches({ setup: 'healthcheck' })
     ) {
-        console.log(state)
         setSmHealthCheckDone(true)
         if (state.context.healthcheckRetry >= 10) {
             alert(
@@ -93,11 +92,18 @@ export default function Landing({
             )
         }
     }
+    const [expanded, setExpanded] = useState(false)
+    const [showMinimizedTimeline, setShowMinimizedTimeline] = useState(false)
 
     return (
         <>
             <div className="w-full flex flex-row">
-                <Sidebar />
+                <Sidebar
+                    expanded={expanded}
+                    setExpanded={setExpanded}
+                    showMinimizedTimeline={showMinimizedTimeline}
+                    setShowMinimizedTimeline={setShowMinimizedTimeline}
+                />
                 <ResizablePanelGroup direction="horizontal">
                     <ResizablePanel
                         className={`flex flex-col w-full relative justify-center`}
@@ -112,7 +118,11 @@ export default function Landing({
                     /> */}
                         <Chat sessionId={'UI'} />
                     </ResizablePanel>
-                    <ResizableHandle className="" />
+                    <ResizableHandle
+                        className={`${
+                            expanded || !showMinimizedTimeline ? 'w-0' : 'w-8'
+                        } transition-all duration-200 ease-in-out`}
+                    />
                     <ResizablePanel className="flex-col w-full hidden md:flex">
                         <EditorPanel chatId={'UI'} />
                     </ResizablePanel>
