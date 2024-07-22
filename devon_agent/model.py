@@ -70,7 +70,6 @@ class AnthropicModel:
         
         model_completion = completion(
             messages=[{"role": "system", "content": system_message}] + messages,
-            max_tokens= 200,#self.model_metadata["max_tokens"],
             model=self.api_model,
             temperature=self.args.temperature,
             stop=["</COMMAND>"],
@@ -79,12 +78,14 @@ class AnthropicModel:
 
         output = model_completion.choices[0].message.content
 
-        while model_completion.choices[0].finish_reason != "stop":
-            print("aaa")
+        continues = 0
+
+        while model_completion.choices[0].finish_reason != "stop" and continues < 2:
+
+            continues+=1
             
             model_completion = completion(
             messages=[{"role": "system", "content": system_message}] + messages + [{"role": "assistant", "content": output}],
-            max_tokens= 200,#self.model_metadata["max_tokens"],
             model=self.api_model,
             temperature=self.args.temperature,
             stop=["</COMMAND>"],
@@ -92,10 +93,12 @@ class AnthropicModel:
             )
 
             output += model_completion.choices[0].message.content
+
+            print("aaaaa")
             print(output)
         
-
-        response = model_completion.choices[0].message.content.rstrip("</COMMAND>")
+        print(output)
+        response = output.rstrip("</COMMAND>")
         return response + "</COMMAND>"
 
 

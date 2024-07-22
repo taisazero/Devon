@@ -90,7 +90,7 @@ class AskUserToolWithCommit(Tool):
                     ask_user "Some question here" "Some commit message here"
 
                 DESCRIPTION
-                    The ask_user command asks the user for their input
+                    The ask_user command asks the user for their input. Also add a commit message. The commit message should be relavent to the changes you did since the latest user requestion / task
 
                 RETURN VALUE
                     The ask_user command returns a string indicating the user's input.
@@ -98,7 +98,7 @@ class AskUserToolWithCommit(Tool):
                 EXAMPLES
                     To ask the user for their input, run the following command:
 
-                        ask_user "What would you like me to do?" "Added a new feature"
+                        ask_user "What would you like me to do?" "Added a new feature ..."
                 """
             case _:
                 raise ValueError(f"Invalid format: {format}")
@@ -108,7 +108,7 @@ class AskUserToolWithCommit(Tool):
         command_name: ask_user
         description: The ask_user command asks the user for their input and provide a commit message for changes. The commit message should be relavent to the changes you did since the latest user requestion / task
         signature: ask_user "Some question here" "Some commit message here"
-        example: `ask_user "What would you like me to do?" "Added a new feature"`
+        example: `ask_user "What would you like me to do?" "Added a new feature ..."`
         """            
         return context["environment"].execute(input=question)
 
