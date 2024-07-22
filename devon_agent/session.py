@@ -35,10 +35,44 @@ from devon_agent.tools.utils import get_ignored_files, read_file
 from devon_agent.utils.config_utils import get_checkpoint_id
 from devon_agent.utils.telemetry import Posthog, SessionStartEvent
 from devon_agent.utils.utils import Event, WholeFileDiff, WholeFileDiffResults
-from devon_agent.versioning.git_versioning import GitVersioning
+from devon_agent.versioning.git_versioning import GitVersioning, check_for_changes, check_if_branch_exists, checkout_branch, commit_all_files, create_and_switch_branch, delete_branch, find_new_commits, get_commits, get_current_branch, get_last_commit_hash, intialize_new_repo, is_git_repo, merge_branch
 
 
 def waitForEvent(event_log: List[Dict], event_type: str):
+    while True:
+        if event_log[-1]["type"] == event_type:
+            return event_log[-1]
+        time.sleep(1)
+
+
+def git_error(message: str,event_log: List[Dict]):
+    print(f"Git Error: {message}")
+    event_log.append(
+        {
+            "type": "GitError",
+            "content": message,
+            "producer": "system",
+            "consumer": "user",
+        }
+    )
+    event = waitForEvent(event_log, "GitResolve")
+    if event["content"]["action"] == "nogit":
+        return "nogit"
+    if event["content"]["action"] == "resolved":
+        return "resolvedError"
+
+
+def git_ask_user_for_action(message: str, event_log: List[Dict], event_type: str):
+    print(f"Git Ask User For Action: {message}",flush=True)
+
+    event_log.append(
+        {
+            "type": "GitAskUser",
+            "content": message,
+            "producer": "system",
+            "consumer": "user",
+        }
+    )
     while True:
         if event_log[-1]["type"] == event_type:
             return event_log[-1]
@@ -172,7 +206,6 @@ class Session:
     def revert(self, checkpoint_id):
         for i, checkpoint in enumerate(self.config.checkpoints):
             if checkpoint.checkpoint_id == checkpoint_id:
-
                 if (
                     self.config.versioning_type == "git"
                     and checkpoint.commit_hash != "no_commit"
@@ -201,153 +234,443 @@ class Session:
         while self.status != "terminated":
             time.sleep(2)
 
-    def run_event_loop(self, revert=False):
-        if self.config.versioning_type == "git" and not revert:
-            if not self.versioning.is_git_repo():
-                self.event_log.append(
-                    {
-                        "type": "GitInit",
-                        "content": f"This directory is not a git repository. Do you want Devon to initialize a git repository?",
-                        "producer": "system",
-                        "consumer": "user",
-                    }
+    def git_setup(self,action):
+        self.logger.info(f"Setting up git for action {action}")
+
+        if self.config.versioning_type == "git" and action == "new":
+            if not is_git_repo(self.config.path):
+                resolved = git_ask_user_for_action(
+                    "This directory is not a git repository. Do you want Devon to initialize a git repository?",
+                    self.event_log,
+                    "GitResolve",
                 )
-                resolved = waitForEvent(self.event_log, "GitResolve")
                 if resolved["content"]["action"] == "nogit":
                     self.config.versioning_type = "none"
+                    return "disabled"
                 if resolved["content"]["action"] == "git":
-                    self.versioning.initialize_git()
-            if not self.config.versioning_metadata:
-                self.config.versioning_metadata = {}
-            if "old_branch" not in self.config.versioning_metadata:
-                self.config.versioning_metadata["old_branch"] = {}
-                self.config.versioning_metadata["old_branch"] = (
-                    self.versioning.get_branch()[1]
-                )
-                self.logger.info(
-                    "OLD BRANCH: " + str(self.config.versioning_metadata["old_branch"])
-                )
-                if (
-                    self.config.versioning_metadata["old_branch"].strip()
-                    == "devon_agent"
-                ):
-                    while True:
-                        try:
-                            if self.versioning.get_branch()[1] == "devon_agent":
-                                raise Exception(
-                                    "On invalid branch 'devon_agent', this happens if previous session didnt clean up properly. To solve this, git checkout <yourbranch> && git branch -D devon_agent"
-                                )
-                            else:
-                                self.config.versioning_metadata["old_branch"] = (
-                                    self.versioning.get_branch()[1]
-                                )
-                                break
-                        except Exception as e:
-                            self.logger.error(f"Error creating branch: {e}")
-                            self.event_log.append(
-                                {
-                                    "type": "GitError",
-                                    "content": f"{e}",
-                                    "producer": "system",
-                                    "consumer": "user",
-                                }
-                            )
-                            resolved = waitForEvent(self.event_log, "GitResolve")
-                            if resolved["content"]["action"] == "nogit":
-                                self.config.versioning_type = "none"
-                                break
-
-            # THIS PART IS STILL VERY JANKY. NEED A BETTER WAY TO HANDLE BLOCKING.
-            if (
-                self.config.versioning_metadata["old_branch"]
-                != self.versioning.get_branch_name()
-            ):
-                while True:
-                    try:
-                        # TODO: deal with situation where session is being loaded.
-                        # stash changes
-                        # result = self.versioning.stash_changes()
-                        # if result[0] != 0:
-                        #     raise Exception(result[1])
-                        result = (
-                            self.versioning.create_if_not_exists_and_checkout_branch(
-                                self.versioning.get_branch_name()[1]
-                            )
-                        )
-
-                        if result[0] != 0:
-                            raise Exception(result[1])
-                        self.config.versioning_metadata["current_branch"] = (
-                            self.versioning.get_branch_name()[1]
-                        )
-                        break
-                    except Exception as e:
-                        print("here")
-                        self.logger.error(f"Error creating branch: {e}")
-                        self.event_log.append(
-                            {
-                                "type": "GitError",
-                                "content": f"Error creating branch: {e}",
-                                "producer": "system",
-                                "consumer": "user",
-                            }
-                        )
-                        resolved = waitForEvent(self.event_log, "GitResolve")
-                        if resolved["content"]["action"] == "nogit":
-                            self.config.versioning_type = "none"
-                            break
-            while True:
-                try:
-                    
-                    # apply stash on current branch
-                    # result = self.versioning.apply_stash("devon_agent")
-                    # if result[0] != 0:
-                    #     raise Exception(result[1])
-
-                    commit_hash = self.versioning.initial_commit()
-                    self.config.versioning_metadata["initial_commit"] = commit_hash[1]
-                    self.config.checkpoints.append(
-                        Checkpoint(
-                            commit_message="Initial commit",
-                            commit_hash=commit_hash[1],
-                            agent_history=self.config.agent_configs[0].chat_history,
-                            event_id=len(self.event_log),
-                            checkpoint_id=get_checkpoint_id(),
-                            state=json.loads(json.dumps(self.config.state)),
-                        ))
-                    
-                    self.event_log.append(
-                        Event(
-                            type="Checkpoint",
-                            content=self.config.checkpoints[0].checkpoint_id,
-                            producer="system",
-                            consumer="devon",
-                        )
-                    )
-
-                    self.versioning.checkout_branch(self.config.versioning_metadata["old_branch"])
-                    # result = self.versioning.pop_stash("devon_agent")
-                    # if result[0] != 0:
-                    #     raise Exception(result[1])
-                    result = self.versioning.checkout_branch(self.versioning.get_branch_name()[1])
+                    result = intialize_new_repo(self.config.path)
                     if result[0] != 0:
-                        raise Exception(result[1])
+                        result = git_error("Was not able to initialize git repository. Error from command: \n "+result[1],self.event_log)
+                        if result == "nogit":
+                            self.config.versioning_type = "none"
+                            return "disabled"
+                        if result == "resolvedError":
+                            return "retry"
+            
+            self.logger.info(f"User branch state")
+            # User Branch Now
 
-                    break
-                except Exception as e:
-                    self.logger.error(f"Error committing files: {e}")
-                    self.event_log.append(
-                        {
-                            "type": "GitError",
-                            "content": f"Error creating branch: {e}",
-                            "producer": "system",
-                            "consumer": "user",
-                        }
-                    )
-                    resolved = waitForEvent(self.event_log, "GitResolve")
-                    if resolved["content"]["action"] == "nogit":
-                        self.config.versioning_type = "none"
+            status,user_branch = get_current_branch(self.config.path)
+            if status != 0:
+                result = git_error("Was not able to get the current branch. Error from command: \n "+user_branch,self.event_log)
+                if result == "nogit":
+                    self.config.versioning_type = "none"
+                    return "disabled"
+                if result == "resolvedError":
+                    return "retry"
+
+            if user_branch == "devon_agent":
+                result = git_error("You are on the Devon Branch. Please switch to your branch.",self.event_log)
+                if result == "nogit":
+                    self.config.versioning_type = "none"
+                    return "disabled"
+                if result == "resolvedError":
+                    return "retry"
+
+            
+            self.config.versioning_metadata["user_branch"] = user_branch
+
+            rc,result = check_for_changes(self.config.path)
+            if rc != 0:
+                result = git_error("Was not able to check for changes. Error from command: \n "+result,self.event_log)
+                if result == "nogit":
+                    self.config.versioning_type = "none"
+                    return "disabled"
+                if result == "resolvedError":
+                    return "retry"
+                
+            result_unstaged, result_staged, result_untracked = result
+
+            result = get_last_commit_hash(self.config.path)
+            if result[0] != 0:
+                result = git_error("Was not able to get the last commit hash. Error from command: \n "+result[1],self.event_log)
+                if result == "nogit":
+                    self.config.versioning_type = "none"
+                    return "disabled"
+                if result == "resolvedError":
+                    return "retry"
+                
+            last_commit_hash = result[1]
+
+            # if staged changes checkout will fail
+            # unstaged changes will be transfered over, let user know
+            # untracked files will be transfered over, let user know
+            # if there are no changes, do nothing
+            self.logger.info(f"agent branch state")
+            # asuuming no changes for now
+            exists = check_if_branch_exists(self.config.path, "devon_agent")
+
+            self.logger.info(f"Branch exists: {exists}")
+
+            if exists:
+                resolve = git_ask_user_for_action(f"Branch {self.config.versioning_metadata['user_branch']} already exists. This branch should be deleted as it is now stale. Delete it?", self.event_log, "GitResolve")
+                if resolve["content"]["action"] == "yes":
+                    result = delete_branch(self.config.path, "devon_agent")
+                    if result[0] != 0:
+                        result = git_error("Was not able to delete the devon_agent branch. Error from command: \n "+result[1],self.event_log)
+                        if result == "nogit":
+                            self.config.versioning_type = "none"
+                            return "disabled"
+                        if result == "resolvedError":
+                            return "retry"
+                else:
+                    return "disabled"
+
+            self.logger.info(f"Creating and switching to devon_agent branch")
+            rc, output = create_and_switch_branch(self.config.path, "devon_agent")
+            if rc != 0:
+                result = git_error("Was not able to create the devon_agent branch. Error from command: \n "+output,self.event_log)
+                if result == "nogit":
+                    self.config.versioning_type = "none"
+                    return "disabled"
+                if result == "resolvedError":
+                    return "retry"
+
+            # make initial commit
+            self.logger.info(f"Making initial commit")
+            result = commit_all_files(self.config.path,commit_message="Initial commit",allow_empty=True)
+            if result[0] != 0:
+                result = git_error("Was not able to commit the files. Error from command: \n "+result[1],self.event_log)
+                if result == "nogit":
+                    self.config.versioning_type = "none"
+                    return "disabled"
+                if result == "resolvedError":
+                    return "retry"
+                
+
+            checkpoint = Checkpoint(
+                commit_message="Initial commit",
+                commit_hash=result[1],
+                merged_commit=last_commit_hash,
+                agent_history=self.config.agent_configs[0].chat_history,
+                event_id=len(self.event_log),
+                checkpoint_id=get_checkpoint_id(),
+                state=json.loads(json.dumps(self.config.state)),
+            )
+
+            self.config.checkpoints.append(checkpoint)
+
+        
+        if self.config.versioning_type == "git" and action == "load":
+            if not is_git_repo(self.config.path):
+                corrupted = True
+                return "corrupted"
+                
+            current_branch = get_current_branch(self.config.path)
+            if current_branch[0] != 0:
+                result = git_error("Was not able to get the current branch. Error from command: \n "+current_branch[1],self.event_log)
+                if result == "nogit":
+                    self.config.versioning_type = "none"
+                    return "disabled"
+                if result == "resolvedError":
+                    return "retry"
+
+            user_branch = self.config.versioning_metadata["user_branch"]
+
+            agent_branch_exists = check_if_branch_exists(self.config.path, "devon_agent")
+
+
+            # third branch
+            if not agent_branch_exists:
+                return "corrupted"
+
+            if current_branch[1] != user_branch or current_branch[1] != "devon_agent":
+                resolve = git_ask_user_for_action("On an unknown branch, do you want to load the Devon Branch?",self.event_log,"GitResolve")
+                if resolve["content"]["action"] == "yes":
+                    self.versioning.checkout_branch("devon_agent")
+                else:
+                    return "corrupted"
+            
+            # user branch
+            if current_branch[1] == user_branch:
+                # check for changes
+
+                old_commit = None
+                for checkpoint in self.config.checkpoints[::-1]:
+                    if checkpoint.merged_commit != None:
+                        old_commit = checkpoint.merged_commit
                         break
+
+                if old_commit == None:
+                    return "corrupted"
+
+                rc,new_commit = get_last_commit_hash(self.config.path)
+                if rc != 0:
+                    result = git_error("Was not able to get the last commit hash. Error from command: \n "+new_commits,self.event_log)
+                    if result == "nogit":
+                        self.config.versioning_type = "none"
+                        return "disabled"
+                    if result == "resolvedError":
+                        return "retry"
+                    
+                rc,commit_difference = find_new_commits(self.config.path, old_commit,new_commit)
+                if rc != 0:
+                    result = git_error("Was not able to find the new commits. Error from command: \n "+commit_difference,self.event_log)
+                    if result == "nogit":
+                        self.config.versioning_type = "none"
+                        return "disabled"
+                    if result == "resolvedError":
+                        return "retry"
+
+                # uncommited changes
+                rc,result_unstaged, result_staged, result_untracked = check_for_changes(self.config.path)
+                if rc != 0:
+                    result = git_error("Was not able to check for changes. Error from command: \n "+result_unstaged + result_staged + result_untracked,self.event_log)
+                    if result == "nogit":
+                        self.config.versioning_type = "none"
+                        return "disabled"
+                    if result == "resolvedError":
+                        return "retry"
+
+                # checkout agent branch
+                if commit_difference or result_unstaged or result_staged or result_untracked:
+                    # TODO use normal result
+                    rc,output = checkout_branch(self.config.path, "devon_agent")
+                    if rc != 0:
+                        result = git_error("Was not able to checkout the devon_agent branch. Error from command: \n "+output,self.event_log)
+                        if result == "nogit":
+                            self.config.versioning_type = "none"
+                            return "disabled"
+                        if result == "resolvedError":
+                            return "retry"
+
+
+                # merge changes
+
+                    result = merge_branch(self.config.path, user_branch)
+                    if result[0] != 0:
+                        git_ask_user_for_action("Was not able to merge the branch. Error from command: \n "+result[1] + "\n Most likely your branch has diverged from devon_agent. Creating a new session.",self.event_log,"GitResolve")
+                        return "corrupted"
+
+
+            # agent branch
+
+            # verify checkpoint-agent branch consistency
+            # if not consistent, corrupted
+
+            # TODO: verify event-log has the same hash
+            
+            # get list of commits on branch
+
+            rc,commits = get_commits(self.config.path)
+            if rc != 0:
+                result = git_error("Was not able to get the commits. Error from command: \n "+commits,self.event_log)
+                if result == "nogit":
+                    self.config.versioning_type = "none"
+                    return "disabled"
+                if result == "resolvedError":
+                    return "retry"
+
+            checkpoint_commits = [checkpoint.commit_hash for checkpoint in self.config.checkpoints]
+
+            for commit in checkpoint_commits:
+                if commit not in commits:
+                    return "corrupted"
+
+            old_commit = self.config.checkpoints[-1].commit_hash
+            new_commit  = commits[-1]
+
+            if old_commit != new_commit:
+                rc,new_commits = find_new_commits(self.config.path, old_commit,new_commit)
+                if rc != 0:
+                    result = git_error("Was not able to find the new commits. Error from command: \n "+new_commits,self.event_log)
+                    if result == "nogit":
+                        self.config.versioning_type = "none"
+                        return "disabled"
+                    if result == "resolvedError":
+                        return "retry"
+            
+            # non commit changes
+            rc,result = check_for_changes(self.config.path)
+            if rc != 0:
+                result = git_error("Was not able to check for changes. Error from command: \n "+result,self.event_log)
+                if result == "nogit":
+                    self.config.versioning_type = "none"
+                    return "disabled"
+                if result == "resolvedError":
+                    return "retry"
+            result_unstaged, result_staged, result_untracked = result
+
+            # let agent know
+            self.config.agent_configs[0].chat_history.append(f"User made serveral commits in between. The commits are {new_commits}. The unstaged changes are {result_unstaged}. The staged changes are {result_staged}. The untracked changes are {result_untracked}.")
+
+        return "success"
+
+    def run_event_loop(self,action,revert=False):
+
+        if self.config.versioning_type == "git" and not revert:
+            while True:
+                result = self.git_setup(action)
+                self.logger.info(f"Git setup result: {result}")
+                if result == "success":
+                    break
+                if result == "retry":
+                    continue
+                if result == "disabled":
+                    break
+                if result == "corrupted":
+                    # reset session
+                    pass
+
+        # if self.config.versioning_type == "git" and not revert:
+
+
+
+        #     if not self.versioning.is_git_repo():
+        #         self.event_log.append(
+        #             {
+        #                 "type": "GitInit",
+        #                 "content": f"This directory is not a git repository. Do you want Devon to initialize a git repository?",
+        #                 "producer": "system",
+        #                 "consumer": "user",
+        #             }
+        #         )
+        #         resolved = waitForEvent(self.event_log, "GitResolve")
+        #         if resolved["content"]["action"] == "nogit":
+        #             self.config.versioning_type = "none"
+        #         if resolved["content"]["action"] == "git":
+        #             self.versioning.initialize_git()
+        #     if not self.config.versioning_metadata:
+        #         self.config.versioning_metadata = {}
+        #     if "old_branch" not in self.config.versioning_metadata:
+        #         self.config.versioning_metadata["old_branch"] = {}
+        #         self.config.versioning_metadata["old_branch"] = (
+        #             self.versioning.get_branch()[1]
+        #         )
+        #         self.logger.info(
+        #             "OLD BRANCH: " + str(self.config.versioning_metadata["old_branch"])
+        #         )
+        #         if (
+        #             self.config.versioning_metadata["old_branch"].strip()
+        #             == "devon_agent"
+        #         ):
+        #             while True:
+        #                 try:
+        #                     if self.versioning.get_branch()[1] == "devon_agent":
+        #                         raise Exception(
+        #                             "On invalid branch 'devon_agent', this happens if previous session didnt clean up properly. To solve this, git checkout <yourbranch> && git branch -D devon_agent"
+        #                         )
+        #                     else:
+        #                         self.config.versioning_metadata["old_branch"] = (
+        #                             self.versioning.get_branch()[1]
+        #                         )
+        #                         break
+        #                 except Exception as e:
+        #                     self.logger.error(f"Error creating branch: {e}")
+        #                     self.event_log.append(
+        #                         {
+        #                             "type": "GitError",
+        #                             "content": f"{e}",
+        #                             "producer": "system",
+        #                             "consumer": "user",
+        #                         }
+        #                     )
+        #                     resolved = waitForEvent(self.event_log, "GitResolve")
+        #                     if resolved["content"]["action"] == "nogit":
+        #                         self.config.versioning_type = "none"
+        #                         break
+
+        #     # THIS PART IS STILL VERY JANKY. NEED A BETTER WAY TO HANDLE BLOCKING.
+        #     if (
+        #         self.config.versioning_metadata["old_branch"]
+        #         != self.versioning.get_branch_name()
+        #     ):
+        #         while True:
+        #             try:
+        #                 # TODO: deal with situation where session is being loaded.
+        #                 # stash changes
+        #                 # result = self.versioning.stash_changes()
+        #                 # if result[0] != 0:
+        #                 #     raise Exception(result[1])
+        #                 result = (
+        #                     self.versioning.create_if_not_exists_and_checkout_branch(
+        #                         self.versioning.get_branch_name()[1]
+        #                     )
+        #                 )
+
+        #                 if result[0] != 0:
+        #                     raise Exception(result[1])
+        #                 self.config.versioning_metadata["current_branch"] = (
+        #                     self.versioning.get_branch_name()[1]
+        #                 )
+        #                 break
+        #             except Exception as e:
+        #                 print("here")
+        #                 self.logger.error(f"Error creating branch: {e}")
+        #                 self.event_log.append(
+        #                     {
+        #                         "type": "GitError",
+        #                         "content": f"Error creating branch: {e}",
+        #                         "producer": "system",
+        #                         "consumer": "user",
+        #                     }
+        #                 )
+        #                 resolved = waitForEvent(self.event_log, "GitResolve")
+        #                 if resolved["content"]["action"] == "nogit":
+        #                     self.config.versioning_type = "none"
+        #                     break
+        #     while True:
+        #         try:
+                    
+        #             # apply stash on current branch
+        #             # result = self.versioning.apply_stash("devon_agent")
+        #             # if result[0] != 0:
+        #             #     raise Exception(result[1])
+
+        #             commit_hash = self.versioning.initial_commit()
+        #             self.config.versioning_metadata["initial_commit"] = commit_hash[1]
+        #             self.config.checkpoints.append(
+        #                 Checkpoint(
+        #                     commit_message="Initial commit",
+        #                     commit_hash=commit_hash[1],
+        #                     agent_history=self.config.agent_configs[0].chat_history,
+        #                     event_id=len(self.event_log),
+        #                     checkpoint_id=get_checkpoint_id(),
+        #                     state=json.loads(json.dumps(self.config.state)),
+        #                 ))
+                    
+        #             self.event_log.append(
+        #                 Event(
+        #                     type="Checkpoint",
+        #                     content=self.config.checkpoints[0].checkpoint_id,
+        #                     producer="system",
+        #                     consumer="devon",
+        #                 )
+        #             )
+
+        #             self.versioning.checkout_branch(self.config.versioning_metadata["old_branch"])
+        #             # result = self.versioning.pop_stash("devon_agent")
+        #             # if result[0] != 0:
+        #             #     raise Exception(result[1])
+        #             result = self.versioning.checkout_branch(self.versioning.get_branch_name()[1])
+        #             if result[0] != 0:
+        #                 raise Exception(result[1])
+
+        #             break
+        #         except Exception as e:
+        #             self.logger.error(f"Error committing files: {e}")
+        #             self.event_log.append(
+        #                 {
+        #                     "type": "GitError",
+        #                     "content": f"Error creating branch: {e}",
+        #                     "producer": "system",
+        #                     "consumer": "user",
+        #                 }
+        #             )
+        #             resolved = waitForEvent(self.event_log, "GitResolve")
+        #             if resolved["content"]["action"] == "nogit":
+        #                 self.config.versioning_type = "none"
+        #                 break
 
         while True and not (self.event_id == len(self.event_log)):
             self.logger.info("EVENT ID: %s, STATUS: %s", self.event_id, self.status)

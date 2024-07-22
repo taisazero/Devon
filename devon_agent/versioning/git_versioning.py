@@ -3,6 +3,212 @@ import subprocess
 from devon_agent.config import Config
 
 
+
+# States
+# New Session
+    # No Repo
+    # User Branch
+        # 
+    # Existing Agent Branch
+    # No agent branch
+    # Ready
+# Existing Session
+    # No Repo
+    # User Branch
+        # changes
+        # no changes
+    # Third Branch
+        # error
+    # Existing Agent Branch
+        # uncommited changes
+        # non checkpoint commits
+        # no changes
+    # No agent branch
+        # error
+# Revert Session
+# Merge Session
+# Teardown Session
+
+
+# Versioning State
+# Current Branch
+# User Branch
+# Agent Branch
+# Repo
+# base_commit
+# last_merge_commit
+
+
+
+# ## New Session ##
+# S: NoRepo -> AskForPermission -> InitializeNewRepo -> S: UserBranch
+# S: UserBranch -> check_for_changes -> unstaged,staged,no_changes 
+# unstaged ->   
+# (could recover by init commit during tearndown)
+# unadded -> 
+# (could recover by init commit during tearndown)
+# staged -> error
+# -> *INTERMEDIATE*
+
+#  * INTERMEDIATE * -> check_if_branch_exists -> Yes -> S: Existing Agent Branch
+#  * INTERMEDIATE * -> check_if_branch_exists -> No -> S: No Agent Branch
+
+# S: No Agent Branch -> create_branch -> checkout_branch -> initial_commit -> S: Ready
+# S: Existing Agent Branch -> user_permission -> 
+# Yes -> delete_branch -> S: No Agent Branch
+# No -> merge_user_branch -> S: Ready
+
+# ## Existing Session ##
+# S: No Repo -> S: Corrupted 
+# S: UserBranch -> check_for_changes -> commited_changes,uncommitted_changes,no_changes
+# commited_changes -> *INTERMEDIATE*
+# uncommitted_changes -> Same as #new session
+# no_changes -> check_if_branch_exists -> Yes,No
+# Yes -> S: agent_branch
+# No -> corrupted
+
+
+# *INTERMEDIATE* -> check_if_branch_exists -> Yes -> checkout_branch -> merge_branch -> S: Agent Branch
+# *INTERMEDIATE* -> check_if_branch_exists -> No -> S: corrupted
+
+# S: agent_branch -> check_for_changes -> no_changes, commited_changes, uncommited_changes
+# no_changes -> S: Ready
+# commited_changes -> make_checkpoint_from_commit -> add_to_agent_history -> S: Ready
+# uncommited_changes -> commit_changes -> make_checkpoint_from_commit -> add_to_agent_history -> S: Ready
+
+# S: Corrupted -> delete_old_session -> #New Session
+
+# ## Merge Session ##
+# S: User Branch -> S : Error
+# S: Agent Branch -> get_diff_patch -> checkout_user_branch -> S: User Branch Checkout
+# S: User Branch Checkout-> check_for_changes -> no_changes, commited_changes, uncommited_changes
+# no_changes -> apply_patch -> S: Ready
+# commited_changes -> make_checkpoint_from_commit -> add_to_agent_history -> S: Ready
+# uncommited_changes -> commit_changes -> make_checkpoint_from_commit -> add_to_agent_history -> S: Ready
+
+# ## Teardown Session ##
+# S : Agent Branch -> checkout_user_branch -> merge_init_commit -> git reset --soft 
+# S : User Branch -> Done
+
+
+
+
+
+# (action,current_branch, user_branch, agent_branch, commited_changes, uncommited_changes)
+
+
+
+def is_git_repo(path):
+
+    result = subprocess.run(["git", "rev-parse", "--is-inside-work-tree"], cwd=path, capture_output=True, text=True)
+    return result.returncode == 0
+
+
+
+def intialize_new_repo(path):
+    
+    result = subprocess.run(["git", "init"], cwd=path, capture_output=True, text=True)
+    if result.returncode != 0:
+        return result.returncode, result.stderr
+    # make initial commit
+    result = subprocess.run(["git", "commit", "--allow-empty", "-m", "Initial commit"], cwd=path, capture_output=True, text=True)
+    if result.returncode != 0:
+        return result.returncode, result.stderr
+    return 0, "Initialized git repository"
+
+def get_last_commit_hash(path):
+    result = subprocess.run(["git", "rev-parse", "HEAD"], cwd=path, capture_output=True, text=True)
+    return result.returncode, result.stdout.strip() if result.returncode == 0 else result.stderr + result.stdout
+
+
+def find_new_commits(path, old_commit, new_commit):
+    result = subprocess.run(["git", "log", "--oneline", f"{old_commit}..{new_commit}"], cwd=path, capture_output=True, text=True)
+    return result.returncode, result.stdout.split('\n') if result.returncode == 0 else result.stderr + result.stdout
+
+def get_current_branch(path):
+    result = subprocess.run(["git", "branch", "--show-current"], cwd=path, capture_output=True, text=True)
+    return result.returncode, result.stdout.strip() if result.returncode == 0 else result.stderr + result.stdout
+
+def check_for_changes(path):
+    # check if there are unstaged changes
+    result_unstaged = subprocess.run(["git", "diff", "--name-status"], cwd=path, capture_output=True, text=True)
+
+    if result_unstaged.returncode != 0:
+        return result_unstaged.returncode, result_unstaged.stderr + result_unstaged.stdout
+    
+    # check if there are staged changes
+    result_staged = subprocess.run(["git", "diff", "--cached", "--name-status"], cwd=path, capture_output=True, text=True)
+
+    if result_staged.returncode != 0:
+        return result_staged.returncode, result_staged.stderr + result_staged.stdout
+
+    # check if there untracked files
+    result_untracked = subprocess.run(["git", "ls-files", "--others", "--exclude-standard"], cwd=path, capture_output=True, text=True)
+
+    if result_untracked.returncode != 0:
+        return result_untracked.returncode, result_untracked.stderr + result_untracked.stdout
+
+    return 0, (result_unstaged, result_staged, result_untracked)
+
+def ask_user_permission():
+    pass
+
+def create_and_switch_branch(path, branch_name):
+    # just create branch
+    result = subprocess.run(["git", "switch", "-c", branch_name], cwd=path, capture_output=True, text=True)
+    return result.returncode, result.stdout if result.returncode == 0 else result.stderr
+
+
+def get_commits(path):
+    result = subprocess.run(["git", "log", "--oneline"], cwd=path, capture_output=True, text=True)
+    return result.returncode, result.stdout.split('\n') if result.returncode == 0 else result.stderr + result.stdout
+    
+
+def check_if_branch_exists(path, branch_name):
+    
+    result = subprocess.run(["git", "rev-parse", "--verify", branch_name], cwd=path, capture_output=True, text=True)
+    return result.returncode == 0
+
+def delete_branch(path, branch_name):
+    # delete agent branch
+    
+    result = subprocess.run(["git", "branch", "-d", branch_name], cwd=path, capture_output=True, text=True)
+    return result.returncode, result.stdout if result.returncode == 0 else result.stderr + result.stdout
+
+def checkout_branch(path, branch_name):
+    # checkout agent branch
+    result = subprocess.run(["git", "switch", branch_name], cwd=path, capture_output=True, text=True)
+    return result.returncode, result.stdout if result.returncode == 0 else result.stderr + result.stdout
+
+
+def merge_branch(path, branch_name):
+    # merge user branch into agent branch
+    result = subprocess.run(["git", "merge", branch_name], cwd=path, capture_output=True, text=True)
+    return result.returncode, result.stdout if result.returncode == 0 else result.stderr + result.stdout
+
+def commit_all_files(path, commit_message, allow_empty=False,prev_untracked_files=[]):
+
+    if prev_untracked_files:
+        # find difference between prev_untracked_files and current untracked files
+        # add difference
+        current_untracked_files = subprocess.run(["git", "ls-files", "--others", "--exclude-standard"], cwd=path, capture_output=True, text=True)
+        difference = list(set(prev_untracked_files) - set(current_untracked_files))
+        # add difference
+        result = subprocess.run(["git", "add", *difference], cwd=path, capture_output=True, text=True)
+        if result.returncode != 0:
+            return result.returncode, result.stderr
+
+        
+
+    # add all files
+    result = subprocess.run(["git", "add", "."], cwd=path, capture_output=True, text=True)
+    if result.returncode != 0:
+        return result.returncode, result.stderr
+    # commit all files
+    result = subprocess.run(["git", "commit", "-m", commit_message,"--allow-empty" if allow_empty else ""], cwd=path, capture_output=True, text=True)
+    return result.returncode, result.stdout if result.returncode == 0 else result.stderr + result.stdout
+
+
 class GitVersioning:
     def __init__(self, project_path, config : Config):
         self.project_path = project_path

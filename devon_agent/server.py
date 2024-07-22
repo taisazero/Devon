@@ -287,7 +287,7 @@ def create_session(
 
     sessions[session].init_state()
     sessions[session].setup()
-    background_tasks.add_task(sessions[session].run_event_loop)
+    background_tasks.add_task(sessions[session].run_event_loop,action="new")
     running_sessions.append(session)
 
     return session
@@ -333,7 +333,7 @@ def start_session(
     session_obj.config.agent_configs[0].api_key = api_key
     if session not in running_sessions:
         session_obj.setup()
-        background_tasks.add_task(sessions[session].run_event_loop)
+        background_tasks.add_task(sessions[session].run_event_loop,action="start")
         running_sessions.append(session)
 
     if not session_obj:
