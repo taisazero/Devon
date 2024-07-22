@@ -49,6 +49,7 @@ type ServerEvent = {
         | 'GitResolve'
         | 'GitInit'
         | 'Checkpoint'
+        | 'GitAskUser'
     content: any
     identifier: string | null
 }
@@ -71,6 +72,7 @@ type ServerEventContext = {
     }
     gitError: string | null
     gitInit: string | null
+    gitMessage: string | null
 }
 
 export const eventHandlingLogic = fromTransition(
@@ -89,6 +91,7 @@ export const eventHandlingLogic = fromTransition(
                         base_commit: null,
                         commits: [],
                     },
+                    gitMessage: null
                 }
             }
             case 'Stop': {
@@ -267,8 +270,14 @@ export const eventHandlingLogic = fromTransition(
                 return {
                     ...state,
                     gitError: null,
+                    gitMessage: null,
                 }
             }
+            case 'GitAskUser':
+                return {
+                    ...state,
+                    gitMessage: event.content ?? null,
+                }
             case 'GitInit': {
                 return {
                     ...state,
@@ -292,6 +301,7 @@ export const eventHandlingLogic = fromTransition(
         },
         gitError: null,
         gitInit: null,
+        gitMessage: null
     }
 )
 
@@ -629,6 +639,7 @@ export const newSessionMachine = setup({
             },
         },
         healthcheckRetry: 0,
+        gitMessage: null,
     }),
     invoke: [
         {

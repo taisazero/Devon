@@ -123,6 +123,7 @@ def get_last_commit_hash(path):
 
 def find_new_commits(path, old_commit, new_commit):
     result = subprocess.run(["git", "log", "--oneline", f"{old_commit}..{new_commit}"], cwd=path, capture_output=True, text=True)
+    print(["git", "log", "--oneline", f"{old_commit}..{new_commit}"],flush=True)
     return result.returncode, result.stdout.split('\n') if result.returncode == 0 else result.stderr + result.stdout
 
 def get_current_branch(path):
@@ -148,7 +149,7 @@ def check_for_changes(path):
     if result_untracked.returncode != 0:
         return result_untracked.returncode, result_untracked.stderr + result_untracked.stdout
 
-    return 0, (result_unstaged, result_staged, result_untracked)
+    return 0, (result_unstaged.stdout, result_staged.stdout, result_untracked.stdout)
 
 def ask_user_permission():
     pass
@@ -161,7 +162,7 @@ def create_and_switch_branch(path, branch_name):
 
 def get_commits(path):
     result = subprocess.run(["git", "log", "--oneline"], cwd=path, capture_output=True, text=True)
-    return result.returncode, result.stdout.split('\n') if result.returncode == 0 else result.stderr + result.stdout
+    return result.returncode, result.stdout.split('\n')[:-1] if result.returncode == 0 else result.stderr + result.stdout
     
 
 def check_if_branch_exists(path, branch_name):
@@ -172,7 +173,7 @@ def check_if_branch_exists(path, branch_name):
 def delete_branch(path, branch_name):
     # delete agent branch
     
-    result = subprocess.run(["git", "branch", "-d", branch_name], cwd=path, capture_output=True, text=True)
+    result = subprocess.run(["git", "branch", "-D", branch_name], cwd=path, capture_output=True, text=True)
     return result.returncode, result.stdout if result.returncode == 0 else result.stderr + result.stdout
 
 def checkout_branch(path, branch_name):
@@ -206,6 +207,14 @@ def commit_all_files(path, commit_message, allow_empty=False,prev_untracked_file
         return result.returncode, result.stderr
     # commit all files
     result = subprocess.run(["git", "commit", "-m", commit_message,"--allow-empty" if allow_empty else ""], cwd=path, capture_output=True, text=True)
+
+    if result.returncode != 0:
+        return result.returncode, result.stderr + result.stdout
+    # get commit hash
+    result = subprocess.run(["git", "rev-parse", "HEAD"], cwd=path, capture_output=True, text=True)
+    if result.returncode != 0:
+        return result.returncode, result.stderr + result.stdout
+
     return result.returncode, result.stdout if result.returncode == 0 else result.stderr + result.stdout
 
 

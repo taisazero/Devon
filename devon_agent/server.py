@@ -333,7 +333,7 @@ def start_session(
     session_obj.config.agent_configs[0].api_key = api_key
     if session not in running_sessions:
         session_obj.setup()
-        background_tasks.add_task(sessions[session].run_event_loop,action="start")
+        background_tasks.add_task(sessions[session].run_event_loop,action="load")
         running_sessions.append(session)
 
     if not session_obj:
@@ -364,7 +364,7 @@ def revert_session(
     sessions[session].terminate()
     sessions[session].revert(checkpoint_id)
     sessions[session].pause()
-    background_tasks.add_task(sessions[session].run_event_loop, revert=True)
+    background_tasks.add_task(sessions[session].run_event_loop, revert=True,action="revert")
     return session
 
 
@@ -407,7 +407,7 @@ def reset_session(session: str, background_tasks: fastapi.BackgroundTasks):
     session_obj.setup()
     if session in session_buffers:
         del session_buffers[session]
-    background_tasks.add_task(session_obj.run_event_loop)
+    background_tasks.add_task(session_obj.run_event_loop,action="reset")
 
     return session
 

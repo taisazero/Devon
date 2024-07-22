@@ -73,6 +73,7 @@ def git_ask_user_for_action(message: str, event_log: List[Dict], event_type: str
             "consumer": "user",
         }
     )
+
     while True:
         if event_log[-1]["type"] == event_type:
             return event_log[-1]
@@ -184,7 +185,7 @@ class Session:
         instance.event_log.append(
             Event(
                 type="ModelRequest",
-                content="Your interaction with the user was paused, please resume.",
+                content="Your interaction with the user was paused, ask user for further instructions",
                 producer="system",
                 consumer="devon",
             )
@@ -244,10 +245,10 @@ class Session:
                     self.event_log,
                     "GitResolve",
                 )
-                if resolved["content"]["action"] == "nogit":
+                if resolved["content"]["action"] == "no":
                     self.config.versioning_type = "none"
                     return "disabled"
-                if resolved["content"]["action"] == "git":
+                if resolved["content"]["action"] == "yes":
                     result = intialize_new_repo(self.config.path)
                     if result[0] != 0:
                         result = git_error("Was not able to initialize git repository. Error from command: \n "+result[1],self.event_log)
@@ -271,6 +272,16 @@ class Session:
 
             if user_branch == "devon_agent":
                 result = git_error("You are on the Devon Branch. Please switch to your branch.",self.event_log)
+                if result == "nogit":
+                    self.config.versioning_type = "none"
+                    return "disabled"
+                if result == "resolvedError":
+                    return "retry"
+                
+            status,user_branch = get_current_branch(self.config.path)
+
+            if status != 0:
+                result = git_error("Was not able to get the current branch. Error from command: \n "+user_branch,self.event_log)
                 if result == "nogit":
                     self.config.versioning_type = "none"
                     return "disabled"
@@ -388,7 +399,9 @@ class Session:
                 resolve = git_ask_user_for_action("On an unknown branch, do you want to load the Devon Branch?",self.event_log,"GitResolve")
                 if resolve["content"]["action"] == "yes":
                     self.versioning.checkout_branch("devon_agent")
+
                 else:
+                    self.logger.info(f"User said no")
                     return "corrupted"
             
             # user branch
@@ -402,6 +415,7 @@ class Session:
                         break
 
                 if old_commit == None:
+                    self.logger.info(f"Old commit is None")
                     return "corrupted"
 
                 rc,new_commit = get_last_commit_hash(self.config.path)
@@ -423,15 +437,16 @@ class Session:
                         return "retry"
 
                 # uncommited changes
-                rc,result_unstaged, result_staged, result_untracked = check_for_changes(self.config.path)
+                rc,result = check_for_changes(self.config.path)
                 if rc != 0:
-                    result = git_error("Was not able to check for changes. Error from command: \n "+result_unstaged + result_staged + result_untracked,self.event_log)
+                    result = git_error("Was not able to check for changes. Error from command: \n "+result,self.event_log)
                     if result == "nogit":
                         self.config.versioning_type = "none"
                         return "disabled"
                     if result == "resolvedError":
                         return "retry"
 
+                result_unstaged, result_staged, result_untracked = result
                 # checkout agent branch
                 if commit_difference or result_unstaged or result_staged or result_untracked:
                     # TODO use normal result
@@ -449,6 +464,7 @@ class Session:
 
                     result = merge_branch(self.config.path, user_branch)
                     if result[0] != 0:
+                        self.logger.info(f"Was not able to merge the branch. Error from command: \n "+result[1] + "\n Most likely your branch has diverged from devon_agent. Creating a new session.")
                         git_ask_user_for_action("Was not able to merge the branch. Error from command: \n "+result[1] + "\n Most likely your branch has diverged from devon_agent. Creating a new session.",self.event_log,"GitResolve")
                         return "corrupted"
 
@@ -463,6 +479,7 @@ class Session:
             # get list of commits on branch
 
             rc,commits = get_commits(self.config.path)
+            print(commits,flush=True)
             if rc != 0:
                 result = git_error("Was not able to get the commits. Error from command: \n "+commits,self.event_log)
                 if result == "nogit":
@@ -473,13 +490,21 @@ class Session:
 
             checkpoint_commits = [checkpoint.commit_hash for checkpoint in self.config.checkpoints]
 
+
             for commit in checkpoint_commits:
-                if commit not in commits:
+                formatted_commits = [commit_[:8] for commit_ in commits]
+                if commit[:8] in formatted_commits:
+                    self.logger.info(f"Checkpoint commit not in commits")
+                    print(formatted_commits)
+                    print(commit)
                     return "corrupted"
-
-            old_commit = self.config.checkpoints[-1].commit_hash
-            new_commit  = commits[-1]
-
+            print(self.config.checkpoints,flush=True)
+            for checkpoint in self.config.checkpoints[::-1]:
+                if checkpoint.commit_hash != "no_commit":
+                    old_commit = checkpoint.commit_hash.strip()[:7]
+                    break
+            new_commit  = commits[0][:7]
+            new_commits = []
             if old_commit != new_commit:
                 rc,new_commits = find_new_commits(self.config.path, old_commit,new_commit)
                 if rc != 0:
@@ -502,7 +527,11 @@ class Session:
             result_unstaged, result_staged, result_untracked = result
 
             # let agent know
-            self.config.agent_configs[0].chat_history.append(f"User made serveral commits in between. The commits are {new_commits}. The unstaged changes are {result_unstaged}. The staged changes are {result_staged}. The untracked changes are {result_untracked}.")
+            if new_commits or result_unstaged or result_staged or result_untracked:
+                self.logger.info(f"User made serveral commits in between. The commits are {new_commits}. The unstaged changes are {result_unstaged}. The staged changes are {result_staged}. The untracked changes are {result_untracked}.")
+                self.config.agent_configs[0].chat_history.append({"role":"user","content":f"User made serveral commits in between. The commits are {new_commits}. The unstaged changes are {result_unstaged}. The staged changes are {result_staged}. The untracked changes are {result_untracked}."})
+
+            print(self.config.agent_configs[0].chat_history,flush=True)
 
         return "success"
 
@@ -721,7 +750,6 @@ class Session:
 
             case "ModelRequest":
                 # TODO: Need some quantized timestep for saving persistence that isn't literally every 0.1s
-                self.persist()
                 if self.config.state["editor"] and self.config.state["editor"]["files"]:
                     for file in self.config.state["editor"]["files"]:
                         self.config.state["editor"]["files"][file]["lines"] = read_file(
@@ -735,6 +763,7 @@ class Session:
                 thought, action, output = self.agent.predict(
                     self.config.state["task"], event["content"], self
                 )
+                self.persist()
 
                 if action == "hallucination":
                     new_events.append(
@@ -758,6 +787,7 @@ class Session:
                             "consumer": event["producer"],
                         }
                     )
+
 
             case "RateLimit":
                 for i in range(60):
@@ -1035,9 +1065,19 @@ class Session:
                     }
                 )
         if self.config.versioning_type == "git":
-            self.versioning.checkout_branch(
-                self.config.versioning_metadata["old_branch"]
-            )
+            # if self.config.versioning_metadata["old_branch"] != self.versioning.get_branch_name()[1]:
+            #     self.versioning.checkout_branch(
+            #         self.config.versioning_metadata["old_branch"]
+            # )
+            if "old_branch" in self.config.versioning_metadata:
+                self.versioning.checkout_branch(
+                    self.config.versioning_metadata["old_branch"]
+                )
+            print(self.config.versioning_metadata,flush=True)
+            if "user_branch" in self.config.versioning_metadata:
+                self.versioning.checkout_branch(
+                    self.config.versioning_metadata["user_branch"]
+                )
 
     def persist(self):
         if self.config.persist_to_db:
