@@ -40,8 +40,8 @@ export const useSessionConfig = (host: string, name: string) => {
 export const getCheckpointDiff = async (
     host: string,
     name: string,
-    src_checkpoint_id: number,
-    dest_checkpoint_id: number
+    src_checkpoint_id: string, // commit hash
+    dest_checkpoint_id: string // commit hash
 ) => {
     const response = await axios.get(`${host}/sessions/${name}/diff`, {
         params: {
