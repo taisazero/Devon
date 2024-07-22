@@ -258,7 +258,10 @@ def create_session(
             db_path=db_path,
             persist_to_db=app.persist,
             versioning_type=config["versioning_type"] if "versioning_type" in config else "none",
-            environments={"local": local_environment, "user": user_environment},
+            environments={"local": local_environment, "user": user_environment,
+                          "remote": None, #TODO: We want to connect to a remote VSCode environment, with its own APIs to VSCode tools.
+
+            },
             default_environment="local",
             agent_configs=[
                 AgentConfig(

@@ -44,7 +44,7 @@ greenlet = "^3.0.3"
 llama-index = "^0.10.45"
 python-dotenv = "^1.0.1"
 
-code-nav-devon = "^0.1.1"
+code-nav-devon = { git = "https://github.com/taisazero/code_navigation_devon.git" }
 numpy = "<=1.26.4"
 [tool.poetry.extras]
 swebench = ["swebench", "datasets", "gymnasium"]
