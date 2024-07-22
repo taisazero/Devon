@@ -712,8 +712,9 @@ class Session:
                     }
                 )
         if self.config.versioning_type == "git":
-            self.versioning.checkout_branch(
-                self.config.versioning_metadata["old_branch"]
+            if "old_branch" in self.config.versioning_metadata:
+                self.versioning.checkout_branch(
+                    self.config.versioning_metadata["old_branch"]
             )
 
     def persist(self):
