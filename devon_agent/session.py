@@ -186,6 +186,15 @@ class Session:
                 self.config.agent_configs[0].chat_history = list(
                     checkpoint.agent_history
                 )
+                if checkpoint.commit_message == "Initial commit":
+                    self.event_log.append(
+                        Event(
+                            type="Task",
+                            content="ask user for what to do",
+                            producer="system",
+                            consumer="devon",
+                        )
+                    )
                 self.setup()
                 for env in self.environments.values():
                     env.event_log = event_log
@@ -757,17 +766,21 @@ class Session:
     def diff(
         self, src_checkpoint_id: str, dest_checkpoint_id: str
     ) -> WholeFileDiffResults:
-        for checkpoint in self.config.checkpoints:
-            if checkpoint.checkpoint_id == src_checkpoint_id:
-                src_commit = checkpoint.commit_hash
-            if checkpoint.checkpoint_id == dest_checkpoint_id:
-                dest_commit = checkpoint.commit_hash
-        # src_commit = self.config.checkpoints[src_checkpoint_id].commit_hash
-        # dest_commit = self.config.checkpoints[dest_checkpoint_id].commit_hash
-        diff_list, error = self.versioning.get_diff_list(src_commit, dest_commit)
-        return WholeFileDiffResults(
-            files=[
-                WholeFileDiff(file_path=file, before=before, after=after)
-                for file, before, after in diff_list
-            ]
-        )
+        try:
+            for checkpoint in self.config.checkpoints:
+                if checkpoint.checkpoint_id == src_checkpoint_id:
+                    src_commit = checkpoint.commit_hash
+                if checkpoint.checkpoint_id == dest_checkpoint_id:
+                    dest_commit = checkpoint.commit_hash
+            # src_commit = self.config.checkpoints[src_checkpoint_id].commit_hash
+            # dest_commit = self.config.checkpoints[dest_checkpoint_id].commit_hash
+            diff_list, error = self.versioning.get_diff_list(src_commit, dest_commit)
+            return WholeFileDiffResults(
+                files=[
+                    WholeFileDiff(file_path=file, before=before, after=after)
+                    for file, before, after in diff_list
+                ]
+            )
+        except Exception as e:
+            self.logger.error(f"Error getting diff: {e}")
+            return WholeFileDiffResults(files=[])
