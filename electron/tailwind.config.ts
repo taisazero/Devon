@@ -85,6 +85,7 @@ const config: Config = {
                 'accordion-down': 'accordion-down 0.2s ease-out',
                 'accordion-up': 'accordion-up 0.2s ease-out',
                 lineGrow: 'lineGrow 2s ease-in-out forwards',
+                'fade-in': 'fade-in 0.5s ease-out',
             },
             keyframes: {
                 pulse2: {
@@ -115,6 +116,10 @@ const config: Config = {
                 lineGrow: {
                     '0%': { height: '0%' },
                     '100%': { height: '100%' },
+                },
+                'fade-in': {
+                    '0%': { opacity: '0' },
+                    '100%': { opacity: '1' },
                 },
             },
         },

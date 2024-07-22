@@ -121,9 +121,9 @@ const TimelinePanel = ({
                     <h2 className={`text-lg font-semibold overflow-hidden`}>
                         Devon's Timeline
                     </h2>
-                    {versioning_type === 'git' && (
+                    {versioning_type === 'git' && expanded && (
                         <TooltipProvider delayDuration={100}>
-                            <div className="flex flex-col align-end gap-[5px] mt-[1px]">
+                            <div className="flex flex-col align-end gap-[5px] mt-[1px] animate-fade-in">
                                 <Tooltip>
                                     <TooltipTrigger
                                         className="self-end"
@@ -150,11 +150,14 @@ const TimelinePanel = ({
                                     </TooltipContent>
                                 </Tooltip>
                                 <Tooltip>
-                                    <TooltipTrigger className="self-end" onClick={() =>
+                                    <TooltipTrigger
+                                        className="self-end"
+                                        onClick={() =>
                                             toast({
                                                 title: 'Devon pushes commits to this branch while working',
                                             })
-                                        }>
+                                        }
+                                    >
                                         <div className="flex items-center">
                                             <code className="flex gap-2 bg-black px-[6px] py-[3px] rounded-md text-primary text-opacity-100 text-[0.8rem]">
                                                 <Icon
