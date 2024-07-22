@@ -13,6 +13,12 @@ export const models: Model[] = [
         company: 'OpenAI',
         apiKeyUrl: 'https://platform.openai.com/api-keys',
     },
+    {
+        id: 'gpt-4o-mini',
+        name: 'GPT-4o Mini',
+        company: 'OpenAI',
+        apiKeyUrl: 'https://platform.openai.com/api-keys',
+    },
     // {
     //     id: 'llama-3-70b',
     //     name: 'Groq Llama 3 70B',

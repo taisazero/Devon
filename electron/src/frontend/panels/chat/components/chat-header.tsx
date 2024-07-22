@@ -12,6 +12,11 @@ import SettingsModal from '@/components/modals/settings-modal'
 import IndexesModal from '@/components/modals/indexes-modal'
 import { useSessionConfig } from '@/lib/services/sessionService/sessionService'
 import { models } from '@/lib/config'
+import { ICodeSnippet } from '@/panels/chat/components/ui/code-snippet'
+import { useAtom } from 'jotai'
+import { selectedCodeSnippetAtom } from '@/panels/editor/components/code-editor'
+import { checkpointTrackerAtom } from '@/panels/timeline/lib'
+import { CheckpointTracker } from '@/lib/types'
 
 export default function ChatHeader({
     sessionId,
@@ -24,8 +29,20 @@ export default function ChatHeader({
     const host = SessionMachineContext.useSelector(state => state.context.host)
     const name = SessionMachineContext.useSelector(state => state.context.name)
     const config = useSessionConfig(host, name)
+    const [, setSelectedCodeSnippet] = useAtom<ICodeSnippet | null>(
+        selectedCodeSnippetAtom
+    )
+    const [checkpointTracker, setCheckpointTracker] =
+        useAtom<CheckpointTracker | null>(checkpointTrackerAtom)
 
     async function handleReset() {
+        setSelectedCodeSnippet(null)
+        if (checkpointTracker) {
+            setCheckpointTracker({
+                ...checkpointTracker,
+                selected: null,
+            })
+        }
         sessionActorRef.send({ type: 'session.reset' })
     }
 
