@@ -48,6 +48,7 @@ export default function Chat({
     const eventState = SessionMachineContext.useSelector(
         state => state.context.serverEventContext
     )
+
     const isPaused = SessionMachineContext.useActorRef()
         .getSnapshot()
         .matches('paused')

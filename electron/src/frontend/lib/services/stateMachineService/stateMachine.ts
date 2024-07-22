@@ -71,6 +71,7 @@ type ServerEventContext = {
     }
     gitError: string | null
     gitInit: string | null
+    status: string | null //'idle' | 'thinking' | 'executing' | 'waiting_for_user'
 }
 
 export const eventHandlingLogic = fromTransition(
@@ -95,12 +96,13 @@ export const eventHandlingLogic = fromTransition(
                 return { ...state, ended: true }
             }
             case 'ModelRequest': {
-                return { ...state, modelLoading: true }
+                return { ...state, modelLoading: true, status: 'thinking' }
             }
             case 'ModelResponse': {
                 const content = JSON.parse(event.content)
                 return {
                     ...state,
+                    status: 'idle',
                     modelLoading: false,
                     messages: [
                         ...state.messages,
@@ -135,6 +137,8 @@ export const eventHandlingLogic = fromTransition(
             case 'ToolRequest': {
                 return {
                     ...state,
+                    status: 'executing',
+                    toolLoading: true,
                     toolMessage:
                         'Running command: ' + event.content.raw_command.trim(),
                 }
@@ -142,6 +146,7 @@ export const eventHandlingLogic = fromTransition(
             case 'Checkpoint': {
                 return {
                     ...state,
+                    status: 'idle',
                     messages: [
                         ...state.messages,
                         { text: event.content, type: 'checkpoint' } as Message,
@@ -153,6 +158,7 @@ export const eventHandlingLogic = fromTransition(
                     state.toolMessage + '|START_RESPONSE|' + event.content
                 return {
                     ...state,
+                    toolLoading: false,
                     toolMessage: '',
                     messages: [
                         ...state.messages,
@@ -181,6 +187,7 @@ export const eventHandlingLogic = fromTransition(
             case 'UserRequest': {
                 return {
                     ...state,
+                    status: 'waiting_for_user',
                     userRequest: true,
                     messages: [
                         ...state.messages,
@@ -292,6 +299,7 @@ export const eventHandlingLogic = fromTransition(
         },
         gitError: null,
         gitInit: null,
+        status: 'idle',
     }
 )
 
