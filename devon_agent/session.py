@@ -324,7 +324,7 @@ class Session:
             self.logger.info(f"Branch exists: {exists}")
 
             if exists:
-                resolve = git_ask_user_for_action(f"Branch {self.config.versioning_metadata['user_branch']} already exists. This branch should be deleted as it is now stale. Delete it?", self.event_log, "GitResolve")
+                resolve = git_ask_user_for_action(f"Branch devon_agent already exists. This branch should be deleted as it is now stale. Delete it?", self.event_log, "GitResolve")
                 if resolve["content"]["action"] == "yes":
                     result = delete_branch(self.config.path, "devon_agent")
                     if result[0] != 0:
@@ -371,7 +371,7 @@ class Session:
 
             self.config.checkpoints.append(checkpoint)
 
-        
+
         if self.config.versioning_type == "git" and action == "load":
             if not is_git_repo(self.config.path):
                 corrupted = True
@@ -387,6 +387,7 @@ class Session:
                     return "retry"
 
             user_branch = self.config.versioning_metadata["user_branch"]
+            print(self.config.versioning_metadata,current_branch,flush=True)
 
             agent_branch_exists = check_if_branch_exists(self.config.path, "devon_agent")
 
@@ -395,7 +396,7 @@ class Session:
             if not agent_branch_exists:
                 return "corrupted"
 
-            if current_branch[1] != user_branch or current_branch[1] != "devon_agent":
+            if current_branch[1] != user_branch and current_branch[1] != "devon_agent":
                 resolve = git_ask_user_for_action("On an unknown branch, do you want to load the Devon Branch?",self.event_log,"GitResolve")
                 if resolve["content"]["action"] == "yes":
                     self.versioning.checkout_branch("devon_agent")
@@ -548,8 +549,11 @@ class Session:
                 if result == "disabled":
                     break
                 if result == "corrupted":
-                    # reset session
-                    pass
+                    self.config.checkpoints = []
+                    self.init_state([])
+                    self.setup()
+                    self.start()
+                    break
 
         # if self.config.versioning_type == "git" and not revert:
 
