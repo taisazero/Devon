@@ -43,13 +43,21 @@ export const getCheckpointDiff = async (
     src_checkpoint_id: string, // commit hash
     dest_checkpoint_id: string // commit hash
 ) => {
-    const response = await axios.get(`${host}/sessions/${name}/diff`, {
-        params: {
-            src_checkpoint_id,
-            dest_checkpoint_id,
-        },
-    })
-    return response.data
+    try {
+        const response = await axios.get(
+            `${host}/sessions/${name}/diff`,
+            {
+                params: {
+                    src_checkpoint_id,
+                    dest_checkpoint_id,
+                },
+            }
+        )
+        return response.data
+    } catch (error) {
+        console.error('Error fetching session config:', error)
+        throw error
+    }
 }
 
 // Not used yet

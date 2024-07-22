@@ -14,6 +14,7 @@ import { getRelativePath, getFileName } from '@/lib/utils'
 import { getCheckpointDiff } from '@/lib/services/sessionService/sessionService'
 import { SessionMachineContext } from '@/contexts/session-machine-context'
 import { checkpointTrackerAtom } from '@/panels/timeline/lib'
+import { useToast } from '@/components/ui/use-toast'
 
 export const selectedCodeSnippetAtom = atom<ICodeSnippet | null>(null)
 
@@ -417,6 +418,10 @@ export default function CodeEditor({
         // setPopoverVisible(false)
     }
 
+    const isReverting = SessionMachineContext.useActorRef()
+        .getSnapshot()
+        .matches('reverting')
+
     return (
         <div className="flex flex-col h-full overflow-hidden relative">
             <div className="flex-none overflow-x-auto whitespace-nowrap bg-night border-b border-outlinecolor">
@@ -437,7 +442,8 @@ export default function CodeEditor({
                 <PathDisplay path={path} selectedFileId={selectedFileId} />
             )}
             <div className="flex-grow w-full bg-midnight rounded-b-lg mt-[-2px] overflow-auto">
-                {selectedFileId || checkpointTracker?.selected ? (
+                {(selectedFileId || checkpointTracker?.selected) &&
+                !isReverting ? (
                     <BothEditorTypes
                         file={files?.find(f => f.id === selectedFileId)}
                         projectPath={path}
@@ -499,6 +505,7 @@ const BothEditorTypes = ({
         file: string
     } | null>(null)
     const diffEditorRef = useRef<editor.IDiffEditor | null>(null)
+    const { toast } = useToast()
     const host = SessionMachineContext.useSelector(state => state.context.host)
     const name = SessionMachineContext.useSelector(state => state.context.name)
 
@@ -510,17 +517,30 @@ const BothEditorTypes = ({
 
     const fetchDiff = async (autoSelectFile: boolean = false) => {
         try {
-            if (!checkpointTracker) return
-            let checkpoint = checkpointTracker.current
-            if (checkpointTracker?.selected) {
-                checkpoint = checkpointTracker.selected
+            if (!checkpointTracker) {
+                setDiffContent(null)
+                return
             }
-            const result = await getCheckpointDiff(
-                host,
-                name,
-                checkpointTracker.initial.checkpoint_id,
-                checkpoint.checkpoint_id
-            )
+            const srcId = checkpointTracker?.initial?.checkpoint_id
+            const destId =
+                checkpointTracker?.selected?.checkpoint_id ??
+                checkpointTracker?.current?.checkpoint_id
+            if (!srcId) {
+                setDiffContent(null)
+                toast({
+                    title: 'Failed to get initial checkpoint id',
+                })
+                return
+            }
+            if (!destId) {
+                setDiffContent(null)
+                toast({
+                    title: 'Failed to get destination checkpoint id',
+                })
+                return
+            }
+
+            const result = await getCheckpointDiff(host, name, srcId, destId)
             if (!result || result.files.length === 0) {
                 setDiffContent(null)
                 return
@@ -559,7 +579,7 @@ const BothEditorTypes = ({
     useEffect(() => {
         if (Boolean(checkpointTracker?.selected)) {
             fetchDiff(true)
-        } else {
+        } else if (!Boolean(checkpointTracker?.selected)) {
             setDiffContent(null)
         }
     }, [checkpointTracker?.selected])
@@ -644,9 +664,9 @@ const BothEditorTypes = ({
                 language={file?.language ?? 'python'}
                 defaultValue={''}
                 value={
-                    diffContent
+                    checkpointTracker?.selected && diffContent
                         ? diffContent.after
-                        : file?.value?.lines ?? file?.value ?? ''
+                        : file?.value ?? ''
                 }
                 onMount={handleEditorDidMount}
                 path={file?.path}
