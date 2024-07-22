@@ -38,9 +38,12 @@ class GitVersioning:
         init_result = subprocess.run(["git", "init"], cwd=self.project_path, capture_output=True, text=True)
         if init_result.returncode != 0:
             return init_result.returncode, init_result.stderr + init_result.stdout
+
+        init_repo = subprocess.run(["git", "commit", "--allow-empty", "-m", "Initialized Repo"], cwd=self.project_path, capture_output=True, text=True)
+        if init_repo.returncode != 0:
+            return init_repo.returncode, init_repo.stderr + init_repo.stdout
         
-        # make a main branch
-        result = subprocess.run(["git", "checkout", "-b", "main"], cwd=self.project_path, capture_output=True, text=True)
+        result = subprocess.run(["git", "switch", "-c", "main"], cwd=self.project_path, capture_output=True, text=True)
         if result.returncode != 0:
             return result.returncode, result.stderr + result.stdout
 
@@ -76,7 +79,7 @@ class GitVersioning:
         if self.config.versioning_type == "none":
             return 0, "none"
         log_result = subprocess.run(["git", "log", "-1", "--pretty=%B"], cwd=self.project_path, capture_output=True, text=True)
-        if log_result.returncode == 0 and log_result.stdout.strip() == "initial commit":
+        if log_result.returncode == 0 and log_result.stdout.strip() == "Initial commit":
             hash_result = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.project_path, capture_output=True, text=True)
             return hash_result.returncode, hash_result.stdout.strip() if hash_result.returncode == 0 else hash_result.stderr
 
@@ -85,7 +88,7 @@ class GitVersioning:
             return add_result.returncode, add_result.stderr
 
         commit_result = subprocess.run(
-            ["git", "commit", "-m", "initial commit"], cwd=self.project_path, capture_output=True, text=True
+            ["git", "commit", "-m", "Initial commit","--allow-empty"], cwd=self.project_path, capture_output=True, text=True
         )
         if commit_result.returncode != 0:
             return commit_result.returncode, commit_result.stderr
@@ -164,14 +167,14 @@ class GitVersioning:
     def create_branch(self, branch_name):
         if self.config.versioning_type == "none":
             return 0, "none"
-        result = subprocess.run(["git", "checkout", "-b", branch_name], cwd=self.project_path, capture_output=True, text=True)
+        result = subprocess.run(["git", "switch","-c", branch_name], cwd=self.project_path, capture_output=True, text=True)
         return result.returncode, result.stdout if result.returncode == 0 else result.stderr
 
     def switch_branch(self, branch_name):
         if self.config.versioning_type == "none":
             return 0, "none"
         result = subprocess.run(
-            ["git", "checkout", branch_name], cwd=self.project_path, capture_output=True, text=True
+            ["git", "switch", branch_name], cwd=self.project_path, capture_output=True, text=True
         )
         return result.returncode, result.stdout if result.returncode == 0 else result.stderr
 
@@ -199,19 +202,24 @@ class GitVersioning:
         if current_branch[0] == 0 and current_branch[1].strip() == branch_name:
             return 0, "Branch already exists"
         
-        branch_exists = self.check_branch_exists(branch_name)
-        if branch_exists[0] != 0:
-            create_result = self.create_branch(branch_name)
-            if create_result[0] != 0:
-                return create_result
 
         old_branch = self.get_branch()
         if old_branch[0] != 0:
             return old_branch
+        
+        branch_exists = self.check_branch_exists(branch_name)
+        if branch_exists[0] != 0:
+            create_result = self.create_branch(branch_name)
+            print("create branch", create_result)
+            if create_result[0] != 0:
+                return create_result
 
-        checkout_result = self.checkout_branch(branch_name)
-        if checkout_result[0] != 0:
-            return checkout_result
+
+
+        # checkout_result = self.checkout_branch(branch_name)
+        # print("checkout branch", checkout_result)   
+        # if checkout_result[0] != 0:
+        #     return checkout_result
 
         merge_result = self.merge_branch(old_branch[1])
         if merge_result[0] != 0:
@@ -233,7 +241,7 @@ class GitVersioning:
     def checkout_branch(self, branch_name):
         if self.config.versioning_type == "none":
             return 0, "none"
-        result = subprocess.run(["git", "checkout", branch_name], cwd=self.project_path, capture_output=True, text=True)
+        result = subprocess.run(["git", "switch", branch_name], cwd=self.project_path, capture_output=True, text=True)
         if result.returncode == 0:
             self.current_branch = branch_name
         return result.returncode, result.stdout if result.returncode == 0 else result.stderr

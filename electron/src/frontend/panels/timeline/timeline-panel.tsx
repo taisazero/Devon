@@ -79,7 +79,7 @@ const TimelinePanel = ({
                 setSelectedRevertStep(null)
             }
         }
-    }, [commits, checkpointTracker?.selected])
+    }, [commits?.length, checkpointTracker?.selected])
 
     useEffect(() => {
         setShowMinimizedTimeline(hasCommits)

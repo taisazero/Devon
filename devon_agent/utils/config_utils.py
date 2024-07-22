@@ -5,7 +5,10 @@ from devon_agent.config import Checkpoint, Config
 from devon_agent.environments.shell_environment import LocalShellEnvironment
 from devon_agent.environments.user_environment import UserEnvironment
 from devon_agent.versioning.git_versioning import GitVersioning
+import uuid
 
+def get_checkpoint_id() -> str:
+    return str(uuid.uuid4())[:8]
 
 def hydrate_config(config: Dict, input_func):
     if "environments" in config:
@@ -27,6 +30,6 @@ def make_checkpoint(
         commit_hash="no_commit" if not (success == 0) else message,
         agent_history=config.agent_configs[0].chat_history,
         event_id=event_id,
-        checkpoint_id=len(config.checkpoints),
+        checkpoint_id=get_checkpoint_id(),
         state=json.loads(json.dumps(config.state)),
     )

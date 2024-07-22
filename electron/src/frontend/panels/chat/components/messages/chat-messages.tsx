@@ -1,4 +1,11 @@
-import React, { useRef, useCallback, useEffect, useState, useMemo } from 'react'
+import React, {
+    useRef,
+    useCallback,
+    useEffect,
+    useLayoutEffect,
+    useState,
+    useMemo,
+} from 'react'
 import {
     UserMessage,
     BotMessage,
@@ -11,119 +18,108 @@ import {
 import { NotebookPen } from 'lucide-react'
 import type { Message } from '@/lib/types'
 import { useScrollAnchor } from '../../lib/hooks/chat.use-scroll-anchor'
+import { cn } from '@/lib/utils'
 
-export interface ChatMessagesProps {
+interface ScrollPoint {
+    hash: string
+    index: number
+}
+
+interface ChatMessagesProps {
     messages: Message[]
     spinning: boolean
     paused: boolean
-    scrollToCheckpointNumber?: number
-    onScrollComplete?: () => void
+    setCheckpointTracker: (value: string) => void
+    checkpointTracker: string
 }
 
-const ChatMessages = React.memo(
-    ({
-        messages,
-        spinning,
-        paused,
-        scrollToCheckpointNumber,
-        onScrollComplete,
-    }: ChatMessagesProps) => {
-        console.log('Rerender')
-        const messageRefs = useRef<Map<number, HTMLDivElement>>(new Map())
-        const [isScrolling, setIsScrolling] = useState(false)
-        const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-        const { scrollRef, isAtBottom, scrollToBottom } = useScrollAnchor()
+const ChatMessages: React.FC<ChatMessagesProps> = ({
+    messages,
+    spinning,
+    paused,
+    setCheckpointTracker,
+    checkpointTracker,
+}) => {
+    const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+    const [scrollToCheckpointHash, setScrollToCheckpointHash] = useState<
+        ScrollPoint | undefined
+    >(undefined)
+    const prevCheckpointIdRef = useRef<string | undefined>(undefined)
 
-        useEffect(() => {
-            if (!spinning && isAtBottom) {
-                scrollToBottom()
+    const scrollToMessage = useCallback((checkpointHash: string) => {
+        const messageElement = messageRefs.current.get(checkpointHash)
+        if (messageElement) {
+            messageElement.scrollIntoView({
+                behavior: 'instant',
+                block: 'start',
+            })
+        }
+    }, [])
+
+    useLayoutEffect(() => {
+        if (
+            checkpointTracker
+            // && checkpointTracker !== prevCheckpointIdRef.current
+        ) {
+            const index = messages.findIndex(
+                message =>
+                    message.type === 'checkpoint' &&
+                    message.text === checkpointTracker
+            )
+            scrollToMessage(checkpointTracker)
+            setScrollToCheckpointHash({ hash: checkpointTracker, index })
+
+            prevCheckpointIdRef.current = checkpointTracker
+        } else {
+            if (!checkpointTracker) {
+                setScrollToCheckpointHash(undefined)
             }
-        }, [spinning, isAtBottom, scrollToBottom])
+        }
+    }, [checkpointTracker, messages, scrollToMessage])
 
-        const scrollToMessage = useCallback(
-            (checkpointNumber: number) => {
-                const messageElement = messageRefs.current.get(checkpointNumber)
-                if (messageElement && !isScrolling) {
-                    setIsScrolling(true)
-
-                    messageElement.scrollIntoView({
-                        behavior: 'instant',
-                        // behavior: 'smooth', // Not working rn, I think due to rerenders it stops scrolling prematurely
-                        block: 'start',
-                    })
-
-                    if (scrollTimeoutRef.current) {
-                        clearTimeout(scrollTimeoutRef.current)
-                    }
-
-                    scrollTimeoutRef.current = setTimeout(() => {
-                        setIsScrolling(false)
-                        onScrollComplete?.()
-                    }, 100)
-                }
-            },
-            [isScrolling, onScrollComplete]
-        )
-
-        useEffect(() => {
-            if (scrollToCheckpointNumber !== undefined && !isScrolling) {
-                console.log(scrollToCheckpointNumber)
-                scrollToMessage(scrollToCheckpointNumber)
-            }
-        }, [scrollToCheckpointNumber, isScrolling])
-
-        useEffect(() => {
-            return () => {
-                if (scrollTimeoutRef.current) {
-                    clearTimeout(scrollTimeoutRef.current)
-                }
-            }
-        }, [])
-
-        const memoizedMessages = useMemo(() => {
-            return messages.map((message, index) => (
+    return (
+        <div className="relative px-6 mt-6">
+            {messages.map((message, index) => (
                 <MemoizedDisplayedChatMessage
                     key={`${index}-${message.type}-${message.text}`}
                     message={message}
+                    className={
+                        scrollToCheckpointHash?.index !== undefined &&
+                        index > scrollToCheckpointHash.index
+                            ? 'animate-pulse3'
+                            : ''
+                    }
                     index={index}
                     setRef={el => {
                         if (el && message.type === 'checkpoint') {
-                            messageRefs.current.set(
-                                parseInt(message.text) - 1,
-                                el
-                            )
-                        } else if (el && index === 0) {
-                            messageRefs.current.set(index, el)
+                            messageRefs.current.set(message.text, el)
                         }
                     }}
                 />
-            ))
-        }, [messages])
-
-        return (
-            <div className="relative px-6 mt-6">
-                {messages && messages.length ? memoizedMessages : null}
-                {spinning && <SpinnerMessage paused={paused} />}
-            </div>
-        )
-    }
-)
-
+            ))}
+            {spinning && <SpinnerMessage paused={paused} />}
+        </div>
+    )
+}
 const MemoizedDisplayedChatMessage = React.memo(
     ({
+        className,
         message,
         index,
         setRef,
     }: {
+        className?: string
         message: Message
         index: number
         setRef: (el: HTMLDivElement | null) => void
     }) => {
         return (
-            <div ref={setRef} className="mb-8">
+            <div ref={setRef} className={cn('mb-8', className)}>
                 {message.type === 'agent' ? (
                     <BotMessage content={message.text} />
-                ) : message.type === 'thought' ? (
+                ) : // ) : message.type === 'checkpoint' ? (
+                //     <p>{message.text}</p>
+                message.type === 'thought' ? (
                     <ThoughtMessage content={message.text} />
                 ) : message.type === 'command' ? (
                     <ChatTypeWrapper type="Command">

@@ -45,7 +45,7 @@ export type Checkpoint = {
     commit_message: string
     agent_history: any[]
     event_id: number
-    checkpoint_id: number
+    checkpoint_id: string
     index: number
 }
 
@@ -66,4 +66,5 @@ export type CheckpointTracker = {
     initial: Checkpoint
     current: Checkpoint
     selected: Checkpoint | null
+    consumeCommitMessage?: string
 }

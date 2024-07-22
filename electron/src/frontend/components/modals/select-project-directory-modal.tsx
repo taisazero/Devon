@@ -83,6 +83,7 @@ const SelectProjectDirectoryModal = ({
             }
         })
     }, [])
+    // }, [open])
 
     function checkIndexExists(s: string) {
         return true

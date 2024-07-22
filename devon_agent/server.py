@@ -354,7 +354,7 @@ def resume_session(session: str):
 
 @app.patch("/sessions/{session}/revert")
 def revert_session(
-    session: str, checkpoint_id: int, background_tasks: fastapi.BackgroundTasks
+    session: str, checkpoint_id: str, background_tasks: fastapi.BackgroundTasks
 ):
     if session not in sessions:
         raise fastapi.HTTPException(status_code=404, detail="Session not found")
@@ -462,7 +462,7 @@ def create_response(session: str, response: str):
 
 @app.get("/sessions/{session}/diff")
 def get_checkpoint_diff(
-    session: str, src_checkpoint_id: int, dest_checkpoint_id: int
+    session: str, src_checkpoint_id: str, dest_checkpoint_id: str
 ) -> WholeFileDiffResults:
     if session not in sessions:
         raise fastapi.HTTPException(status_code=404, detail="Session not found")

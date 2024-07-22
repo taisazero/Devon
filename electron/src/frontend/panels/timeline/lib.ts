@@ -1,3 +1,5 @@
+import { SessionMachineContext } from '@/contexts/session-machine-context'
+import { useMemo } from 'react'
 import { atom } from 'jotai'
 import { CheckpointTracker, Checkpoint } from '@/lib/types'
 
@@ -101,3 +103,53 @@ export const exampleSteps: StepType[] = [
         agent_history: [],
     },
 ]
+
+type CheckpointMessage = {
+    type: 'checkpoint'
+    text: string
+}
+
+type UserMessage = {
+    type: 'user'
+    text: string
+}
+
+type Message = CheckpointMessage | UserMessage
+
+export function useCheckpointMessageMappings(): Map<string, string> {
+    const messages = SessionMachineContext.useSelector(
+        state => state.context.serverEventContext.messages
+    )
+
+    const mappings = useMemo(() => {
+        const checkpointMessageMap = new Map<string, string>()
+        let lastCheckpointId: string | null = null
+
+        messages.forEach((message, index) => {
+            if (message.type === 'checkpoint') {
+                const checkpointId = message.text
+                // if (checkpointId === 1) {
+                // This will skip the no_commit checkpoint
+                // return
+                // }
+                lastCheckpointId = checkpointId
+            } else if (message.type === 'user' && lastCheckpointId !== null) {
+                // Find the next 'user' message after this checkpoint
+                const nextUserMessage = messages
+                    .slice(index)
+                    .find(m => m.type === 'user')
+                if (nextUserMessage) {
+                    checkpointMessageMap.set(
+                        lastCheckpointId,
+                        nextUserMessage.text
+                    )
+                }
+                lastCheckpointId = null // Reset after processing
+            }
+        })
+
+        return checkpointMessageMap
+    }, [messages])
+
+    return mappings
+}
