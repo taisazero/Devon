@@ -25,14 +25,12 @@ const ChatInputField = ({
     viewOnly,
     eventContext,
     loading,
-    sessionId,
 }: {
     isAtBottom: boolean
     scrollToBottom: () => void
     viewOnly: boolean
     eventContext: any
     loading: boolean
-    sessionId: string
 }) => {
     const [focused, setFocused] = useState(false)
     const { formRef, onKeyDown } = useEnterSubmit()

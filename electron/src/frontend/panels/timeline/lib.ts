@@ -116,22 +116,22 @@ type UserMessage = {
 
 type Message = CheckpointMessage | UserMessage
 
-export function useCheckpointMessageMappings(): Map<number, string> {
+export function useCheckpointMessageMappings(): Map<string, string> {
     const messages = SessionMachineContext.useSelector(
         state => state.context.serverEventContext.messages
     )
 
     const mappings = useMemo(() => {
-        const checkpointMessageMap = new Map<number, string>()
-        let lastCheckpointId: number | null = null
+        const checkpointMessageMap = new Map<string, string>()
+        let lastCheckpointId: string | null = null
 
         messages.forEach((message, index) => {
             if (message.type === 'checkpoint') {
-                const checkpointId = parseInt(message.text)
-                if (checkpointId === 1) {
-                    // This will skip the no_commit checkpoint
-                    return
-                }
+                const checkpointId = message.text
+                // if (checkpointId === 1) {
+                // This will skip the no_commit checkpoint
+                // return
+                // }
                 lastCheckpointId = checkpointId
             } else if (message.type === 'user' && lastCheckpointId !== null) {
                 // Find the next 'user' message after this checkpoint

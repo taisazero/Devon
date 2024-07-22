@@ -79,6 +79,7 @@ const config: Config = {
             },
             animation: {
                 pulse2: 'pulse2 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                pulse3: 'pulse3 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
                 'pulse-size': 'pulse-size 4s infinite',
                 'pulse-size-lg': 'pulse-size-lg 2s infinite',
                 'accordion-down': 'accordion-down 0.2s ease-out',
@@ -89,6 +90,10 @@ const config: Config = {
                 pulse2: {
                     '0%, 100%': { opacity: '0.5' },
                     '50%': { opacity: '0.2' },
+                },
+                pulse3: {
+                    '0%, 100%': { opacity: '0.7' },
+                    '50%': { opacity: '0.4' },
                 },
                 'pulse-size': {
                     '0%, 100%': { transform: 'scale(1)', opacity: '0.4' },
