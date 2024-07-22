@@ -13,6 +13,8 @@ import { Checkpoint, CheckpointTracker } from '@/lib/types'
 import { exampleSteps, StepType, checkpointTrackerAtom } from './lib'
 import Step from './components/step'
 import MergeBranchModal from '@/components/modals/merge-branch-modal'
+import { Icon } from '@iconify/react'
+import { useToast } from '@/components/ui/use-toast'
 
 const ANIMATE_DEMO = false
 
@@ -30,6 +32,7 @@ const TimelinePanel = ({
     const [selectedRevertStep, setSelectedRevertStep] = useState<number | null>(
         null
     )
+    const { toast } = useToast()
     const [animationKey, setAnimationKey] = useState(0)
     const [mergeBranchModalOpen, setMergeBranchModalOpen] = useState(false)
     const sessionActorRef = SessionMachineContext.useActorRef()
@@ -120,24 +123,53 @@ const TimelinePanel = ({
                     </h2>
                     {versioning_type === 'git' && (
                         <TooltipProvider delayDuration={100}>
-                            <Tooltip>
-                                <TooltipTrigger>
-                                    <div className="flex items-center">
-                                        <code className="flex gap-2 bg-black px-[6px] py-[1px] rounded-md text-primary text-opacity-100 text-[0.9rem]">
-                                            <GitBranch
-                                                size={16}
-                                                className="text-primary"
-                                            />
-                                            {isString(old_branch)
-                                                ? old_branch
-                                                : '(name not found)'}
-                                        </code>
-                                    </div>
-                                </TooltipTrigger>
-                                <TooltipContent side="right" align="end">
-                                    <p>Source branch</p>
-                                </TooltipContent>
-                            </Tooltip>
+                            <div className="flex flex-col align-end gap-[5px] mt-[1px]">
+                                <Tooltip>
+                                    <TooltipTrigger
+                                        className="self-end"
+                                        onClick={() =>
+                                            toast({
+                                                title: 'This is the branch that Devon branched off of',
+                                            })
+                                        }
+                                    >
+                                        <div className="flex items-center">
+                                            <code className="flex gap-2 bg-black px-[6px] py-[3px] rounded-md text-neutral-500 text-[0.8rem] whitespace-nowrap overflow-hidden">
+                                                <Icon
+                                                    icon="bx:git-branch"
+                                                    className="h-[16px] w-[16px]"
+                                                />
+                                                {isString(old_branch)
+                                                    ? old_branch
+                                                    : '(name not found)'}
+                                            </code>
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right" align="end">
+                                        <p>Source branch</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                    <TooltipTrigger className="self-end" onClick={() =>
+                                            toast({
+                                                title: 'Devon pushes commits to this branch while working',
+                                            })
+                                        }>
+                                        <div className="flex items-center">
+                                            <code className="flex gap-2 bg-black px-[6px] py-[3px] rounded-md text-primary text-opacity-100 text-[0.8rem]">
+                                                <Icon
+                                                    icon="bx:git-branch"
+                                                    className="h-[16px] w-[16px]"
+                                                />
+                                                devon_agent
+                                            </code>
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right" align="end">
+                                        <p>Current branch</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </div>
                         </TooltipProvider>
                     )}
                 </div>

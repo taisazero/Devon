@@ -8,10 +8,11 @@ import {
     SetStateAction,
     Dispatch,
 } from 'react'
-import SidebarHeader from './sidebar-header'
-import SidebarChatLogs from './sidebar-chat-logs'
+// import SidebarHeader from './sidebar-header'
+// import SidebarChatLogs from './sidebar-chat-logs'
 import SidebarItem from './sidebar-item'
 import TimelinePanel from '@/panels/timeline/timeline-panel'
+// import { Icon } from '@iconify/react'
 
 const defaultValue = {
     expanded: true,
@@ -19,7 +20,7 @@ const defaultValue = {
 
 const sidebarItems = [
     {
-        icon: <GitMerge size={22} />,
+        icon: <GitMerge size={22}/>,
         text: '',
         alert: false,
         route: '',

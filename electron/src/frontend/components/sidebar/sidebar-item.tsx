@@ -45,7 +45,7 @@ function SidebarItem({
                     }
                 }}
                 className={`py-2 px-3 ${
-                    active ? 'text-toned-text-color' : 'text-gray-500 hover:text-white transition-colors duration-200'
+                    active && expanded ? 'text-primary' : active ? 'text-toned-text-color' : 'text-gray-500 hover:text-white transition-colors duration-200'
                 }`}
             >
                 {icon}
