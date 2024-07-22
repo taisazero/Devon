@@ -10,7 +10,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { Icon } from '@iconify/react'
 
-
 const GitInitModal = () => {
     const [isOpen, setIsOpen] = useState(false)
     const gitInitMsg = SessionMachineContext.useSelector(
@@ -94,8 +93,6 @@ const GitInitModal = () => {
 
 export default GitInitModal
 
-
-
 const GitAskModal = () => {
     const [isOpen, setIsOpen] = useState(false)
     const gitInitMsg = SessionMachineContext.useSelector(
@@ -143,11 +140,13 @@ const GitAskModal = () => {
             >
                 <DialogHeader>
                     <DialogTitle>
-                        <div className="flex items-center gap-2 whitespace-nowrap">
-                            <Icon
-                                icon="vscode-icons:file-type-git"
-                                className="h-[24px] w-[24px]"
-                            />
+                        <div className="flex items-center gap-2">
+                            <div className="flex-shrink-0 self-start mt-[3px]">
+                                <Icon
+                                    icon="vscode-icons:file-type-git"
+                                    className="h-6 w-6"
+                                />
+                            </div>
                             <h2 className="text-xl font-semibold">
                                 {gitInitMsg}
                             </h2>
