@@ -272,6 +272,7 @@ The user may reference specific snippets or files with @<filename><lineno:lineno
 - Wait for feedback after each command
 - Locating classes and functions is more efficient than locating files 
 - 'no_op' command available to allow for more thinking time 
+- If you get an INTERRUPT, ALWAYS use the tool ask_user
 </CONSTRAINTS>
 <TESTING_TIPS>
 - When writing test code, ALWAYS write tests in a separate folder

@@ -174,7 +174,7 @@ class ConversationalAgent(Agent):
         self.current_model = self._initialize_model()
 
         if self.interrupt:
-            observation = observation + ". also " + self.interrupt
+            observation = observation + ". also " + "YOU HAVE BEEN **INTERRUPTED** :   " + self.interrupt + "   : **INTERRUPTED**"
             self.interrupt = ""
 
         try:
