@@ -1092,6 +1092,17 @@ class Session:
             asyncio.run(_delete_session_util(self.config.name))
 
     def merge(self, commit_message):
+
+        # get current branch
+        rc,current_branch = self.versioning.get_branch()
+        if rc != 0:
+            return False
+        
+        if current_branch[1] != "devon_agent":
+            return False
+        
+
+
         # get last git commit
         for commit in self.config.checkpoints[::-1]:
             if commit.commit_hash != "no_commit":
