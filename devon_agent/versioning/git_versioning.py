@@ -151,8 +151,9 @@ def check_for_changes(path):
 
     return 0, (result_unstaged.stdout, result_staged.stdout, result_untracked.stdout)
 
-def ask_user_permission():
-    pass
+def apply_patch(path, patchfile):
+    result = subprocess.run(["git", "apply", patchfile], cwd=path, capture_output=True, text=True)
+    return result.returncode, result.stdout if result.returncode == 0 else result.stderr
 
 def create_and_switch_branch(path, branch_name):
     # just create branch
@@ -217,6 +218,12 @@ def commit_all_files(path, commit_message, allow_empty=False,prev_untracked_file
 
     return result.returncode, result.stdout if result.returncode == 0 else result.stderr + result.stdout
 
+def get_diff_patch(path, commit_hash_src, commit_hash_dst, format="patch"):
+    format = "-U" if format == "unified" else "-p"
+    print(["git diff "+ format + " " + commit_hash_src + " " + commit_hash_dst],flush=True)
+    result = subprocess.run(["git", "diff", format, commit_hash_src, commit_hash_dst], cwd=path, capture_output=True, text=True)
+
+    return result.returncode, result.stdout if result.returncode == 0 else result.stderr + result.stdout
 
 class GitVersioning:
     def __init__(self, project_path, config : Config):

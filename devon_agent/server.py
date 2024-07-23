@@ -482,12 +482,20 @@ def create_event(session: str, event: ServerEvent):
     if session not in sessions:
         raise fastapi.HTTPException(status_code=404, detail="Session not found")
     print(event)
+
     if event.type == "GitMerge":
-        sessions[session].merge(event.content["commit_message"])
+        merged,message = sessions[session].merge(event.content["commit_message"])
+        sessions[session].event_log.append({
+            "type":"GitMergeResult",
+            "content":{
+                "success":merged,
+                "message":message
+            },
+            "producer":event.producer,
+            "consumer":event.consumer
+        })
         return event
-    if event.type == "GitEvent":
-        if event.content["type"] == "revert":
-            session_buffers[session] = "ignore"
+    
     sessions[session].event_log.append(event.model_dump())
     return event
 
