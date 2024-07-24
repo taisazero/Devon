@@ -99,9 +99,7 @@ const SelectProjectDirectoryModal = ({
     }, [savedFolderPath])
 
     useEffect(() => {
-        if (savedFolderPath) {
-            setFolderPath(savedFolderPath)
-        } else if (folderPath) {
+        if (folderPath) {
             // checkIndexExists(folderPath).then(exists => {
             //     setIndexExists(exists)
             //     setShouldIndex(exists) // If index exists, default to using it
@@ -110,7 +108,7 @@ const SelectProjectDirectoryModal = ({
             setIndexExists(found)
             setShouldIndex(found)
         }
-    }, [folderPath, savedFolderPath])
+    }, [folderPath])
 
     const handleIndexCheckboxChange = (checked: boolean) => {
         setShouldIndex(checked)
