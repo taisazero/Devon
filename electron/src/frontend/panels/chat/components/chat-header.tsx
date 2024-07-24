@@ -11,7 +11,6 @@ import {
 import SettingsModal from '@/components/modals/settings-modal'
 import IndexesModal from '@/components/modals/indexes-modal'
 import { useSessionConfig } from '@/lib/services/sessionService/sessionService'
-import { models } from '@/lib/config'
 import { ICodeSnippet } from '@/panels/chat/components/ui/code-snippet'
 import { useAtom } from 'jotai'
 import { selectedCodeSnippetAtom } from '@/panels/editor/components/code-editor'
@@ -54,9 +53,10 @@ export default function ChatHeader({
         // sessionActorRef.send({ type: 'session.indexes' })
     }
 
-    const model = config?.model
-        ? models.filter(model => model.id === config.model)[0].name
-        : null
+    // const model = config?.model
+    //     ? models.filter(model => model.id === config.model)[0]?.name
+    //     : null
+    const model = ''
     const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
     return (
