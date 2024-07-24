@@ -23,6 +23,10 @@ class Checkpoint(BaseModel):
     event_id: int
     checkpoint_id: str
     state: Any
+    merged_commit: Optional[str] = None
+    author: Optional[Literal["user", "agent"]] = None
+    src_branch: Optional[str] = None
+
 
 class Config(BaseModel):
     name: str

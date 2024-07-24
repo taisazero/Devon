@@ -10,7 +10,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { Icon } from '@iconify/react'
 
-
 const GitInitModal = () => {
     const [isOpen, setIsOpen] = useState(false)
     const gitInitMsg = SessionMachineContext.useSelector(
@@ -93,3 +92,227 @@ const GitInitModal = () => {
 }
 
 export default GitInitModal
+
+const GitAskModal = () => {
+    const [isOpen, setIsOpen] = useState(false)
+    const gitInitMsg = SessionMachineContext.useSelector(
+        state => state.context.serverEventContext.gitMessage
+    )
+    const sessionActorRef = SessionMachineContext.useActorRef()
+
+    useEffect(() => {
+        if (gitInitMsg) {
+            setIsOpen(true)
+        }
+    }, [gitInitMsg])
+
+    const handleYes = () => {
+        sessionActorRef.send({
+            type: 'session.sendEvent',
+            params: {
+                serverEventType: 'GitResolve',
+                content: { action: 'yes' },
+            },
+        })
+        setIsOpen(false)
+    }
+
+    const handleNo = () => {
+        sessionActorRef.send({
+            type: 'session.sendEvent',
+            params: {
+                serverEventType: 'GitResolve',
+                content: { action: 'no' },
+            },
+        })
+        setIsOpen(false)
+    }
+
+    if (!gitInitMsg) {
+        return null
+    }
+
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogContent
+                hideclose={true.toString()}
+                className="sm:max-w-[425px] pb-4"
+            >
+                <DialogHeader>
+                    <DialogTitle>
+                        <div className="flex items-center gap-2">
+                            <div className="flex-shrink-0 self-start mt-[3px]">
+                                <Icon
+                                    icon="vscode-icons:file-type-git"
+                                    className="h-6 w-6"
+                                />
+                            </div>
+                            <h2 className="text-xl font-semibold">
+                                {gitInitMsg}
+                            </h2>
+                        </div>
+                    </DialogTitle>
+                </DialogHeader>
+                <div className="flex flex-col gap-4 mt-1">
+                    <p className="text-sm">{gitInitMsg}</p>
+                    <div className="flex flex-col gap-3 mt-2">
+                        <Button
+                            className="w-full py-2 rounded transition-colors"
+                            onClick={handleYes}
+                        >
+                            Yes
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            className="w-full rounded transition-colors text-gray-500 hover:text-red-500 hover:border-2 hover:bg-transparent hover:border-red-500"
+                            onClick={handleNo}
+                        >
+                            No
+                        </Button>
+                    </div>
+                </div>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
+export { GitAskModal }
+
+
+const GitCorruptedModal = () => {
+    const [isOpen, setIsOpen] = useState(false)
+    const gitCorrupted = SessionMachineContext.useSelector(
+        state => state.context.serverEventContext.gitCorrupted
+    )
+    const sessionActorRef = SessionMachineContext.useActorRef()
+
+    useEffect(() => {
+        if (gitCorrupted) {
+            setIsOpen(true)
+        }
+    }, [gitCorrupted])
+
+    const handleOk = () => {
+        sessionActorRef.send({
+            type: 'session.sendEvent',
+            params: {
+                serverEventType: 'GitCorruptedResolved',
+                content: { action: 'yes' },
+            },
+        })
+        sessionActorRef.send({
+            type: 'session.reset',
+        })
+        setIsOpen(false)
+    }
+
+    if (!gitCorrupted) {
+        return null
+    }
+
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogContent
+                hideclose={true.toString()}
+                className="sm:max-w-[425px] pb-4"
+            >
+                <DialogHeader>
+                    <DialogTitle>
+                        <div className="flex items-center gap-2">
+                            <div className="flex-shrink-0 self-start mt-[3px]">
+                                <Icon
+                                    icon="vscode-icons:file-type-git"
+                                    className="h-6 w-6"
+                                />
+                            </div>
+                            <h2 className="text-xl font-semibold">
+                                Session corrupted
+                            </h2>
+                        </div>
+                    </DialogTitle>
+                </DialogHeader>
+                <div className="flex flex-col gap-4 mt-1">
+                    <p className="text-sm">Your old session git versioning seems to be curropted. Devon will start a new session.</p>
+                    <div className="flex flex-col gap-3 mt-2">
+                        <Button
+                            className="w-full py-2 rounded transition-colors"
+                            onClick={handleOk}
+                        >
+                            Ok
+                        </Button>
+                    </div>
+                </div>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
+export { GitCorruptedModal }
+
+
+const GitMergeResultModal = () => {
+    const [isOpen, setIsOpen] = useState(false)
+    const gitMergeResult = SessionMachineContext.useSelector(
+        state => state.context.serverEventContext.gitMergeResult
+    )
+    const sessionActorRef = SessionMachineContext.useActorRef()
+
+    useEffect(() => {
+        if (gitMergeResult) {
+            setIsOpen(true)
+        }
+    }, [gitMergeResult])
+
+    const handleOk = () => {
+        sessionActorRef.send({
+            type: 'session.sendEvent',
+            params: {
+                serverEventType: 'GitMergeResolve',
+                content : {}
+            },
+        })
+        setIsOpen(false)
+    }
+
+    if (!gitMergeResult) {
+        return null
+    }
+
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogContent
+                hideclose={true.toString()}
+                className="sm:max-w-[425px] pb-4"
+            >
+                <DialogHeader>
+                    <DialogTitle>
+                        <div className="flex items-center gap-2">
+                            <div className="flex-shrink-0 self-start mt-[3px]">
+                                <Icon
+                                    icon="vscode-icons:file-type-git"
+                                    className="h-6 w-6"
+                                />
+                            </div>
+                            <h2 className="text-xl font-semibold">
+                                Merge Failed
+                            </h2>
+                        </div>
+                    </DialogTitle>
+                </DialogHeader>
+                <div className="flex flex-col gap-4 mt-1">
+                    <p className="text-sm">Unable to merge. {gitMergeResult.message}</p>
+                    <div className="flex flex-col gap-3 mt-2">
+                        <Button
+                            className="w-full py-2 rounded transition-colors"
+                            onClick={handleOk}
+                        >
+                            Ok
+                        </Button>
+                    </div>
+                </div>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
+export { GitMergeResultModal }

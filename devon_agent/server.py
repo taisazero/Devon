@@ -287,7 +287,7 @@ def create_session(
 
     sessions[session].init_state()
     sessions[session].setup()
-    background_tasks.add_task(sessions[session].run_event_loop)
+    background_tasks.add_task(sessions[session].run_event_loop,action="new")
     running_sessions.append(session)
 
     return session
@@ -333,7 +333,7 @@ def start_session(
     session_obj.config.agent_configs[0].api_key = api_key
     if session not in running_sessions:
         session_obj.setup()
-        background_tasks.add_task(sessions[session].run_event_loop)
+        background_tasks.add_task(sessions[session].run_event_loop,action="load")
         running_sessions.append(session)
 
     if not session_obj:
@@ -364,7 +364,7 @@ def revert_session(
     sessions[session].terminate()
     sessions[session].revert(checkpoint_id)
     sessions[session].pause()
-    background_tasks.add_task(sessions[session].run_event_loop, revert=True)
+    background_tasks.add_task(sessions[session].run_event_loop, revert=True,action="revert")
     return session
 
 
@@ -396,18 +396,26 @@ def terminate(session: str):
 
 @app.patch("/sessions/{session}/reset")
 def reset_session(session: str, background_tasks: fastapi.BackgroundTasks):
+    print("resetting session1",flush=True)
     if session not in sessions:
         raise fastapi.HTTPException(status_code=404, detail="Session not found")
 
     if not (session_obj := sessions.get(session)):
         raise fastapi.HTTPException(status_code=404, detail="Session not found")
+    print("resetting session2",flush=True)
     session_buffers[session] = "terminate"
+    print("resetting session3",flush=True)
     session_obj.terminate()
+    print("resetting session4",flush=True)
     session_obj.init_state([])
+    print("resetting session5",flush=True)
     session_obj.setup()
+    print("resetting session6",flush=True)
     if session in session_buffers:
         del session_buffers[session]
-    background_tasks.add_task(session_obj.run_event_loop)
+    print("resetting session7",flush=True)
+    background_tasks.add_task(session_obj.run_event_loop,action="reset")
+    print("resetting session8",flush=True)
 
     return session
 
@@ -482,12 +490,20 @@ def create_event(session: str, event: ServerEvent):
     if session not in sessions:
         raise fastapi.HTTPException(status_code=404, detail="Session not found")
     print(event)
+
     if event.type == "GitMerge":
-        sessions[session].merge(event.content["commit_message"])
+        merged,message = sessions[session].merge(event.content["commit_message"])
+        sessions[session].event_log.append({
+            "type":"GitMergeResult",
+            "content":{
+                "success":merged,
+                "message":message
+            },
+            "producer":event.producer,
+            "consumer":event.consumer
+        })
         return event
-    if event.type == "GitEvent":
-        if event.content["type"] == "revert":
-            session_buffers[session] = "ignore"
+    
     sessions[session].event_log.append(event.model_dump())
     return event
 
