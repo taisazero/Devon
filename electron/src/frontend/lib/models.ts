@@ -44,7 +44,7 @@ const customOption = {
 async function getSavedModels(): Promise<Model[]> {
     const res = await window.api.invoke('get-user-setting', 'models')
     if (res.success) {
-        return res.data.map((model: string) => JSON.parse(model))
+        return res.data
     }
     return []
 }
@@ -52,12 +52,38 @@ async function getSavedModels(): Promise<Model[]> {
 export async function addModel(model: Model): Promise<void> {
     const data = {
         setting: 'models',
-        value: JSON.stringify({
+        value: {
             ...model,
             isCustom: true,
-        }),
+        },
     }
     await window.api.invoke('set-user-setting', data)
+}
+
+export async function removeModel(model: Model): Promise<void> {
+    try {
+        // Get the current models
+        const res = await getSavedModels()
+
+        let currentModels: Model[] = res || []
+
+        // Filter out the model to be removed
+        const updatedModels = currentModels.filter(
+            (existingModel: Model) => existingModel.id !== model.id
+        )
+        // Save the updated models array
+        const data = {
+            setting: 'models',
+            value: updatedModels,
+        }
+        const updateRes = await window.api.invoke('set-user-setting', data)
+        if (!updateRes.success) {
+            throw new Error('Failed to update models')
+        }
+    } catch (error) {
+        console.error('Error removing model:', error)
+        throw error
+    }
 }
 
 export async function getAllModels(): Promise<Model[]> {
@@ -65,17 +91,20 @@ export async function getAllModels(): Promise<Model[]> {
 
     // Combine default models with saved models, giving priority to saved models
     const allModels = [...defaultModels]
-
-    savedModels.forEach(savedModel => {
-        const index = allModels.findIndex(model => model.id === savedModel.id)
-        if (index !== -1) {
-            // Replace the default model with the saved one
-            allModels[index] = savedModel
-        } else {
-            // Add the new saved model
-            allModels.push(savedModel)
-        }
-    })
+    if (savedModels) {
+        savedModels.forEach(savedModel => {
+            const index = allModels.findIndex(
+                model => model.id === savedModel.id
+            )
+            if (index !== -1) {
+                // Replace the default model with the saved one
+                allModels[index] = savedModel
+            } else {
+                // Add the new saved model
+                allModels.push(savedModel)
+            }
+        })
+    }
 
     return allModels
 }
@@ -112,7 +141,6 @@ export const useModels = () => {
                     }))
 
                 setComboboxItems(items)
-                console.log(selectedModel)
                 if (!selectedModel) {
                     if (config?.model) {
                         const selectedModel = items.find(

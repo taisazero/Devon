@@ -30,7 +30,7 @@ import axios from 'axios'
 import { updateSessionConfig } from '@/lib/services/sessionService/sessionService'
 import { savedFolderPathAtom } from '@/lib/utils'
 import { useAtom } from 'jotai'
-import { useModels, addModel } from '@/lib/models'
+import { useModels, addModel, removeModel } from '@/lib/models'
 
 const SettingsModal = ({
     trigger,
@@ -106,8 +106,8 @@ const General = ({
         value: null,
     })
     const [hasClickedQuestion, setHasClickedQuestion] = useState(false)
-    const [savedFolderPath, setSavedFolderPath] = useAtom(savedFolderPathAtom)
-
+    const [_, setSavedFolderPath] = useAtom(savedFolderPathAtom)
+    const { removeApiKey } = useSafeStorage()
     const clearStorageAndResetSession = () => {
         deleteData()
         toast({ title: 'Storage cleared!' })
@@ -210,6 +210,14 @@ const General = ({
         sessionActorref.send({ type: 'session.delete' })
         setUseModelName(selectedModel.id)
         const _key = fetchApiKey()
+        setOpen(false)
+    }
+
+    function handleDeleteCurrentCustomModel() {
+        if (!selectedModel) return
+        // if (originalModelName === selectedModel.id) {}
+        removeModel(selectedModel)
+        removeApiKey(selectedModel.id, false)
         setOpen(false)
     }
 
@@ -318,6 +326,7 @@ const General = ({
                                 <Button
                                     variant="outline-thin"
                                     className="w-full mt-6"
+                                    onClick={handleDeleteCurrentCustomModel}
                                 >
                                     Delete this model
                                 </Button>

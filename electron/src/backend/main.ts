@@ -655,7 +655,14 @@ ipcMain.handle('set-user-setting', async (event, setting) => {
                 ...existing,
                 [setting.key]: setting.value.toString(),
             })
+        } else if (Array.isArray(setting.value)) {
+            // Replace the entire array if setting.value is an array
+            await settings.set(setting.setting, setting.value)
         } else {
+            // Append to existing array if setting.value is not an array
+            if (!res) {
+                await settings.set(setting.setting, [setting.value])
+            }
             await settings.set(setting.setting, [...existing, setting.value])
         }
         return { success: true }
