@@ -52,6 +52,7 @@ type ServerEvent = {
         | 'GitAskUser'
         | 'GitCorrupted'
         | 'GitCorruptedResolved'
+        | 'GitMergeResult'
     content: any
     identifier: string | null
 }
@@ -76,7 +77,10 @@ type ServerEventContext = {
     gitInit: string | null
     gitMessage: string | null
     gitCorrupted: boolean
-    
+    gitMergeResult: {
+        success: boolean
+        message: string
+    } | null
 }
 
 export const eventHandlingLogic = fromTransition(
@@ -97,6 +101,7 @@ export const eventHandlingLogic = fromTransition(
                     },
                     gitMessage: null,
                     gitCorrupted: false,
+                    gitMergeResult: null,
                 }
             }
             case 'Stop': {
@@ -301,6 +306,18 @@ export const eventHandlingLogic = fromTransition(
                     gitCorrupted: false,
                 }
             }
+            case 'GitMergeResult': {
+                return {
+                    ...state,
+                    gitMergeResult: event.content,
+                }
+            }
+            case 'GitMergeResolve': {
+                return {
+                    ...state,
+                    gitMergeResult: null,
+                }
+            }
             default: {
                 return state
             }
@@ -319,6 +336,7 @@ export const eventHandlingLogic = fromTransition(
         gitError: null,
         gitInit: null,
         gitMessage: null,
+        gitMergeResult: null,
         gitCorrupted: false,
     }
 )
@@ -655,9 +673,13 @@ export const newSessionMachine = setup({
                 base_commit: null,
                 commits: [],
             },
+            gitMergeResult: null,
+            gitMessage: null,
+            gitError: null,
+            gitInit: null,
+            gitCorrupted: false,
         },
         healthcheckRetry: 0,
-        gitMessage: null,
     }),
     invoke: [
         {

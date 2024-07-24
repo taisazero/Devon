@@ -11,7 +11,7 @@ import {
 import EditorPanel from '@/panels/editor/editor-panel'
 import { SessionMachineContext } from '@/contexts/session-machine-context'
 import GitErrorModal from '@/components/modals/git-error-modal'
-import GitInitModal, { GitAskModal, GitCorruptedModal } from '@/components/modals/git-init-modal'
+import GitInitModal, { GitAskModal, GitCorruptedModal, GitMergeResultModal } from '@/components/modals/git-init-modal'
 import Sidebar from '@/components/sidebar/sidebar'
 
 export default function Landing({
@@ -122,6 +122,7 @@ export default function Landing({
             <GitInitModal />
             <GitAskModal />
             <GitCorruptedModal />
+            <GitMergeResultModal />
 
             {smHealthCheckDone && !modelName && (
                 <OnboardingModal
