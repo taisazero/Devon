@@ -396,18 +396,26 @@ def terminate(session: str):
 
 @app.patch("/sessions/{session}/reset")
 def reset_session(session: str, background_tasks: fastapi.BackgroundTasks):
+    print("resetting session1",flush=True)
     if session not in sessions:
         raise fastapi.HTTPException(status_code=404, detail="Session not found")
 
     if not (session_obj := sessions.get(session)):
         raise fastapi.HTTPException(status_code=404, detail="Session not found")
+    print("resetting session2",flush=True)
     session_buffers[session] = "terminate"
+    print("resetting session3",flush=True)
     session_obj.terminate()
+    print("resetting session4",flush=True)
     session_obj.init_state([])
+    print("resetting session5",flush=True)
     session_obj.setup()
+    print("resetting session6",flush=True)
     if session in session_buffers:
         del session_buffers[session]
+    print("resetting session7",flush=True)
     background_tasks.add_task(session_obj.run_event_loop,action="reset")
+    print("resetting session8",flush=True)
 
     return session
 

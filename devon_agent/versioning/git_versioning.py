@@ -90,6 +90,13 @@ from devon_agent.config import Config
 # S : Agent Branch -> checkout_user_branch -> merge_init_commit -> git reset --soft 
 # S : User Branch -> Done
 
+# ## Reset Session ##
+# remove all commits made after last session
+# S: Agent Branch -> TearDown Session -> S: User Branch
+# S: User Branch -> delete_branch agent_branch -> ## Create New Session ##
+# S: Third Branch -> Error
+
+
 
 
 
@@ -130,6 +137,11 @@ def get_current_branch(path):
     result = subprocess.run(["git", "branch", "--show-current"], cwd=path, capture_output=True, text=True)
     return result.returncode, result.stdout.strip() if result.returncode == 0 else result.stderr + result.stdout
 
+def cherry_pick_commit(path, commit_hash):
+    result = subprocess.run(["git", "cherry-pick", commit_hash], cwd=path, capture_output=True, text=True)
+
+    return result.returncode, result.stdout if result.returncode == 0 else result.stderr + result.stdout
+
 def check_for_changes(path):
     # check if there are unstaged changes
     result_unstaged = subprocess.run(["git", "diff", "--name-status"], cwd=path, capture_output=True, text=True)
@@ -152,7 +164,7 @@ def check_for_changes(path):
     return 0, (result_unstaged.stdout, result_staged.stdout, result_untracked.stdout)
 
 def apply_patch(path, patchfile):
-    result = subprocess.run(["git", "apply", patchfile], cwd=path, capture_output=True, text=True)
+    result = subprocess.run(["git", "apply", "--allow-empty", patchfile], cwd=path, capture_output=True, text=True)
     return result.returncode, result.stdout if result.returncode == 0 else result.stderr
 
 def create_and_switch_branch(path, branch_name):
@@ -186,6 +198,10 @@ def checkout_branch(path, branch_name):
 def merge_branch(path, branch_name):
     # merge user branch into agent branch
     result = subprocess.run(["git", "merge", branch_name], cwd=path, capture_output=True, text=True)
+    return result.returncode, result.stdout if result.returncode == 0 else result.stderr + result.stdout
+
+def git_reset_soft(path, commit_hash):
+    result = subprocess.run(["git", "reset", "--soft", commit_hash], cwd=path, capture_output=True, text=True)
     return result.returncode, result.stdout if result.returncode == 0 else result.stderr + result.stdout
 
 def commit_all_files(path, commit_message, allow_empty=False,prev_untracked_files=[]):

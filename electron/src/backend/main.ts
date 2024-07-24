@@ -376,6 +376,7 @@ let asyncOperationDone = false
 async function asyncOperation() {
     await axios.get(`http://localhost:${use_port}/sessions/UI/teardown`)
     await new Promise(resolve => setTimeout(resolve, 2000))
+    console.log("async complete")
 }
 
 app.on('window-all-closed', async (e: { preventDefault: () => void }) => {

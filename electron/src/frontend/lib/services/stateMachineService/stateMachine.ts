@@ -50,6 +50,8 @@ type ServerEvent = {
         | 'GitInit'
         | 'Checkpoint'
         | 'GitAskUser'
+        | 'GitCorrupted'
+        | 'GitCorruptedResolved'
     content: any
     identifier: string | null
 }
@@ -73,6 +75,8 @@ type ServerEventContext = {
     gitError: string | null
     gitInit: string | null
     gitMessage: string | null
+    gitCorrupted: boolean
+    
 }
 
 export const eventHandlingLogic = fromTransition(
@@ -91,7 +95,8 @@ export const eventHandlingLogic = fromTransition(
                         base_commit: null,
                         commits: [],
                     },
-                    gitMessage: null
+                    gitMessage: null,
+                    gitCorrupted: false,
                 }
             }
             case 'Stop': {
@@ -284,6 +289,18 @@ export const eventHandlingLogic = fromTransition(
                     gitInit: event.content ?? null,
                 }
             }
+            case 'GitCorrupted': {
+                return {
+                    ...state,
+                    gitCorrupted: true,
+                }
+            }
+            case 'GitCorruptedResolved': {
+                return {
+                    ...state,
+                    gitCorrupted: false,
+                }
+            }
             default: {
                 return state
             }
@@ -301,7 +318,8 @@ export const eventHandlingLogic = fromTransition(
         },
         gitError: null,
         gitInit: null,
-        gitMessage: null
+        gitMessage: null,
+        gitCorrupted: false,
     }
 )
 
