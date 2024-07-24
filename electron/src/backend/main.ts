@@ -649,10 +649,14 @@ ipcMain.handle('set-user-setting', async (event, setting) => {
         // Get existing settings and add to new
         const res = await settings.get(setting.setting)
         const existing = res ?? {}
-        await settings.set(setting.setting, {
-            ...existing,
-            [setting.key]: setting.value.toString(),
-        })
+        if (setting.key) {
+            await settings.set(setting.setting, {
+                ...existing,
+                [setting.key]: setting.value.toString(),
+            })
+        } else {
+            await settings.set(setting.setting, [...existing, setting.value])
+        }
         return { success: true }
     } catch (error) {
         mainLogger.error(
