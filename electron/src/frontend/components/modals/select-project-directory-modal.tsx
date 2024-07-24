@@ -9,6 +9,8 @@ import { newSessionMachine } from '@/lib/services/stateMachineService/stateMachi
 import { useSafeStorage } from '@/lib/services/safeStorageService'
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden'
 import IndexManagementModal from './index-management-modal'
+import { savedFolderPathAtom } from '@/lib/utils'
+import { useAtomValue } from 'jotai'
 
 const Dialog = lazy(() =>
     import('@/components/ui/dialog').then(module => ({
@@ -75,6 +77,7 @@ const SelectProjectDirectoryModal = ({
 
     const { getApiKey } = useSafeStorage()
     const [apiKey, setApiKey] = useState('')
+    const savedFolderPath = useAtomValue(savedFolderPathAtom)
 
     useEffect(() => {
         getApiKey(model).then(value => {
@@ -90,7 +93,15 @@ const SelectProjectDirectoryModal = ({
     }
 
     useEffect(() => {
-        if (folderPath) {
+        if (savedFolderPath) {
+            setFolderPath(savedFolderPath)
+        }
+    }, [savedFolderPath])
+
+    useEffect(() => {
+        if (savedFolderPath) {
+            setFolderPath(savedFolderPath)
+        } else if (folderPath) {
             // checkIndexExists(folderPath).then(exists => {
             //     setIndexExists(exists)
             //     setShouldIndex(exists) // If index exists, default to using it
@@ -99,7 +110,7 @@ const SelectProjectDirectoryModal = ({
             setIndexExists(found)
             setShouldIndex(found)
         }
-    }, [folderPath])
+    }, [folderPath, savedFolderPath])
 
     const handleIndexCheckboxChange = (checked: boolean) => {
         setShouldIndex(checked)
@@ -113,7 +124,6 @@ const SelectProjectDirectoryModal = ({
     }
 
     async function afterSubmit() {
-
         sessionActorref.send({
             type: 'session.create',
             payload: {

@@ -29,6 +29,8 @@ import FolderPicker from '@/components/ui/folder-picker'
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden'
 import axios from 'axios'
 import { updateSessionConfig } from '@/lib/services/sessionService/sessionService'
+import { savedFolderPathAtom } from '@/lib/utils'
+import { useAtom } from 'jotai'
 
 type ExtendedComboboxItem = Model & ComboboxItem & { company: string }
 
@@ -102,6 +104,7 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
         value: null,
     })
     const [hasClickedQuestion, setHasClickedQuestion] = useState(false)
+    const [savedFolderPath, setSavedFolderPath] = useAtom(savedFolderPathAtom)
 
     const clearStorageAndResetSession = () => {
         deleteData()
@@ -164,7 +167,12 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
     }
 
     function handleChangePath() {
-        sessionActorref.send({ type: 'session.delete' })
+        if (folderPath === initialFolderPath.value) {
+            sessionActorref.send({ type: 'session.reset' })
+        } else {
+            setSavedFolderPath(folderPath)
+            sessionActorref.send({ type: 'session.delete' })
+        }
         setOpen(false)
     }
 
@@ -206,6 +214,9 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
                 folderPath={folderPath}
                 setFolderPath={setFolderPath}
                 handleChangePath={handleChangePath}
+                initialFolderPath={initialFolderPath}
+                handleNewChat={handleNewChat}
+
             />
             <Card className="bg-midnight">
                 <CardContent>
@@ -437,10 +448,17 @@ const GeneralSettingsCard = ({
     folderPath,
     setFolderPath,
     handleChangePath,
+    initialFolderPath,
+    // handleNewChat
 }: {
     folderPath: string
     setFolderPath: (path: string) => void
-    handleChangePath: () => void
+    handleChangePath: (path: string) => void
+    initialFolderPath: {
+        loading: boolean
+        value: string
+    }
+    // handleNewChat: () => void
 }) => {
     return (
         <Card className="bg-midnight">
@@ -452,12 +470,11 @@ const GeneralSettingsCard = ({
                     folderPath={folderPath}
                     setFolderPath={setFolderPath}
                     showTitle={false}
-                    customButton={
-                        <Button onClick={handleChangePath}>Change</Button>
-                    }
+                    // customButton={
+                    //     <Button onClick={() => handleChangePath(folderPath)}>Change</Button>
+                    // }
                 />
-                {/* Commenting out for now, just does a refresh instead rn */}
-                {/* {!initialFolderPath.loading && initialFolderPath.value !== folderPath && <Button className="mt-5 w-full" onClick={handleNewChat}>Start new chat</Button>} */}
+                {!initialFolderPath.loading && initialFolderPath.value !== folderPath && <Button className="mt-5 w-full" onClick={handleChangePath}>Start new chat</Button>}
             </CardContent>
         </Card>
     )

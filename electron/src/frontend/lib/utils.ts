@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import { atom } from 'jotai'
 
 export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs))
@@ -44,3 +45,5 @@ export const parseCommand = (content: string) => {
 
     return null // Return null if no command is found
 }
+
+export const savedFolderPathAtom = atom<string | null>(null)
