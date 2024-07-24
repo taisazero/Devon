@@ -81,13 +81,16 @@ def git_error(message: str, event_log: List[Dict]):
         return "resolvedError"
 
 
-def git_ask_user_for_action(message: str, event_log: List[Dict], event_type: str):
+def git_ask_user_for_action(message: str, event_log: List[Dict], event_type: str,options=["Yes","No"]):
     print(f"Git Ask User For Action: {message}", flush=True)
 
     event_log.append(
         {
             "type": "GitAskUser",
-            "content": message,
+            "content": {
+                "message": message,
+                "options": options,
+            },
             "producer": "system",
             "consumer": "user",
         }
@@ -367,9 +370,10 @@ class Session:
 
             if exists:
                 resolve = git_ask_user_for_action(
-                    f"Branch devon_agent already exists. This branch should be deleted as it is now stale. Delete it?",
+                    f"Branch devon_agent already exists. This branch should be deleted as it is now stale. If you want to keep changes, merge devon_agent into your branch. Delete it?",
                     self.event_log,
                     "GitResolve",
+                    ["Yes","No and continue without git"]
                 )
                 if resolve["content"]["action"] == "yes":
                     result = delete_branch(self.config.path, "devon_agent")
@@ -448,7 +452,7 @@ class Session:
                 if result == "resolvedError":
                     return "retry"
 
-            user_branch = self.config.versioning_metadata["user_branch"]
+            user_branch = self.config.versioning_metadata["user_branch"] if self.config.versioning_metadata["user_branch"] else current_branch[1]
             print(self.config.versioning_metadata, current_branch, flush=True)
 
             agent_branch_exists = check_if_branch_exists(
@@ -671,10 +675,10 @@ class Session:
                     return "retry"
                 
 
-            if current_branch[1] == self.config.versioning_metadata["user_branch"]:
+            if current_branch[1] == self.config.versioning_metadata.get("user_branch", None):
                 return "success"
             
-            if current_branch[1] == "devon_agent":
+            if current_branch[1] == "devon_agent" and self.config.versioning_metadata.get("user_branch", None):
                 rc, output = checkout_branch(self.config.path, self.config.versioning_metadata["user_branch"])
                 if rc != 0:
                     result = git_error(
@@ -1273,6 +1277,10 @@ class Session:
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
             temp_file.write(merge_patch[1].encode())
             temp_file.flush()
+
+        if "user_branch" not in self.config.versioning_metadata:
+            self.logger.error("User branch not found")
+            return False,"User branch not found"
 
         if merge_patch[0] == 0:
 

@@ -98,13 +98,19 @@ const GitAskModal = () => {
     const gitInitMsg = SessionMachineContext.useSelector(
         state => state.context.serverEventContext.gitMessage
     )
+    const gitOptions = SessionMachineContext.useSelector(
+        state => state.context.serverEventContext.gitMessage?.options ?? ["Yes","No"]
+    )
+    const gitMessage = SessionMachineContext.useSelector(
+        state => state.context.serverEventContext.gitMessage?.message ?? ""
+    )
     const sessionActorRef = SessionMachineContext.useActorRef()
 
     useEffect(() => {
-        if (gitInitMsg) {
+        if (gitMessage) {
             setIsOpen(true)
         }
-    }, [gitInitMsg])
+    }, [gitMessage])
 
     const handleYes = () => {
         sessionActorRef.send({
@@ -128,9 +134,12 @@ const GitAskModal = () => {
         setIsOpen(false)
     }
 
-    if (!gitInitMsg) {
+    if (!gitMessage) {
         return null
     }
+
+    console.log(gitMessage,)
+
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -148,26 +157,26 @@ const GitAskModal = () => {
                                 />
                             </div>
                             <h2 className="text-xl font-semibold">
-                                {gitInitMsg}
+                                {gitMessage}
                             </h2>
                         </div>
                     </DialogTitle>
                 </DialogHeader>
                 <div className="flex flex-col gap-4 mt-1">
-                    <p className="text-sm">{gitInitMsg}</p>
+                    <p className="text-sm">{gitMessage}</p>
                     <div className="flex flex-col gap-3 mt-2">
                         <Button
                             className="w-full py-2 rounded transition-colors"
                             onClick={handleYes}
                         >
-                            Yes
+                            {gitOptions[0]}
                         </Button>
                         <Button
                             variant="ghost"
                             className="w-full rounded transition-colors text-gray-500 hover:text-red-500 hover:border-2 hover:bg-transparent hover:border-red-500"
                             onClick={handleNo}
                         >
-                            No
+                            {gitOptions[1]}
                         </Button>
                     </div>
                 </div>

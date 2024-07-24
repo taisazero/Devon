@@ -313,9 +313,17 @@ def delete_session(session: str):
         raise fastapi.HTTPException(status_code=404, detail="Session not found")
 
     sessions[session].delete_from_db()
-    del sessions[session]
+
+
+
+
     if session in running_sessions:
+        if session in blocked_sessions:
+            session_buffers[session] = "delete"
+        sessions[session].terminate()
         running_sessions.remove(session)
+
+    del sessions[session]
 
     return session
 
