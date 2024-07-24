@@ -15,6 +15,7 @@ export type Model = {
     comingSoon?: boolean
     apiKeyUrl?: string
     apiBaseUrl?: string
+    isCustom?: boolean
 }
 
 export type Message = {

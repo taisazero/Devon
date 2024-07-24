@@ -14,7 +14,6 @@ import { CircleHelp, Settings, Info } from 'lucide-react'
 import SafeStoragePopoverContent from '@/components/modals/safe-storage-popover-content'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Model, AgentConfig, UpdateConfig } from '@/lib/types'
-import { models } from '@/lib/config'
 import {
     Dialog,
     DialogTrigger,
@@ -29,17 +28,7 @@ import FolderPicker from '@/components/ui/folder-picker'
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden'
 import axios from 'axios'
 import { updateSessionConfig } from '@/lib/services/sessionService/sessionService'
-
-type ExtendedComboboxItem = Model & ComboboxItem & { company: string }
-
-const comboboxItems: ExtendedComboboxItem[] = models
-    .filter(model => !model.comingSoon)
-    .map(model => ({
-        ...model,
-        value: model.id,
-        label: model.name,
-        company: model.company,
-    }))
+import { useModels, addModel } from '@/lib/models'
 
 const SettingsModal = ({
     trigger,
@@ -73,7 +62,9 @@ const SettingsModal = ({
 
 const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
     const { toast } = useToast()
-    const [selectedModel, setSelectedModel] = useState(comboboxItems[0])
+    const { models, comboboxItems, selectedModel, setSelectedModel } =
+        useModels()
+
     // Checking model
     const {
         checkHasEncryptedData,
@@ -90,7 +81,7 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
     const name = SessionMachineContext.useSelector(state => state.context.name)
 
     const [originalModelName, setOriginalModelName] = useState(
-        comboboxItems[0].id
+        selectedModel?.id
     )
     const [modelHasSavedApiKey, setModelHasSavedApiKey] = useState(false)
     const [folderPath, setFolderPath] = useState('')
@@ -136,7 +127,6 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
                             ...foundModel,
                             value: foundModel.id,
                             label: foundModel.name,
-                            company: foundModel.company,
                         }
                         setSelectedModel(extendedComboboxModel)
                         setOriginalModelName(modelName)
@@ -148,11 +138,13 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
     }, [])
 
     const fetchApiKey = useCallback(async () => {
+        if (!selectedModel) return
         const res = await getApiKey(selectedModel.id)
         return res
-    }, [selectedModel.id])
+    }, [selectedModel?.id])
 
     async function handleUseNewModel() {
+        if (!selectedModel) return
         await setUseModelName(selectedModel.id, false)
         setOpen(false)
         const _key: string = await fetchApiKey()
@@ -170,6 +162,7 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
 
     // use this when we implement the change directory button
     function handleNewChat() {
+        if (!selectedModel) return
         async function updateMachine() {
             sessionActorref.send({
                 type: 'session.create',
@@ -214,20 +207,22 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
                             <p className="text-lg font-semibold">
                                 {selectedModel?.id === 'custom'
                                     ? 'Add a custom model:'
-                                    : selectedModel.id !== originalModelName
+                                    : selectedModel?.id !== originalModelName
                                     ? `Set new model: `
                                     : `Current model:`}
                             </p>
                             <div className="flex flex-col">
-                                <Combobox
-                                    items={comboboxItems}
-                                    itemType="model"
-                                    selectedItem={selectedModel}
-                                    setSelectedItem={setSelectedModel}
-                                />
+                                {selectedModel && (
+                                    <Combobox
+                                        items={comboboxItems}
+                                        itemType="model"
+                                        selectedItem={selectedModel}
+                                        setSelectedItem={setSelectedModel}
+                                    />
+                                )}
                             </div>
                         </div>
-                        {selectedModel.value !== 'claude-3-5-sonnet' &&
+                        {selectedModel?.value !== 'claude-3-5-sonnet' &&
                             selectedModel?.id !== 'custom' && (
                                 <span className="text-sm text-green-500 mt-2 flex gap-1 items-center">
                                     <Info className="w-4 h-4" />
@@ -250,7 +245,10 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
                             <div className="flex justify-between w-full">
                                 <div className="flex gap-1 items-center mb-4 w-full">
                                     <p className="text-xl font-bold">
-                                        {`${selectedModel.company} API Key`}
+                                        {`${
+                                            selectedModel?.company ??
+                                            selectedModel?.id
+                                        } API Key`}
                                     </p>
                                     <Popover>
                                         <PopoverTrigger
@@ -263,7 +261,8 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
                                         </PopoverTrigger>
                                         <SafeStoragePopoverContent />
                                     </Popover>
-                                    {hasClickedQuestion && !modelHasSavedApiKey &&
+                                    {hasClickedQuestion &&
+                                        !modelHasSavedApiKey &&
                                         selectedModel?.apiKeyUrl && (
                                             <a
                                                 className="text-primary hover:underline self-end ml-auto cursor-pointer"
@@ -274,18 +273,22 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
                                             </a>
                                         )}
                                 </div>
-                                {selectedModel.id !== originalModelName &&
+                                {selectedModel?.id !== originalModelName &&
                                     modelHasSavedApiKey && (
                                         <Button onClick={handleUseNewModel}>
                                             {'Use this model'}
                                         </Button>
                                     )}
                             </div>
-                            <APIKeyComponent
-                                model={selectedModel}
-                                setModelHasSavedApiKey={setModelHasSavedApiKey}
-                                setOpen={setOpen}
-                            />
+                            {selectedModel && (
+                                <APIKeyComponent
+                                    model={selectedModel}
+                                    setModelHasSavedApiKey={
+                                        setModelHasSavedApiKey
+                                    }
+                                    setOpen={setOpen}
+                                />
+                            )}
                         </>
                     )}
                     {/* <Input
@@ -336,11 +339,15 @@ const APIKeyComponent = ({
     setModelHasSavedApiKey,
     setOpen,
     simple = false,
+    disabled = false,
+    isCustom = false,
 }: {
     model: Model
     setModelHasSavedApiKey: (value: boolean) => void
     setOpen: (value: boolean) => void
     simple?: boolean
+    disabled?: boolean
+    isCustom?: boolean
 }) => {
     const { addApiKey, getApiKey, removeApiKey, setUseModelName } =
         useSafeStorage()
@@ -358,7 +365,6 @@ const APIKeyComponent = ({
         }
         setIsLoading(true)
         const res = await getApiKey(model.id)
-        console.log(model.id, res)
         if (res) {
             setKey(res)
             setIsKeyStored(true)
@@ -384,6 +390,9 @@ const APIKeyComponent = ({
             api_key: key,
             model: model.id,
         }
+        if (isCustom) {
+            addModel(model)
+        }
         setOpen(false)
         setIsSaving(false)
         setIsKeyStored(true)
@@ -406,14 +415,16 @@ const APIKeyComponent = ({
 
     return (
         <div>
-            {!simple && <div className="flex items-center mb-2">
-                <p className="text-lg">{model.name}</p>
-                {model.comingSoon && (
-                    <p className="text-md px-2 text-neutral-500">
-                        (Coming soon!)
-                    </p>
-                )}
-            </div>}
+            {!simple && (
+                <div className="flex items-center mb-2">
+                    <p className="text-lg">{model.name}</p>
+                    {model.comingSoon && (
+                        <p className="text-md px-2 text-neutral-500">
+                            (Coming soon!)
+                        </p>
+                    )}
+                </div>
+            )}
             {isLoading ? (
                 <Skeleton className="h-10 w-full" />
             ) : isKeyStored ? (
@@ -443,7 +454,7 @@ const APIKeyComponent = ({
                     />
                     {key.length > 0 && (
                         <Button
-                            disabled={model.comingSoon || isSaving}
+                            disabled={model.comingSoon || isSaving || disabled}
                             onClick={handleSave}
                         >
                             {/* {isSaving ? 'Saving...' : 'Save'} */}
@@ -684,6 +695,7 @@ const EnterCustomModel = ({
     const [customModel, setCustomModel] = useState<Model>({
         id: '',
         name: '',
+        company: '',
     })
 
     function handleSetCustomModel(field: keyof Model, value: string) {
@@ -696,9 +708,7 @@ const EnterCustomModel = ({
                 <div className="flex items-center mb-2 gap-1">
                     <p className="text-lg">LiteLLM Model</p>
                     <Popover>
-                        <PopoverTrigger
-                            className="ml-[2px]"
-                        >
+                        <PopoverTrigger className="ml-[2px]">
                             <CircleHelp size={14} />
                         </PopoverTrigger>
                         <PopoverContent
@@ -739,7 +749,7 @@ const EnterCustomModel = ({
                 <div className="flex justify-between w-full">
                     <div className="flex gap-1 items-center w-full">
                         <p className="text-lg">
-                            {`${customModel.name} API Key`}
+                            {`${customModel.name ?? customModel.id} API Key`}
                         </p>
                         <Popover>
                             <PopoverTrigger
@@ -757,6 +767,8 @@ const EnterCustomModel = ({
                     setOpen={setOpen}
                     setModelHasSavedApiKey={setModelHasSavedApiKey}
                     simple
+                    disabled={!customModel.id || !customModel.apiBaseUrl}
+                    isCustom
                 />
             </div>
         </div>
