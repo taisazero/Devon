@@ -11,12 +11,12 @@ import {
 import SettingsModal from '@/components/modals/settings-modal'
 import IndexesModal from '@/components/modals/indexes-modal'
 import { useSessionConfig } from '@/lib/services/sessionService/sessionService'
-import { models } from '@/lib/config'
 import { ICodeSnippet } from '@/panels/chat/components/ui/code-snippet'
 import { useAtom } from 'jotai'
 import { selectedCodeSnippetAtom } from '@/panels/editor/components/code-editor'
 import { checkpointTrackerAtom } from '@/panels/timeline/lib'
 import { CheckpointTracker } from '@/lib/types'
+import { useModels } from '@/lib/models'
 
 export default function ChatHeader({
     sessionId,
@@ -29,6 +29,7 @@ export default function ChatHeader({
     const host = SessionMachineContext.useSelector(state => state.context.host)
     const name = SessionMachineContext.useSelector(state => state.context.name)
     const config = useSessionConfig(host, name)
+    const { models } = useModels()
     const [, setSelectedCodeSnippet] = useAtom<ICodeSnippet | null>(
         selectedCodeSnippetAtom
     )
@@ -54,9 +55,7 @@ export default function ChatHeader({
         // sessionActorRef.send({ type: 'session.indexes' })
     }
 
-    const model = config?.model
-        ? models.filter(model => model.id === config.model)[0].name
-        : null
+    const model = config?.model && models ? models.filter(model => model.id === config.model)[0]?.name : null
     const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
     return (
