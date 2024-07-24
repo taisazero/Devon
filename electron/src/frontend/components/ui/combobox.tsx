@@ -65,7 +65,7 @@ const Combobox = ({
                         None found
                     </CommandEmpty>
                     <CommandList>
-                        <CommandGroup>
+                        <CommandGroup className="overflow-y-scroll">
                             {items.map(i => (
                                 <CommandItem
                                     key={i.value}

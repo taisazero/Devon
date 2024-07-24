@@ -64,7 +64,7 @@ const SettingsModal = ({
 
 const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
     const { toast } = useToast()
-    const { models, comboboxItems, selectedModel, setSelectedModel } =
+    const { models, comboboxItems, selectedModel, setSelectedModel, refetchModels } =
         useModels()
 
     // Checking model
@@ -149,6 +149,7 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
     async function handleUseNewModel() {
         if (!selectedModel) return
         await setUseModelName(selectedModel.id, false)
+        refetchModels(true)
         setOpen(false)
         const _key: string = await fetchApiKey()
         const config: UpdateConfig = {
@@ -250,6 +251,7 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
                             sessionActorref={sessionActorref}
                             setOpen={setOpen}
                             setModelHasSavedApiKey={setModelHasSavedApiKey}
+                            refetchModels={refetchModels}
                         />
                     ) : (
                         <>
@@ -257,7 +259,7 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
                                 <div className="flex gap-1 items-center mb-4 w-full">
                                     <p className="text-xl font-bold">
                                         {`${
-                                            selectedModel?.company ??
+                                            selectedModel?.company ? selectedModel?.company :
                                             selectedModel?.id
                                         } API Key`}
                                     </p>
@@ -298,8 +300,10 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
                                         setModelHasSavedApiKey
                                     }
                                     setOpen={setOpen}
+                                    refetchModels={refetchModels}
                                 />
                             )}
+                            {selectedModel && selectedModel.isCustom && <Button variant='outline-thin' className="w-full mt-6">Delete this model</Button>}
                         </>
                     )}
                     {/* <Input
@@ -352,6 +356,7 @@ const APIKeyComponent = ({
     simple = false,
     disabled = false,
     isCustom = false,
+    refetchModels,
 }: {
     model: Model
     setModelHasSavedApiKey: (value: boolean) => void
@@ -359,6 +364,7 @@ const APIKeyComponent = ({
     simple?: boolean
     disabled?: boolean
     isCustom?: boolean
+    refetchModels: () => void
 }) => {
     const { addApiKey, getApiKey, removeApiKey, setUseModelName } =
         useSafeStorage()
@@ -397,6 +403,7 @@ const APIKeyComponent = ({
         await addApiKey(model.id, key, false)
         // Update the model as well
         await setUseModelName(model.id, false)
+        refetchModels(true)
         const config: UpdateConfig = {
             api_key: key,
             model: model.id,
@@ -458,7 +465,7 @@ const APIKeyComponent = ({
                     <Input
                         id={model.id}
                         disabled={model.comingSoon || isSaving}
-                        placeholder={`${model.company ?? 'Model'} API Key`}
+                        placeholder={`${model.company ? model.company : 'Model'} API Key`}
                         type="password"
                         value={key}
                         onChange={e => setKey(e.target.value)}
@@ -701,6 +708,7 @@ const EnterCustomModel = ({
     sessionActorref,
     setOpen,
     setModelHasSavedApiKey,
+    refetchModels
 }: {
     selectedModel: Model
     hasClickedQuestion: boolean
@@ -708,6 +716,7 @@ const EnterCustomModel = ({
     sessionActorref: any
     setOpen: (v: boolean) => void
     setModelHasSavedApiKey: (v: boolean) => void
+    refetchModels: () => void
 }) => {
     const [customModel, setCustomModel] = useState<Model>({
         id: '',
@@ -766,7 +775,7 @@ const EnterCustomModel = ({
                 <div className="flex justify-between w-full">
                     <div className="flex gap-1 items-center w-full">
                         <p className="text-lg">
-                            {`${customModel.name ?? customModel.id} API Key`}
+                            {`${customModel.name ? customModel.name : customModel.id} API Key`}
                         </p>
                         <Popover>
                             <PopoverTrigger
@@ -786,6 +795,7 @@ const EnterCustomModel = ({
                     simple
                     disabled={!customModel.id || !customModel.apiBaseUrl}
                     isCustom
+                    refetchModels={refetchModels}
                 />
             </div>
         </div>

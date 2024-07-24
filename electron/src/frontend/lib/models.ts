@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { ComboboxItem } from '@/components/ui/combobox'
 import { Model } from './types'
 
@@ -81,19 +81,20 @@ export async function getAllModels(): Promise<Model[]> {
 type ExtendedComboboxItem = ComboboxItem & Model
 
 export const useModels = () => {
-    const [comboboxItems, setComboboxItems] = useState<ExtendedComboboxItem[]>(
-        []
-    )
-    const [selectedModel, setSelectedModel] =
-        useState<ExtendedComboboxItem | null>(null)
+    const [comboboxItems, setComboboxItems] = useState<ExtendedComboboxItem[]>([])
+    const [selectedModel, setSelectedModel] = useState<ExtendedComboboxItem | null>(null)
     const [models, setModels] = useState<Model[]>([])
 
-    useEffect(() => {
-        const fetchModels = async () => {
+    const fetchModels = useCallback(async (addDelay: boolean = false) => {
+        try {
+            if (addDelay) {
+                await new Promise(resolve => setTimeout(resolve, 2000))
+            }
             const allModels = await getAllModels()
             setModels(allModels)
-            allModels.push(customOption)
-            const items: ExtendedComboboxItem[] = allModels
+            
+            const modelsWithCustom = [...allModels, customOption]
+            const items: ExtendedComboboxItem[] = modelsWithCustom
                 .filter(model => !model.comingSoon)
                 .map(model => ({
                     ...model,
@@ -102,15 +103,23 @@ export const useModels = () => {
                 }))
 
             setComboboxItems(items)
-            setSelectedModel(items[0]) // Set the first item as default
+            if (!selectedModel) {
+                setSelectedModel(items[0]) // Set the first item as default if none selected
+            }
+        } catch (error) {
+            console.error('Failed to fetch models:', error)
         }
+    }, [selectedModel])
+
+    useEffect(() => {
         fetchModels()
-    }, [])
+    }, [fetchModels])
 
     return {
         models,
         comboboxItems,
         selectedModel,
         setSelectedModel,
+        refetchModels: fetchModels,
     }
 }

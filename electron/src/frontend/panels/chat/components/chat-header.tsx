@@ -54,7 +54,6 @@ export default function ChatHeader({
     async function handleIndexes() {
         // sessionActorRef.send({ type: 'session.indexes' })
     }
-
     const model = config?.model && models ? models.filter(model => model.id === config.model)[0]?.name : null
     const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
