@@ -236,7 +236,6 @@ def commit_all_files(path, commit_message, allow_empty=False,prev_untracked_file
 
 def get_diff_patch(path, commit_hash_src, commit_hash_dst, format="patch"):
     format = "-U" if format == "unified" else "-p"
-    print(["git diff "+ format + " " + commit_hash_src + " " + commit_hash_dst],flush=True)
     result = subprocess.run(["git", "diff", format, commit_hash_src, commit_hash_dst], cwd=path, capture_output=True, text=True)
 
     return result.returncode, result.stdout if result.returncode == 0 else result.stderr + result.stdout

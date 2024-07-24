@@ -15,11 +15,10 @@ from devon_agent.environment import EnvironmentModule
 
 if TYPE_CHECKING:
     pass
-
 def read_with_timeout(container, pid_func, timeout_duration):
     """
     Read data from a subprocess with a timeout.
-    This function uses a file descriptor to read data from the subprocess in a non-blocking way.
+    This function uses file descriptors to read data from the subprocess stdout and stderr in a non-blocking way.
 
     Args:
         container (subprocess.Popen): The subprocess container.
@@ -27,13 +26,15 @@ def read_with_timeout(container, pid_func, timeout_duration):
         timeout_duration (int): The timeout duration in seconds.
 
     Returns:
-        str: The data read from the subprocess, stripped of trailing newline characters.
+        tuple: A tuple containing two strings: (stdout_data, stderr_data), both stripped of trailing newline characters.
 
     Raises:
         TimeoutError: If the timeout duration is reached while reading from the subprocess.
     """
-    buffer = b""
-    fd = container.stdout.fileno()
+    stdout_buffer = b""
+    stderr_buffer = b""
+    stdout_fd = container.stdout.fileno()
+    stderr_fd = container.stderr.fileno()
     end_time = time.time() + timeout_duration
     while time.time() < end_time:
         pids = pid_func()
@@ -41,28 +42,33 @@ def read_with_timeout(container, pid_func, timeout_duration):
             # There are still PIDs running
             time.sleep(0.05)
             continue
-        ready_to_read, _, _ = select.select([fd], [], [], 0.2)
-        if ready_to_read:
-            data = os.read(fd, 4096)
-            if data:
-                buffer += data
-        else:
+        ready_to_read, _, _ = select.select([stdout_fd, stderr_fd], [], [], 0.2)
+        if stdout_fd in ready_to_read:
+            stdout_data = os.read(stdout_fd, 4096)
+            if stdout_data:
+                print(stdout_data.decode())
+                stdout_buffer += stdout_data
+        if stderr_fd in ready_to_read:
+            stderr_data = os.read(stderr_fd, 4096)
+            if stderr_data:
+                print(stderr_data.decode())
+                stderr_buffer += stderr_data
+        if not ready_to_read:
             # No more data to read
             break
         time.sleep(0.05)  # Prevents CPU hogging
 
     if container.poll() is not None:
         raise RuntimeError(
-            "Subprocess exited unexpectedly.\nCurrent buffer: {}".format(
-                buffer.decode()
+            "Subprocess exited unexpectedly.\nCurrent stdout buffer: {}\nCurrent stderr buffer: {}".format(
+                stdout_buffer.decode(), stderr_buffer.decode()
             )
         )
     if time.time() >= end_time:
-        # raise TimeoutError("Timeout reached while reading from subprocess.\nCurrent buffer: {}\nRunning PIDs: {}".format(buffer.decode(), pids))
         print(traceback.print_exc())
         raise TimeoutError("Timeout reached while reading from subprocess.")
 
-    return buffer.decode()
+    return stdout_buffer.decode() +  stderr_buffer.decode()
 
 
 class LocalShellEnvironment(EnvironmentModule):

@@ -227,6 +227,7 @@ class Session:
         self.status = "running"
 
     def revert(self, checkpoint_id):
+        print(self.config.checkpoints)
         for i, checkpoint in enumerate(self.config.checkpoints):
             if checkpoint.checkpoint_id == checkpoint_id:
                 print(checkpoint.commit_hash, flush=True)
