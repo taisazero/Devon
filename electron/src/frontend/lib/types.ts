@@ -14,6 +14,7 @@ export type Model = {
     company: string
     comingSoon?: boolean
     apiKeyUrl?: string
+    apiBaseUrl?: string
 }
 
 export type Message = {
@@ -60,7 +61,6 @@ export type UpdateConfig = {
     model: string
     api_key: string
 }
-
 
 export type CheckpointTracker = {
     initial: Checkpoint

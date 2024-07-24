@@ -212,7 +212,9 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
                     <div className="flex flex-col mt-5 w-full mb-4">
                         <div className="flex items-center justify-between">
                             <p className="text-lg font-semibold">
-                                {selectedModel.id !== originalModelName
+                                {selectedModel?.id === 'custom'
+                                    ? 'Add a custom model:'
+                                    : selectedModel.id !== originalModelName
                                     ? `Set new model: `
                                     : `Current model:`}
                             </p>
@@ -225,52 +227,67 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
                                 />
                             </div>
                         </div>
-                        {selectedModel.value !== 'claude-3-5-sonnet' && (
-                            <span className="text-sm text-green-500 mt-2 flex gap-1 items-center">
-                                <Info className="w-4 h-4" />
-                                Note: For best results use Claude 3.5 Sonnet
-                                (it's better at coding!)
-                            </span>
-                        )}
-                    </div>
-                    <div className="flex justify-between w-full">
-                        <div className="flex gap-1 items-center mb-4 w-full">
-                            <p className="text-xl font-bold">
-                                {`${selectedModel.company} API Key`}
-                            </p>
-                            <Popover>
-                                <PopoverTrigger
-                                    className="ml-[2px]"
-                                    onClick={() => setHasClickedQuestion(true)}
-                                >
-                                    <CircleHelp size={14} />
-                                </PopoverTrigger>
-                                <SafeStoragePopoverContent />
-                            </Popover>
-                            {hasClickedQuestion && (
-                                <a
-                                    className="text-primary hover:underline self-end ml-auto cursor-pointer"
-                                    href={selectedModel?.apiKeyUrl}
-                                    target="_blank"
-                                >
-                                    Looking for an API key?
-                                </a>
-                            )}
-                        </div>
-                        {selectedModel.id !== originalModelName &&
-                            modelHasSavedApiKey && (
-                                <Button onClick={handleUseNewModel}>
-                                    {'Use this model'}
-                                </Button>
+                        {selectedModel.value !== 'claude-3-5-sonnet' &&
+                            selectedModel?.id !== 'custom' && (
+                                <span className="text-sm text-green-500 mt-2 flex gap-1 items-center">
+                                    <Info className="w-4 h-4" />
+                                    Note: For best results use Claude 3.5 Sonnet
+                                    (it's better at coding!)
+                                </span>
                             )}
                     </div>
-                    <APIKeyComponent
-                        key={selectedModel.id}
-                        model={selectedModel}
-                        sessionActorref={sessionActorref}
-                        setModelHasSavedApiKey={setModelHasSavedApiKey}
-                        setOpen={setOpen}
-                    />
+                    {selectedModel?.id === 'custom' ? (
+                        <EnterCustomModel
+                            selectedModel={selectedModel}
+                            hasClickedQuestion={hasClickedQuestion}
+                            setHasClickedQuestion={setHasClickedQuestion}
+                            sessionActorref={sessionActorref}
+                            setOpen={setOpen}
+                            setModelHasSavedApiKey={setModelHasSavedApiKey}
+                        />
+                    ) : (
+                        <>
+                            <div className="flex justify-between w-full">
+                                <div className="flex gap-1 items-center mb-4 w-full">
+                                    <p className="text-xl font-bold">
+                                        {`${selectedModel.company} API Key`}
+                                    </p>
+                                    <Popover>
+                                        <PopoverTrigger
+                                            className="ml-[2px]"
+                                            onClick={() =>
+                                                setHasClickedQuestion(true)
+                                            }
+                                        >
+                                            <CircleHelp size={14} />
+                                        </PopoverTrigger>
+                                        <SafeStoragePopoverContent />
+                                    </Popover>
+                                    {hasClickedQuestion && !modelHasSavedApiKey &&
+                                        selectedModel?.apiKeyUrl && (
+                                            <a
+                                                className="text-primary hover:underline self-end ml-auto cursor-pointer"
+                                                href={selectedModel.apiKeyUrl}
+                                                target="_blank"
+                                            >
+                                                Looking for an API key?
+                                            </a>
+                                        )}
+                                </div>
+                                {selectedModel.id !== originalModelName &&
+                                    modelHasSavedApiKey && (
+                                        <Button onClick={handleUseNewModel}>
+                                            {'Use this model'}
+                                        </Button>
+                                    )}
+                            </div>
+                            <APIKeyComponent
+                                model={selectedModel}
+                                setModelHasSavedApiKey={setModelHasSavedApiKey}
+                                setOpen={setOpen}
+                            />
+                        </>
+                    )}
                     {/* <Input
                         className="w-full"
                         type="password"
@@ -300,24 +317,30 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
                     </div>
                 </CardContent>
             </Card> */}
-            <VersionControlSettingsCard />
-            <MiscellaneousCard
-                clearStorageAndResetSession={clearStorageAndResetSession}
-            />
+            {selectedModel?.id !== 'custom' ? (
+                <>
+                    <VersionControlSettingsCard />
+                    <MiscellaneousCard
+                        clearStorageAndResetSession={
+                            clearStorageAndResetSession
+                        }
+                    />
+                </>
+            ) : null}
         </div>
     )
 }
 
 const APIKeyComponent = ({
     model,
-    sessionActorref,
     setModelHasSavedApiKey,
     setOpen,
+    simple = false,
 }: {
     model: Model
-    sessionActorref: any
     setModelHasSavedApiKey: (value: boolean) => void
     setOpen: (value: boolean) => void
+    simple?: boolean
 }) => {
     const { addApiKey, getApiKey, removeApiKey, setUseModelName } =
         useSafeStorage()
@@ -335,6 +358,7 @@ const APIKeyComponent = ({
         }
         setIsLoading(true)
         const res = await getApiKey(model.id)
+        console.log(model.id, res)
         if (res) {
             setKey(res)
             setIsKeyStored(true)
@@ -342,13 +366,14 @@ const APIKeyComponent = ({
         } else {
             setIsKeyStored(false)
             setModelHasSavedApiKey(false)
+            setKey('')
         }
         setIsLoading(false)
     }, [model.id])
 
     useEffect(() => {
         fetchApiKey()
-    }, [])
+    }, [model.id])
 
     const handleSave = async () => {
         setIsSaving(true)
@@ -381,14 +406,14 @@ const APIKeyComponent = ({
 
     return (
         <div>
-            <div className="flex items-center mb-2">
+            {!simple && <div className="flex items-center mb-2">
                 <p className="text-lg">{model.name}</p>
                 {model.comingSoon && (
                     <p className="text-md px-2 text-neutral-500">
                         (Coming soon!)
                     </p>
                 )}
-            </div>
+            </div>}
             {isLoading ? (
                 <Skeleton className="h-10 w-full" />
             ) : isKeyStored ? (
@@ -411,7 +436,7 @@ const APIKeyComponent = ({
                     <Input
                         id={model.id}
                         disabled={model.comingSoon || isSaving}
-                        placeholder={`${model.company} API Key`}
+                        placeholder={`${model.company ?? 'Model'} API Key`}
                         type="password"
                         value={key}
                         onChange={e => setKey(e.target.value)}
@@ -638,5 +663,102 @@ const MiscellaneousCard = ({
                 </Button>
             </CardContent>
         </Card>
+    )
+}
+
+const EnterCustomModel = ({
+    selectedModel,
+    hasClickedQuestion,
+    setHasClickedQuestion,
+    sessionActorref,
+    setOpen,
+    setModelHasSavedApiKey,
+}: {
+    selectedModel: Model
+    hasClickedQuestion: boolean
+    setHasClickedQuestion: (v: boolean) => void
+    sessionActorref: any
+    setOpen: (v: boolean) => void
+    setModelHasSavedApiKey: (v: boolean) => void
+}) => {
+    const [customModel, setCustomModel] = useState<Model>({
+        id: '',
+        name: '',
+    })
+
+    function handleSetCustomModel(field: keyof Model, value: string) {
+        setCustomModel(prev => ({ ...prev, [field]: value }))
+    }
+
+    return (
+        <div className="flex flex-col gap-5">
+            <div>
+                <div className="flex items-center mb-2 gap-1">
+                    <p className="text-lg">LiteLLM Model</p>
+                    <Popover>
+                        <PopoverTrigger
+                            className="ml-[2px]"
+                        >
+                            <CircleHelp size={14} />
+                        </PopoverTrigger>
+                        <PopoverContent
+                            side="top"
+                            className="bg-night w-fit p-2 px-3 hover:border-primary cursor-pointer hover:bg-batman transition-colors duration-300"
+                            onClick={
+                                () =>
+                                    window.open(
+                                        'https://litellm.vercel.app/docs/providers/openai_compatible'
+                                    )
+                                // setHasClickedQuestion(true)
+                            }
+                        >
+                            Where do I find this?
+                        </PopoverContent>
+                    </Popover>
+                </div>
+                <Input
+                    value={customModel.id}
+                    onChange={e => {
+                        handleSetCustomModel('id', e.target.value)
+                        handleSetCustomModel('name', e.target.value)
+                    }}
+                    placeholder="Enter LiteLLM Model ID"
+                />
+            </div>
+            <div>
+                <p className="text-lg mb-2">API Base</p>
+                <Input
+                    value={customModel.apiBaseUrl}
+                    onChange={e =>
+                        handleSetCustomModel('apiBaseUrl', e.target.value)
+                    }
+                    placeholder="Enter API Base URL"
+                />
+            </div>
+            <div className="flex flex-col gap-2">
+                <div className="flex justify-between w-full">
+                    <div className="flex gap-1 items-center w-full">
+                        <p className="text-lg">
+                            {`${customModel.name} API Key`}
+                        </p>
+                        <Popover>
+                            <PopoverTrigger
+                                className="ml-[2px]"
+                                onClick={() => setHasClickedQuestion(true)}
+                            >
+                                <CircleHelp size={14} />
+                            </PopoverTrigger>
+                            <SafeStoragePopoverContent />
+                        </Popover>
+                    </div>
+                </div>
+                <APIKeyComponent
+                    model={customModel}
+                    setOpen={setOpen}
+                    setModelHasSavedApiKey={setModelHasSavedApiKey}
+                    simple
+                />
+            </div>
+        </div>
     )
 }

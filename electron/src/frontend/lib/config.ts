@@ -23,10 +23,8 @@ export const models: Model[] = [
     //     name: 'Ollama Deepseek 6.7b',
     //     company: 'Ollama',
     // },
-    // {
-    //     id: 'custom',
-    //     name: 'Custom',
-    //     company: 'Custom',
-    //     comingSoon: true,
-    // },
+    {
+        id: 'custom',
+        name: 'Custom (LiteLLM)',
+    },
 ]
