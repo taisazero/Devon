@@ -57,7 +57,7 @@ const TimelinePanel = ({
     const hasCommits =
         versioning_type === 'git' && commits && commits.length > 0
     const old_branch = SessionMachineContext.useSelector(
-        state => state.context.sessionConfig?.versioning_metadata?.old_branch
+        state => state.context.sessionConfig?.versioning_metadata?.user_branch
     )
 
     const steps: StepType[] = hasCommits
