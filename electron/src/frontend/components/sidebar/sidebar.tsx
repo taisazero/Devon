@@ -20,7 +20,7 @@ const defaultValue = {
 
 const sidebarItems = [
     {
-        icon: <GitMerge size={22}/>,
+        icon: <GitMerge size={22} />,
         text: '',
         alert: false,
         route: '',
@@ -50,12 +50,21 @@ const bottomSidebarItems: any = [
 
 const SidebarContext = createContext(defaultValue)
 
-export default function Sidebar() {
-    const [expanded, setExpanded] = useState(false)
+export default function Sidebar({
+    expanded,
+    setExpanded,
+    showMinimizedTimeline,
+    setShowMinimizedTimeline
+}: {
+    expanded: boolean
+    setExpanded: (expanded: boolean) => void
+    showMinimizedTimeline: boolean
+    setShowMinimizedTimeline: (show: boolean) => void
+}) {
     const [activeTabId, setActiveTabId] = useState(sidebarItems[0].id)
     const contentRef = useRef(null)
     // const showMinimizedTimeline = useRef(false)
-    const [showMinimizedTimeline, setShowMinimizedTimeline] = useState(false)
+    
 
     function handleClick(id: string) {
         if (id === activeTabId) {

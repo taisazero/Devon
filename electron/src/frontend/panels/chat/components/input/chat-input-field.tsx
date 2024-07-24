@@ -48,12 +48,15 @@ const ChatInputField = ({
     const disableInput = loading || timeTraveling
     const prevProjectPath = useRef<string>('')
 
-    const [openProjectModal, setOpenProjectModal] = useState(false)
-    const { backendUrl } = useBackendUrl()
+    // const [openProjectModal, setOpenProjectModal] = useState(false)
+    // const { backendUrl } = useBackendUrl()
 
     const sessionActorRef = SessionMachineContext.useActorRef()
     const projectPath = SessionMachineContext.useSelector(
         state => state?.context?.sessionConfig?.path
+    )
+    const status = SessionMachineContext.useSelector(
+        state => state?.context?.serverEventContext?.status
     )
 
     useEffect(() => {
@@ -177,6 +180,7 @@ const ChatInputField = ({
                     paused={sessionActorRef.getSnapshot().matches('paused')}
                     pauseHandler={handlePause}
                     backInTime={Boolean(checkpointTracker?.selected)}
+                    status={status}
                 />
             )}
 
@@ -276,6 +280,7 @@ const InformationBox = ({
     paused,
     pauseHandler,
     backInTime,
+    status,
 }: {
     modelLoading: boolean
     userRequested: boolean
@@ -283,6 +288,7 @@ const InformationBox = ({
     paused: boolean
     pauseHandler: () => void
     backInTime: boolean
+    status: string | null
 }) => {
     const types: {
         [key: string]: {
@@ -314,8 +320,15 @@ const InformationBox = ({
             text: 'Devon is time traveling with you...',
             accessory: <></>,
         },
+        executing: {
+            text: 'Devon is using a tool...',
+            accessory: (
+                <PauseButton paused={paused} pauseHandler={pauseHandler} />
+            ),
+        },
         error: {
             // text: 'Something went wrong',
+            // text: 'Something unexpected occurred',
             text: 'Devon is cleaning up his desk...',
             accessory: <></>,
         },
@@ -327,12 +340,13 @@ const InformationBox = ({
     } else if (backInTime) {
         currentType = types.backInTime
     } else if (paused) {
-        // console.log("type is paused")
         currentType = types.paused
     } else if (modelLoading) {
         currentType = types.modelLoading
     } else if (userRequested) {
         currentType = types.userRequested
+    } else if (status === 'executing') {
+        currentType = types.executing
     } else {
         currentType = types.error
     }
