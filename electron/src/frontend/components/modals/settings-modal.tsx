@@ -56,16 +56,27 @@ const SettingsModal = ({
                     </DialogHeader>
                     <DialogDescription></DialogDescription>
                 </VisuallyHidden.Root>
-                <General setOpen={setOpen} />
+                <General setOpen={setOpen} open={open} />
             </DialogContent>
         </Dialog>
     )
 }
 
-const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
+const General = ({
+    setOpen,
+    open,
+}: {
+    setOpen: (val: boolean) => void
+    open: boolean
+}) => {
     const { toast } = useToast()
-    const { models, comboboxItems, selectedModel, setSelectedModel, refetchModels } =
-        useModels()
+    const {
+        models,
+        comboboxItems,
+        selectedModel,
+        setSelectedModel,
+        refetchModels,
+    } = useModels()
 
     // Checking model
     const {
@@ -138,7 +149,7 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
             }
         }
         check()
-    }, [])
+    }, [open, models?.length])
 
     const fetchApiKey = useCallback(async () => {
         if (!selectedModel) return
@@ -210,7 +221,6 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
                 handleChangePath={handleChangePath}
                 initialFolderPath={initialFolderPath}
                 handleNewChat={handleNewChat}
-
             />
             <Card className="bg-midnight">
                 <CardContent>
@@ -259,8 +269,9 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
                                 <div className="flex gap-1 items-center mb-4 w-full">
                                     <p className="text-xl font-bold">
                                         {`${
-                                            selectedModel?.company ? selectedModel?.company :
-                                            selectedModel?.id
+                                            selectedModel?.company
+                                                ? selectedModel?.company
+                                                : selectedModel?.id
                                         } API Key`}
                                     </p>
                                     <Popover>
@@ -303,7 +314,14 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
                                     refetchModels={refetchModels}
                                 />
                             )}
-                            {selectedModel && selectedModel.isCustom && <Button variant='outline-thin' className="w-full mt-6">Delete this model</Button>}
+                            {selectedModel && selectedModel.isCustom && (
+                                <Button
+                                    variant="outline-thin"
+                                    className="w-full mt-6"
+                                >
+                                    Delete this model
+                                </Button>
+                            )}
                         </>
                     )}
                     {/* <Input
@@ -465,7 +483,9 @@ const APIKeyComponent = ({
                     <Input
                         id={model.id}
                         disabled={model.comingSoon || isSaving}
-                        placeholder={`${model.company ? model.company : 'Model'} API Key`}
+                        placeholder={`${
+                            model.company ? model.company : 'Model'
+                        } API Key`}
                         type="password"
                         value={key}
                         onChange={e => setKey(e.target.value)}
@@ -492,8 +512,8 @@ const GeneralSettingsCard = ({
     setFolderPath,
     handleChangePath,
     initialFolderPath,
-    // handleNewChat
-}: {
+}: // handleNewChat
+{
     folderPath: string
     setFolderPath: (path: string) => void
     handleChangePath: (path: string) => void
@@ -517,7 +537,15 @@ const GeneralSettingsCard = ({
                     //     <Button onClick={() => handleChangePath(folderPath)}>Change</Button>
                     // }
                 />
-                {!initialFolderPath.loading && initialFolderPath.value !== folderPath && <Button className="mt-5 w-full" onClick={handleChangePath}>Start new chat</Button>}
+                {!initialFolderPath.loading &&
+                    initialFolderPath.value !== folderPath && (
+                        <Button
+                            className="mt-5 w-full"
+                            onClick={handleChangePath}
+                        >
+                            Start new chat
+                        </Button>
+                    )}
             </CardContent>
         </Card>
     )
@@ -708,7 +736,7 @@ const EnterCustomModel = ({
     sessionActorref,
     setOpen,
     setModelHasSavedApiKey,
-    refetchModels
+    refetchModels,
 }: {
     selectedModel: Model
     hasClickedQuestion: boolean
@@ -775,7 +803,11 @@ const EnterCustomModel = ({
                 <div className="flex justify-between w-full">
                     <div className="flex gap-1 items-center w-full">
                         <p className="text-lg">
-                            {`${customModel.name ? customModel.name : customModel.id} API Key`}
+                            {`${
+                                customModel.name
+                                    ? customModel.name
+                                    : customModel.id
+                            } API Key`}
                         </p>
                         <Popover>
                             <PopoverTrigger

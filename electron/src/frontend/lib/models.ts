@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
+import { SessionMachineContext } from '@/contexts/session-machine-context'
 import { ComboboxItem } from '@/components/ui/combobox'
 import { Model } from './types'
+import { useSessionConfig } from '@/lib/services/sessionService/sessionService'
 
 const defaultModels: Model[] = [
     {
@@ -81,35 +83,54 @@ export async function getAllModels(): Promise<Model[]> {
 type ExtendedComboboxItem = ComboboxItem & Model
 
 export const useModels = () => {
-    const [comboboxItems, setComboboxItems] = useState<ExtendedComboboxItem[]>([])
-    const [selectedModel, setSelectedModel] = useState<ExtendedComboboxItem | null>(null)
+    const [comboboxItems, setComboboxItems] = useState<ExtendedComboboxItem[]>(
+        []
+    )
+    const [selectedModel, setSelectedModel] =
+        useState<ExtendedComboboxItem | null>(null)
     const [models, setModels] = useState<Model[]>([])
+    const host = SessionMachineContext.useSelector(state => state.context.host)
+    const name = SessionMachineContext.useSelector(state => state.context.name)
+    const config = useSessionConfig(host, name)
 
-    const fetchModels = useCallback(async (addDelay: boolean = false) => {
-        try {
-            if (addDelay) {
-                await new Promise(resolve => setTimeout(resolve, 2000))
-            }
-            const allModels = await getAllModels()
-            setModels(allModels)
-            
-            const modelsWithCustom = [...allModels, customOption]
-            const items: ExtendedComboboxItem[] = modelsWithCustom
-                .filter(model => !model.comingSoon)
-                .map(model => ({
-                    ...model,
-                    value: model.id,
-                    label: model.name,
-                }))
+    const fetchModels = useCallback(
+        async (addDelay: boolean = false) => {
+            try {
+                if (addDelay) {
+                    await new Promise(resolve => setTimeout(resolve, 2000))
+                }
+                const allModels = await getAllModels()
+                setModels(allModels)
 
-            setComboboxItems(items)
-            if (!selectedModel) {
-                setSelectedModel(items[0]) // Set the first item as default if none selected
+                const modelsWithCustom = [...allModels, customOption]
+                const items: ExtendedComboboxItem[] = modelsWithCustom
+                    .filter(model => !model.comingSoon)
+                    .map(model => ({
+                        ...model,
+                        value: model.id,
+                        label: model.name,
+                    }))
+
+                setComboboxItems(items)
+                console.log(selectedModel)
+                if (!selectedModel) {
+                    if (config?.model) {
+                        const selectedModel = items.find(
+                            item => item.value === config.model
+                        )
+                        if (selectedModel) {
+                            setSelectedModel(selectedModel)
+                            return
+                        }
+                    }
+                    setSelectedModel(items[0]) // Set the first item as default if none selected
+                }
+            } catch (error) {
+                console.error('Failed to fetch models:', error)
             }
-        } catch (error) {
-            console.error('Failed to fetch models:', error)
-        }
-    }, [selectedModel])
+        },
+        [selectedModel, config?.model]
+    )
 
     useEffect(() => {
         fetchModels()
