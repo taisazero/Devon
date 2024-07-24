@@ -229,11 +229,16 @@ class Session:
     def revert(self, checkpoint_id):
         for i, checkpoint in enumerate(self.config.checkpoints):
             if checkpoint.checkpoint_id == checkpoint_id:
+                print(checkpoint.commit_hash, flush=True)
                 if (
                     self.config.versioning_type == "git"
                     and checkpoint.commit_hash != "no_commit"
                 ):
-                    self.versioning.revert_to_commit(checkpoint.commit_hash)
+                    result = self.versioning.revert_to_commit(checkpoint.commit_hash.strip())
+                    print(result)
+                    if result[0] != 0:
+                        self.logger.error(f"Failed to revert to commit {checkpoint.commit_hash}: {result[1]}")
+                        return
                 event_id = checkpoint.event_id
                 event_log = self.event_log[: event_id + 1]
                 self.event_id = event_id

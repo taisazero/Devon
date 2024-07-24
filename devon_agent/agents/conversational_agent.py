@@ -48,11 +48,15 @@ class ConversationalAgent(Agent):
 
     default_models = {
         "gpt4-o": OpenAiModel,
+        "gpt-4o-mini": OpenAiModel,
         "claude-3-5-sonnet": AnthropicModel,
     }
 
     default_model_configs = {
         "gpt4-o": {
+            "prompt_type": "openai",
+        },
+        "gpt-4o-mini": {
             "prompt_type": "openai",
         },
         "claude-3-5-sonnet": {

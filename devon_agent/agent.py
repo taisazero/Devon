@@ -29,4 +29,5 @@ DEFAULT_MODELS = {
     "gpt4-turbo": OpenAiModel,
     "llama-3-70b": GroqModel,
     "ollama/deepseek-coder:6.7b": OllamaModel,
+    "gpt-4o-mini": OpenAiModel,
 }
