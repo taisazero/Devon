@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { SessionMachineContext } from '@/contexts/session-machine-context'
 import {
     CircleArrowDown,
@@ -25,6 +25,7 @@ export default function ChatHeader({
     sessionId?: string | null
     headerIcon?: JSX.Element
 }) {
+    const [isSettingsOpen, setIsSettingsOpen] = useState(false)
     const sessionActorRef = SessionMachineContext.useActorRef()
     const host = SessionMachineContext.useSelector(state => state.context.host)
     const name = SessionMachineContext.useSelector(state => state.context.name)
@@ -54,9 +55,13 @@ export default function ChatHeader({
     async function handleIndexes() {
         // sessionActorRef.send({ type: 'session.indexes' })
     }
+    const model = useMemo(() => {
+        if (!config?.model) return null;
+        if (!models) return config.model;
 
-    const model = config?.model && models ? models.filter(model => model.id === config.model)[0]?.name : null
-    const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+        const foundModel = models.find(model => model.id === config.model);
+        return foundModel ? foundModel.name : config.model;
+    }, [config?.model, models]);
 
     return (
         <div className="relative pt-[1.5px] pb-2 border-outline-night shrink-0 items-left flex flex-row justify-between border-b mx-5">

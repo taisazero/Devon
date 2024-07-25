@@ -30,7 +30,7 @@ import axios from 'axios'
 import { updateSessionConfig } from '@/lib/services/sessionService/sessionService'
 import { savedFolderPathAtom } from '@/lib/utils'
 import { useAtom } from 'jotai'
-import { useModels, addModel } from '@/lib/models'
+import { useModels, addModel, removeModel } from '@/lib/models'
 
 const SettingsModal = ({
     trigger,
@@ -56,16 +56,28 @@ const SettingsModal = ({
                     </DialogHeader>
                     <DialogDescription></DialogDescription>
                 </VisuallyHidden.Root>
-                <General setOpen={setOpen} />
+                <General setOpen={setOpen} open={open} />
             </DialogContent>
         </Dialog>
     )
 }
 
-const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
+const General = ({
+    setOpen,
+    open,
+}: {
+    setOpen: (val: boolean) => void
+    open: boolean
+}) => {
     const { toast } = useToast()
-    const { models, comboboxItems, selectedModel, setSelectedModel } =
-        useModels()
+    const {
+        models,
+        comboboxItems,
+        selectedModel,
+        setSelectedModel,
+        refetchModels,
+        backupModel,
+    } = useModels()
 
     // Checking model
     const {
@@ -95,8 +107,8 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
         value: null,
     })
     const [hasClickedQuestion, setHasClickedQuestion] = useState(false)
-    const [savedFolderPath, setSavedFolderPath] = useAtom(savedFolderPathAtom)
-
+    const [_, setSavedFolderPath] = useAtom(savedFolderPathAtom)
+    const { removeApiKey } = useSafeStorage()
     const clearStorageAndResetSession = () => {
         deleteData()
         toast({ title: 'Storage cleared!' })
@@ -138,7 +150,7 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
             }
         }
         check()
-    }, [])
+    }, [open, models?.length])
 
     const fetchApiKey = useCallback(async () => {
         if (!selectedModel) return
@@ -149,6 +161,7 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
     async function handleUseNewModel() {
         if (!selectedModel) return
         await setUseModelName(selectedModel.id, false)
+        refetchModels(true)
         setOpen(false)
         const _key: string = await fetchApiKey()
         const config: UpdateConfig = {
@@ -201,6 +214,18 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
         setOpen(false)
     }
 
+    async function handleDeleteCurrentCustomModel() {
+        if (!selectedModel) return
+        
+        removeModel(selectedModel)
+        removeApiKey(selectedModel.id, false)
+        if (originalModelName === selectedModel.id) {
+            setSelectedModel(null)
+            await setUseModelName(backupModel.id, false)
+        }
+        setOpen(false)
+    }
+
     return (
         <div className="pt-4 pb-2 px-2 flex flex-col gap-5">
             <GeneralSettingsCard
@@ -209,7 +234,6 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
                 handleChangePath={handleChangePath}
                 initialFolderPath={initialFolderPath}
                 handleNewChat={handleNewChat}
-
             />
             <Card className="bg-midnight">
                 <CardContent>
@@ -244,12 +268,10 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
                     </div>
                     {selectedModel?.id === 'custom' ? (
                         <EnterCustomModel
-                            selectedModel={selectedModel}
-                            hasClickedQuestion={hasClickedQuestion}
                             setHasClickedQuestion={setHasClickedQuestion}
-                            sessionActorref={sessionActorref}
                             setOpen={setOpen}
                             setModelHasSavedApiKey={setModelHasSavedApiKey}
+                            refetchModels={refetchModels}
                         />
                     ) : (
                         <>
@@ -257,8 +279,9 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
                                 <div className="flex gap-1 items-center mb-4 w-full">
                                     <p className="text-xl font-bold">
                                         {`${
-                                            selectedModel?.company ??
-                                            selectedModel?.id
+                                            selectedModel?.company
+                                                ? selectedModel?.company
+                                                : selectedModel?.id
                                         } API Key`}
                                     </p>
                                     <Popover>
@@ -298,7 +321,25 @@ const General = ({ setOpen }: { setOpen: (val: boolean) => void }) => {
                                         setModelHasSavedApiKey
                                     }
                                     setOpen={setOpen}
+                                    refetchModels={refetchModels}
                                 />
+                            )}
+                            {selectedModel && selectedModel.apiBaseUrl && (
+                                <p
+                                    className="mt-2 text-gray-500 text-xs text-ellipsis max-w-[400px]"
+                                    title={selectedModel.apiBaseUrl}
+                                >
+                                    API Base: {selectedModel.apiBaseUrl}
+                                </p>
+                            )}
+                            {selectedModel && selectedModel.isCustom && (
+                                <Button
+                                    variant="outline-thin"
+                                    className="w-full mt-6"
+                                    onClick={handleDeleteCurrentCustomModel}
+                                >
+                                    Delete this model
+                                </Button>
                             )}
                         </>
                     )}
@@ -352,6 +393,7 @@ const APIKeyComponent = ({
     simple = false,
     disabled = false,
     isCustom = false,
+    refetchModels,
 }: {
     model: Model
     setModelHasSavedApiKey: (value: boolean) => void
@@ -359,6 +401,7 @@ const APIKeyComponent = ({
     simple?: boolean
     disabled?: boolean
     isCustom?: boolean
+    refetchModels: (delay?: boolean) => void
 }) => {
     const { addApiKey, getApiKey, removeApiKey, setUseModelName } =
         useSafeStorage()
@@ -397,6 +440,7 @@ const APIKeyComponent = ({
         await addApiKey(model.id, key, false)
         // Update the model as well
         await setUseModelName(model.id, false)
+        refetchModels(true)
         const config: UpdateConfig = {
             api_key: key,
             model: model.id,
@@ -458,7 +502,9 @@ const APIKeyComponent = ({
                     <Input
                         id={model.id}
                         disabled={model.comingSoon || isSaving}
-                        placeholder={`${model.company ?? 'Model'} API Key`}
+                        placeholder={`${
+                            model.company ? model.company : 'Model'
+                        } API Key`}
                         type="password"
                         value={key}
                         onChange={e => setKey(e.target.value)}
@@ -485,8 +531,8 @@ const GeneralSettingsCard = ({
     setFolderPath,
     handleChangePath,
     initialFolderPath,
-    // handleNewChat
-}: {
+}: // handleNewChat
+{
     folderPath: string
     setFolderPath: (path: string) => void
     handleChangePath: (path: string) => void
@@ -510,7 +556,15 @@ const GeneralSettingsCard = ({
                     //     <Button onClick={() => handleChangePath(folderPath)}>Change</Button>
                     // }
                 />
-                {!initialFolderPath.loading && initialFolderPath.value !== folderPath && <Button className="mt-5 w-full" onClick={handleChangePath}>Start new chat</Button>}
+                {!initialFolderPath.loading &&
+                    initialFolderPath.value !== folderPath && (
+                        <Button
+                            className="mt-5 w-full"
+                            onClick={handleChangePath}
+                        >
+                            Start new chat
+                        </Button>
+                    )}
             </CardContent>
         </Card>
     )
@@ -695,19 +749,13 @@ const MiscellaneousCard = ({
 }
 
 const EnterCustomModel = ({
-    selectedModel,
-    hasClickedQuestion,
-    setHasClickedQuestion,
-    sessionActorref,
     setOpen,
     setModelHasSavedApiKey,
+    refetchModels,
 }: {
-    selectedModel: Model
-    hasClickedQuestion: boolean
-    setHasClickedQuestion: (v: boolean) => void
-    sessionActorref: any
     setOpen: (v: boolean) => void
     setModelHasSavedApiKey: (v: boolean) => void
+    refetchModels: (delay?: boolean) => void
 }) => {
     const [customModel, setCustomModel] = useState<Model>({
         id: '',
@@ -736,7 +784,6 @@ const EnterCustomModel = ({
                                     window.open(
                                         'https://litellm.vercel.app/docs/providers/openai_compatible'
                                     )
-                                // setHasClickedQuestion(true)
                             }
                         >
                             Where do I find this?
@@ -766,12 +813,15 @@ const EnterCustomModel = ({
                 <div className="flex justify-between w-full">
                     <div className="flex gap-1 items-center w-full">
                         <p className="text-lg">
-                            {`${customModel.name ?? customModel.id} API Key`}
+                            {`${
+                                customModel.name
+                                    ? customModel.name
+                                    : customModel.id
+                            } API Key`}
                         </p>
                         <Popover>
                             <PopoverTrigger
                                 className="ml-[2px]"
-                                onClick={() => setHasClickedQuestion(true)}
                             >
                                 <CircleHelp size={14} />
                             </PopoverTrigger>
@@ -786,6 +836,7 @@ const EnterCustomModel = ({
                     simple
                     disabled={!customModel.id || !customModel.apiBaseUrl}
                     isCustom
+                    refetchModels={refetchModels}
                 />
             </div>
         </div>
