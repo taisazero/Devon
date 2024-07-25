@@ -19,6 +19,7 @@ from devon_agent.data_models import (SingletonEngine, init_db, load_data,
                                      set_db_engine)
 from devon_agent.environments.shell_environment import LocalShellEnvironment
 from devon_agent.environments.user_environment import UserEnvironment
+from devon_agent.environments.vscode_environment import VSCodeEnvironment
 from devon_agent.session import Session
 from devon_agent.utils.config_utils import hydrate_config
 from devon_agent.utils.utils import LOGGER_NAME
@@ -248,6 +249,8 @@ def create_session(
 
     user_environment = UserEnvironment(user_func=lambda: get_user_input(session))
 
+    vscode_environment = VSCodeEnvironment()
+
     db_path = app.db_path if hasattr(app, "db_path") else "."
 
     sessions[session] = Session(
@@ -258,11 +261,12 @@ def create_session(
             db_path=db_path,
             persist_to_db=app.persist,
             versioning_type=config["versioning_type"] if "versioning_type" in config else "none",
-            environments={"local": local_environment, "user": user_environment,
-                          "remote": None, #TODO: We want to connect to a remote VSCode environment, with its own APIs to VSCode tools.
-
+            environments={
+                "local": local_environment, 
+                "user": user_environment,    
+                "remote": vscode_environment
             },
-            default_environment="local",
+            default_environment="remote",
             agent_configs=[
                 AgentConfig(
                     agent_name="Devon",

@@ -237,11 +237,11 @@ else {
 	if (cli.flags.apiKey) {
 		api_key = cli.flags['apiKey'];
 	} 
-	// else if (process.env['OPENAI_API_KEY']) {
-	// 	api_key = process.env['OPENAI_API_KEY'];
-	// 	modelName = 'gpt4-o';
-		// prompt_type = "openai";
-	// }
+	else if (process.env['OPENAI_API_KEY']) {
+		api_key = process.env['OPENAI_API_KEY'];
+		modelName = 'gpt4-o';
+		prompt_type = "openai";
+	}
 	 else if (process.env['ANTHROPIC_API_KEY']) {
 		api_key = process.env['ANTHROPIC_API_KEY'];
 		modelName = 'claude-3-5-sonnet';

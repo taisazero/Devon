@@ -28,7 +28,7 @@ from devon_agent.tools.utils import get_ignored_files, read_file
 from devon_agent.utils.telemetry import Posthog, SessionStartEvent
 from devon_agent.utils.utils import DotDict, Event
 from devon_agent.versioning.git_versioning import GitVersioning
-
+from devon_agent.tools.vscode_tools import ListFileTree, OpenFile, EditFile
 
 class Session:
     def __init__(self, config: Config, event_log: List[Dict]):
@@ -72,8 +72,19 @@ class Session:
         self.environments["local"].set_default_tool(ShellTool())
         self.environments["local"].event_log = event_log
         self.environments["user"].event_log = event_log
+        self.environments['remote'].event_log = event_log
 
         self.environments["user"].register_tools({"ask_user": AskUserTool()})
+        
+
+        # Add VSCodeEnv/Remove env tools here
+        self.environments["remote"].register_tools(
+            {
+                "openFile": OpenFile(),
+                "listFileTree": ListFileTree(),
+                "editFile": EditFile()
+            }
+        )
         if self.config.versioning_type == "git":
             self.versioning = GitVersioning(config.path)
 
