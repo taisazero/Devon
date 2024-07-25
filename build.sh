@@ -21,6 +21,13 @@ poetry install
 cd devon-tui
 npm install
 npm run build
-npm install -g .
+# Try to install the package globally without sudo, if it fails, try with sudo
+if ! npm install -g . 
+then
+    echo "Failed to install Devon globally without sudo. Trying with sudo..."
+    sudo npm install -g .
+fi
+
 cd ..
+export DEVON_TELEMETRY_DISABLED=true
 echo "Devon is ready to use! Use the command 'devon' to start the Devon terminal."
