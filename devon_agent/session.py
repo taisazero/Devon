@@ -430,8 +430,8 @@ class Session:
 
             checkpoint = Checkpoint(
                 commit_message="Initial commit",
-                commit_hash=result[1],
-                merged_commit=last_commit_hash,
+                commit_hash=result[1].strip(),
+                merged_commit=last_commit_hash.strip(),
                 agent_history=self.config.agent_configs[0].chat_history,
                 event_id=len(self.event_log),
                 checkpoint_id=get_checkpoint_id(),
