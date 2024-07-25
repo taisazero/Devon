@@ -109,9 +109,10 @@ export async function getAllModels(): Promise<Model[]> {
     return allModels
 }
 
-type ExtendedComboboxItem = ComboboxItem & Model
+export type ExtendedComboboxItem = ComboboxItem & Model
 
 export const useModels = () => {
+    const backupModel = defaultModels[0]
     const [comboboxItems, setComboboxItems] = useState<ExtendedComboboxItem[]>(
         []
     )
@@ -170,5 +171,6 @@ export const useModels = () => {
         selectedModel,
         setSelectedModel,
         refetchModels: fetchModels,
+        backupModel,
     }
 }

@@ -14,7 +14,8 @@ import {
 import { useSafeStorage } from '@/lib/services/safeStorageService'
 import SafeStoragePopoverContent from '@/components/modals/safe-storage-popover-content'
 import Combobox from '@/components/ui/combobox'
-import { useModels } from '@/lib/models'
+import { useModels, ExtendedComboboxItem, addModel } from '@/lib/models'
+import { Model } from '@/lib/types'
 
 const Dialog = lazy(() =>
     import('@/components/ui/dialog').then(module => ({
@@ -57,7 +58,12 @@ const OnboardingModal = ({
     const { addApiKey, getApiKey, setUseModelName } = useSafeStorage()
     const [isKeySaved, setIsKeySaved] = useState(false)
     const [hasClickedQuestion, setHasClickedQuestion] = useState(false)
-    const { comboboxItems, selectedModel, setSelectedModel } = useModels()
+    const { comboboxItems, selectedModel, setSelectedModel, refetchModels } = useModels()
+    const [customModel, setCustomModel] = useState<Model>({
+        id: '',
+        name: '',
+        company: '',
+    })
 
     useEffect(() => {
         const fetchApiKey = async () => {
@@ -83,19 +89,40 @@ const OnboardingModal = ({
 
     function afterSubmit() {
         if (!selectedModel) return
-        const handleSaveApiKey = async () => {
-            await addApiKey(selectedModel.value, apiKey, false)
+
+        const handleSaveApiKey = async (model: ExtendedComboboxItem) => {
+            await addApiKey(model.value, apiKey, false)
             setIsKeySaved(true)
-            await setUseModelName(selectedModel.value, false)
+            await setUseModelName(model.value, false)
         }
-        handleSaveApiKey() // Store the api key
-        afterOnboard(apiKey, selectedModel.value, folderPath)
+        let model = selectedModel
+        if (selectedModel.value === 'custom') {
+            model = {
+                ...customModel,
+                value: customModel.id,
+                label: customModel.name,
+            }
+            refetchModels(true)
+            // const config: UpdateConfig = {
+            //     api_key: key,
+            //     model: model.id,
+            // }
+            addModel(model)
+            // await updateSessionConfig(host, name, config)
+        }
+        handleSaveApiKey(model) // Store the api key
+        afterOnboard(apiKey, model.value, folderPath)
         setOnboarded(true) // Makes sure the other modal doesn't show up
         setModelName(selectedModel.value) // Closes the modal
     }
 
     function validateFields() {
         // if (!isChecked) return false
+        if (selectedModel?.id === 'custom') {
+            if (!customModel.id) return false
+            if (!customModel.name) return false
+            if (!customModel.apiBaseUrl) return false
+        }
         return (apiKey !== '' || isKeySaved) && folderPath !== ''
     }
 
@@ -149,42 +176,48 @@ const OnboardingModal = ({
                                     )}
                                 </div>
 
-                                <div className="flex gap-1 items-center mb-4">
-                                    <p className="text-lg font-bold">
-                                        {`${selectedModel?.company} API Key`}
-                                    </p>
-                                    <Popover>
-                                        <PopoverTrigger
-                                            className="ml-[2px]"
-                                            onClick={() =>
-                                                setHasClickedQuestion(true)
-                                            }
-                                        >
-                                            <CircleHelp size={14} />
-                                        </PopoverTrigger>
-                                        {isKeySaved ? (
-                                            <PopoverContent
-                                                side="top"
-                                                className="bg-night w-fit p-2"
+                                {selectedModel?.id === 'custom' && (
+                                    <EnterCustomModel customModel={customModel} setCustomModel={setCustomModel} />
+                                )}
+                                {selectedModel?.id !== 'custom' && (
+                                    <div className="flex gap-1 items-center mb-4">
+                                        <p className="text-lg font-bold">
+                                            {`${selectedModel?.company} API Key`}
+                                        </p>
+                                        <Popover>
+                                            <PopoverTrigger
+                                                className="ml-[2px]"
+                                                onClick={() =>
+                                                    setHasClickedQuestion(true)
+                                                }
                                             >
-                                                To edit, go to settings
-                                            </PopoverContent>
-                                        ) : (
-                                            <SafeStoragePopoverContent />
+                                                <CircleHelp size={14} />
+                                            </PopoverTrigger>
+                                            {isKeySaved ? (
+                                                <PopoverContent
+                                                    side="top"
+                                                    className="bg-night w-fit p-2"
+                                                >
+                                                    To edit, go to settings
+                                                </PopoverContent>
+                                            ) : (
+                                                <SafeStoragePopoverContent />
+                                            )}
+                                        </Popover>
+                                        {hasClickedQuestion && !apiKey && (
+                                            <a
+                                                className="text-primary hover:underline self-end ml-auto cursor-pointer"
+                                                href={selectedModel?.apiKeyUrl}
+                                                target="_blank"
+                                            >
+                                                Looking for an API key?
+                                            </a>
                                         )}
-                                    </Popover>
-                                    {hasClickedQuestion && !apiKey && (
-                                        <a
-                                            className="text-primary hover:underline self-end ml-auto cursor-pointer"
-                                            href={selectedModel?.apiKeyUrl}
-                                            target="_blank"
-                                        >
-                                            Looking for an API key?
-                                        </a>
-                                    )}
-                                </div>
+                                    </div>
+                                )}
                                 <Input
-                                    className="w-full"
+                                    className={`w-full ${selectedModel?.id === 'custom' ? 'mt-2' : ''}`}
+                                    placeholder={selectedModel?.id === 'custom' ? 'Enter your API Key' : ''}
                                     type="password"
                                     value={
                                         isKeySaved
@@ -209,3 +242,79 @@ const OnboardingModal = ({
 }
 
 export default OnboardingModal
+
+const EnterCustomModel = ({
+    customModel,
+    setCustomModel,
+}: {
+    customModel: Model
+    setCustomModel: React.Dispatch<React.SetStateAction<Model>>
+}) => {
+    
+    function handleSetCustomModel(field: keyof Model, value: string) {
+        setCustomModel(prev => ({ ...prev, [field]: value }))
+    }
+
+    return (
+        <div className="flex flex-col gap-5">
+            <div>
+                <div className="flex items-center mb-2 gap-1">
+                    <p className="text-lg">LiteLLM Model</p>
+                    <Popover>
+                        <PopoverTrigger className="ml-[2px]">
+                            <CircleHelp size={14} />
+                        </PopoverTrigger>
+                        <PopoverContent
+                            side="top"
+                            className="bg-night w-fit p-2 px-3 hover:border-primary cursor-pointer hover:bg-batman transition-colors duration-300"
+                            onClick={() =>
+                                window.open(
+                                    'https://litellm.vercel.app/docs/providers/openai_compatible'
+                                )
+                            }
+                        >
+                            Where do I find this?
+                        </PopoverContent>
+                    </Popover>
+                </div>
+                <Input
+                    value={customModel.id}
+                    onChange={e => {
+                        handleSetCustomModel('id', e.target.value)
+                        handleSetCustomModel('name', e.target.value)
+                    }}
+                    placeholder="Enter LiteLLM Model ID"
+                />
+            </div>
+            <div>
+                <p className="text-lg mb-2">API Base</p>
+                <Input
+                    value={customModel.apiBaseUrl}
+                    onChange={e =>
+                        handleSetCustomModel('apiBaseUrl', e.target.value)
+                    }
+                    placeholder="Enter API Base URL"
+                />
+            </div>
+            <div className="flex flex-col gap-2">
+                <div className="flex justify-between w-full">
+                    <div className="flex gap-1 items-center w-full">
+                        <p className="text-lg">
+                            {`${
+                                customModel.name
+                                    ? customModel.name
+                                    : customModel.id
+                            } API Key`}
+                        </p>
+                        <Popover>
+                            <PopoverTrigger className="ml-[2px]">
+                                <CircleHelp size={14} />
+                            </PopoverTrigger>
+                            <SafeStoragePopoverContent />
+                        </Popover>
+                    </div>
+                </div>
+            </div>
+        </div>
+    )
+}

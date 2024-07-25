@@ -76,6 +76,7 @@ const General = ({
         selectedModel,
         setSelectedModel,
         refetchModels,
+        backupModel,
     } = useModels()
 
     // Checking model
@@ -213,11 +214,15 @@ const General = ({
         setOpen(false)
     }
 
-    function handleDeleteCurrentCustomModel() {
+    async function handleDeleteCurrentCustomModel() {
         if (!selectedModel) return
-        // if (originalModelName === selectedModel.id) {}
+        
         removeModel(selectedModel)
         removeApiKey(selectedModel.id, false)
+        if (originalModelName === selectedModel.id) {
+            setSelectedModel(null)
+            await setUseModelName(backupModel.id, false)
+        }
         setOpen(false)
     }
 
@@ -263,10 +268,7 @@ const General = ({
                     </div>
                     {selectedModel?.id === 'custom' ? (
                         <EnterCustomModel
-                            selectedModel={selectedModel}
-                            hasClickedQuestion={hasClickedQuestion}
                             setHasClickedQuestion={setHasClickedQuestion}
-                            sessionActorref={sessionActorref}
                             setOpen={setOpen}
                             setModelHasSavedApiKey={setModelHasSavedApiKey}
                             refetchModels={refetchModels}
@@ -321,6 +323,14 @@ const General = ({
                                     setOpen={setOpen}
                                     refetchModels={refetchModels}
                                 />
+                            )}
+                            {selectedModel && selectedModel.apiBaseUrl && (
+                                <p
+                                    className="mt-2 text-gray-500 text-xs text-ellipsis max-w-[400px]"
+                                    title={selectedModel.apiBaseUrl}
+                                >
+                                    API Base: {selectedModel.apiBaseUrl}
+                                </p>
                             )}
                             {selectedModel && selectedModel.isCustom && (
                                 <Button
@@ -391,7 +401,7 @@ const APIKeyComponent = ({
     simple?: boolean
     disabled?: boolean
     isCustom?: boolean
-    refetchModels: () => void
+    refetchModels: (delay?: boolean) => void
 }) => {
     const { addApiKey, getApiKey, removeApiKey, setUseModelName } =
         useSafeStorage()
@@ -739,21 +749,13 @@ const MiscellaneousCard = ({
 }
 
 const EnterCustomModel = ({
-    selectedModel,
-    hasClickedQuestion,
-    setHasClickedQuestion,
-    sessionActorref,
     setOpen,
     setModelHasSavedApiKey,
     refetchModels,
 }: {
-    selectedModel: Model
-    hasClickedQuestion: boolean
-    setHasClickedQuestion: (v: boolean) => void
-    sessionActorref: any
     setOpen: (v: boolean) => void
     setModelHasSavedApiKey: (v: boolean) => void
-    refetchModels: () => void
+    refetchModels: (delay?: boolean) => void
 }) => {
     const [customModel, setCustomModel] = useState<Model>({
         id: '',
@@ -782,7 +784,6 @@ const EnterCustomModel = ({
                                     window.open(
                                         'https://litellm.vercel.app/docs/providers/openai_compatible'
                                     )
-                                // setHasClickedQuestion(true)
                             }
                         >
                             Where do I find this?
@@ -821,7 +822,6 @@ const EnterCustomModel = ({
                         <Popover>
                             <PopoverTrigger
                                 className="ml-[2px]"
-                                onClick={() => setHasClickedQuestion(true)}
                             >
                                 <CircleHelp size={14} />
                             </PopoverTrigger>

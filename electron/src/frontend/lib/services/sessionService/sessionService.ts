@@ -30,7 +30,7 @@ export const useSessionConfig = (host: string, name: string) => {
     useEffect(() => {
         const interval = setInterval(() => {
             getSessionConfig(host, name).then(res => setConfig(res))
-        }, 1000)
+        }, 2000)
         // Clean up the interval when the component unmounts
         return () => clearInterval(interval)
     }, [host, name])
