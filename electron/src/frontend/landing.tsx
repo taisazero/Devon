@@ -10,6 +10,9 @@ import {
 } from '@/components/ui/resizable'
 import EditorPanel from '@/panels/editor/editor-panel'
 import { SessionMachineContext } from '@/contexts/session-machine-context'
+import GitErrorModal from '@/components/modals/git-error-modal'
+import GitInitModal, { GitAskModal, GitCorruptedModal, GitMergeResultModal } from '@/components/modals/git-init-modal'
+import Sidebar from '@/components/sidebar/sidebar'
 
 export default function Landing({
     smHealthCheckDone,
@@ -40,13 +43,15 @@ export default function Landing({
     }, [checkHasEncryptedData])
 
     const sessionActorref = SessionMachineContext.useActorRef()
+    // sessionActorref.subscribe(state => {
+    //     console.log('STATE', state.value)
+    // })
     const state = SessionMachineContext.useSelector(
         state => state,
         (a, b) => a.value === b.value
     )
-    console.log(state.value)
 
-    function afterOnboard(
+    async function afterOnboard(
         apiKey: string,
         _modelName: string,
         folderPath: string
@@ -87,10 +92,18 @@ export default function Landing({
             )
         }
     }
+    const [expanded, setExpanded] = useState(false)
+    const [showMinimizedTimeline, setShowMinimizedTimeline] = useState(false)
 
     return (
         <>
             <div className="w-full flex flex-row">
+                <Sidebar
+                    expanded={expanded}
+                    setExpanded={setExpanded}
+                    showMinimizedTimeline={showMinimizedTimeline}
+                    setShowMinimizedTimeline={setShowMinimizedTimeline}
+                />
                 <ResizablePanelGroup direction="horizontal">
                     <ResizablePanel
                         className={`flex flex-col w-full relative justify-center`}
@@ -105,14 +118,23 @@ export default function Landing({
                     /> */}
                         <Chat sessionId={'UI'} />
                     </ResizablePanel>
-                    <ResizableHandle className="" />
+                    <ResizableHandle
+                        className={`${
+                            expanded || !showMinimizedTimeline ? 'w-0' : 'w-8'
+                        } transition-all duration-200 ease-in-out`}
+                    />
                     <ResizablePanel className="flex-col w-full hidden md:flex">
                         <EditorPanel chatId={'UI'} />
                     </ResizablePanel>
                 </ResizablePanelGroup>
             </div>
+            <GitErrorModal />
+            <GitInitModal />
+            <GitAskModal />
+            <GitCorruptedModal />
+            <GitMergeResultModal />
 
-            {smHealthCheckDone && (!modelName || !hasKey) && (
+            {smHealthCheckDone && !modelName && (
                 <OnboardingModal
                     setModelName={setModelName}
                     setOnboarded={setOnboarded}
@@ -120,7 +142,7 @@ export default function Landing({
                 />
             )}
             <div className="dark">
-                {smHealthCheckDone && !justOnboarded && modelName && hasKey && (
+                {smHealthCheckDone && !justOnboarded && modelName && (
                     <SelectProjectDirectoryModal
                         openProjectModal={
                             !state.can({ type: 'session.toggle' }) &&

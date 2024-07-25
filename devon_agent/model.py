@@ -67,22 +67,46 @@ class AnthropicModel:
             self.api_key = os.getenv("ANTHROPIC_API_KEY")
 
     def query(self, messages: list[dict[str, str]], system_message: str = "") -> str:
+        
         model_completion = completion(
             messages=[{"role": "system", "content": system_message}] + messages,
-            max_tokens=self.model_metadata["max_tokens"],
             model=self.api_model,
             temperature=self.args.temperature,
             stop=["</COMMAND>"],
             api_key=self.api_key,
         )
 
+        output = model_completion.choices[0].message.content
 
-        response = model_completion.choices[0].message.content.rstrip("</COMMAND>")
+        continues = 0
+
+        while model_completion.choices[0].finish_reason != "stop" and continues < 2:
+
+            continues+=1
+            
+            model_completion = completion(
+            messages=[{"role": "system", "content": system_message}] + messages + [{"role": "assistant", "content": output}],
+            model=self.api_model,
+            temperature=self.args.temperature,
+            stop=["</COMMAND>"],
+            api_key=self.api_key,
+            )
+
+            output += model_completion.choices[0].message.content
+
+            print("aaaaa")
+            print(output)
+        
+        print(output)
+        response = output.rstrip("</COMMAND>")
         return response + "</COMMAND>"
 
 
 class OpenAiModel:
     MODELS = {
+        "gpt-4o-mini": {
+            "max_tokens": 4096,
+        },
         "gpt-4o": {
             "max_tokens": 4096,
         },
@@ -97,6 +121,7 @@ class OpenAiModel:
     SHORTCUTS = {
         "gpt4-turbo": "gpt-4-turbo",
         "gpt4-o": "gpt-4o",
+        "gpt4-o-mini" : "gpt-4o-mini",
         "gpt4": "gpt-4-0125-preview",
     }
 
@@ -120,7 +145,6 @@ class OpenAiModel:
     def query(self, messages: list[dict[str, str]], system_message: str = "") -> str:
         model_completion = completion(
             messages=[{"role": "system", "content": system_message}] + messages,
-            max_tokens=self.model_metadata.get("max_tokens", 4096),
             model=self.api_model,
             temperature=self.args.temperature,
             api_key=self.api_key,

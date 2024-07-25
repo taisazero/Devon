@@ -46,6 +46,7 @@ python-dotenv = "^1.0.1"
 
 code-nav-devon = "^0.1.1"
 numpy = "<=1.26.4"
+psutil = "^6.0.0"
 [tool.poetry.extras]
 swebench = ["swebench", "datasets", "gymnasium"]
 experimental = ["dspy-ai"]

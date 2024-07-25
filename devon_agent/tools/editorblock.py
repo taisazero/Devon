@@ -168,7 +168,7 @@ mathweb/flask/app.py
 """
 
     def function(self, context: ToolContext, *args, **kwargs):
-        # print("raw_command", context.get("raw_command", ""))
+        print("raw_command", context.get("raw_command", ""))
         raw_command = context.get("raw_command", "")
         edit_content = self._extract_edit_content(raw_command)
         if not edit_content:

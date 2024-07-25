@@ -44,6 +44,8 @@ const FileTabs = ({
     isExpandedVariant,
     loading = false,
     initialFiles,
+    diffEnabled,
+    setDiffEnabled,
 }: {
     files: any[]
     selectedFileId: string | null
@@ -53,6 +55,8 @@ const FileTabs = ({
     isExpandedVariant: boolean
     loading?: boolean
     initialFiles: File[]
+    diffEnabled: boolean
+    setDiffEnabled: (value: boolean) => void
 }) => {
     const fileRefs = useRef(new Map<string, HTMLButtonElement>())
     const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -230,8 +234,8 @@ const FileTabs = ({
                           ))}
                 </div>
             </CustomScrollbar>
-            {/* <div className="flex pr-3 h-full gap-2 items-center pb-1">
-                {!isExpandedVariant && (
+            <div className="flex pr-1 h-full gap-2 items-center">
+                {/* {!isExpandedVariant && (
                     <ActionItem
                         active={false}
                         icon={
@@ -246,15 +250,23 @@ const FileTabs = ({
                             </DialogContent>
                         }
                     />
+                )} */}
+                {selectedFileId && (
+                    <ActionItem
+                        active={diffEnabled}
+                        icon={
+                            <FileDiff
+                                className={`h-[1.2rem] w-[1.2rem] ${
+                                    diffEnabled
+                                        ? 'text-primary'
+                                        : 'text-neutral-600'
+                                }`}
+                            />
+                        }
+                        clickAction={() => setDiffEnabled(!diffEnabled)}
+                    />
                 )}
-                <ActionItem
-                    active={diffEnabled}
-                    icon={
-                        <FileDiff className="h-[1.2rem] w-[1.2rem] text-gray-300" />
-                    }
-                    clickAction={() => setDiffEnabled(!diffEnabled)}
-                />
-            </div> */}
+            </div>
         </div>
     )
 }

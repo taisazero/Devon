@@ -13,9 +13,7 @@ export const BackendUrlProvider = ({
 
     useEffect(() => {
         if (port === null) {
-            //@ts-ignore
             window.api.send('get-port')
-            //@ts-ignore
             window.api.receive('get-port-response', (port: number) => {
                 setPort(port)
                 setBackendUrl(`http://localhost:${port}`)

@@ -9,7 +9,13 @@ export const models: Model[] = [
     },
     {
         id: 'gpt4-o',
-        name: 'GPT4-o',
+        name: 'GPT-4o',
+        company: 'OpenAI',
+        apiKeyUrl: 'https://platform.openai.com/api-keys',
+    },
+    {
+        id: 'gpt-4o-mini',
+        name: 'GPT-4o Mini',
         company: 'OpenAI',
         apiKeyUrl: 'https://platform.openai.com/api-keys',
     },

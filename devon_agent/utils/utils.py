@@ -4,6 +4,8 @@ import re
 import sys
 from typing import Any, TypedDict
 
+from pydantic import BaseModel
+
 LOGGER_NAME = "devon"
 
 logger = logging.getLogger(LOGGER_NAME)
@@ -55,3 +57,11 @@ class Event(TypedDict):
 
 class Hallucination(Exception):
     pass
+
+class WholeFileDiff(BaseModel):
+    file_path: str
+    before: str
+    after: str
+
+class WholeFileDiffResults(BaseModel):
+    files: list[WholeFileDiff]

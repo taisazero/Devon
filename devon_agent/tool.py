@@ -31,6 +31,7 @@ from pydantic import BaseModel, Field
 if TYPE_CHECKING:
     from devon_agent.config import Config
     from devon_agent.environment import EnvironmentModule
+    from devon_agent.versioning.git_versioning import GitVersioning
 
 
 class ToolContext(TypedDict):

@@ -17,6 +17,7 @@ import {
     ResizablePanelGroup,
 } from '@/components/ui/resizable'
 import EditorPanelHeader from './components/editor-panel-header'
+import { Switch } from '@/components/ui/switch'
 
 const boilerplateFile = {
     id: 'main.py',
@@ -48,7 +49,6 @@ type FileEvent = {
     }[]
 }
 
-
 const EditorPanel = ({
     isExpandedVariant = false,
 }: {
@@ -62,22 +62,24 @@ const EditorPanel = ({
     const [prevDirPath, setPrevDirPath] = useState<string | null>(null)
     const [files, setFiles] = useState<File<undefined>[]>([])
 
-
     const path = SessionMachineContext.useSelector(
-        state => state.context?.sessionState?.path ?? ''
+        state => state.context?.sessionConfig?.path ?? ''
     )
+    const c = SessionMachineContext.useSelector(
+        state => state.context?.sessionConfig ?? ''
+    )
+    // console.log("config", c)
     const showEditorBorders = true
 
-    const agentFiles: File[] = SessionMachineContext.useSelector(state => {
-        if (
-            state.context.sessionState?.editor &&
-            state.context.sessionState.editor.files
-        ) {
-            // console.log(state.context.sessionState.editor.files)
-
-
-            return Object.keys(state.context.sessionState.editor.files).map(
-                filepath => {
+    const agentFiles: File[] = SessionMachineContext.useSelector(
+        state => {
+            if (
+                state.context.sessionConfig?.state?.editor &&
+                state.context.sessionConfig?.state?.editor.files
+            ) {
+                return Object.keys(
+                    state.context.sessionConfig?.state?.editor.files
+                ).map(filepath => {
                     window.api.invoke('editor-add-open-file', filepath)
                     return {
                         id: filepath,
@@ -87,38 +89,41 @@ const EditorPanel = ({
                             getLanguageFromFilename(
                                 filepath.split('/').pop() ?? ''
                             ) ?? '',
-                        value: state.context.sessionState.editor.files[filepath],
+                        value: state.context.sessionConfig?.state?.editor.files[
+                            filepath
+                        ],
                         icon:
-                            getIconFromFilename(filepath.split('/').pop() ?? '') ??
-                            '',
+                            getIconFromFilename(
+                                filepath.split('/').pop() ?? ''
+                            ) ?? '',
                         agentHasOpen: true,
                     }
-                }
-            )
-        } else {
-            return [] as File[]
-        }
-    },(prevState,newState)=> {
-        // Deep equality check for arrays
-        if (prevState.length !== newState.length) {
-            return false;
-        }
-        
-        for (let i = 0; i < prevState.length; i++) {
-            if (prevState[i].id !== newState[i].id) {
-                return false;
+                })
+            } else {
+                return [] as File[]
             }
-        }
-        return true;
-    })
+        },
+        (prevState, newState) => {
+            // Deep equality check for arrays
+            if (prevState.length !== newState.length) {
+                return false
+            }
 
+            for (let i = 0; i < prevState.length; i++) {
+                if (prevState[i].id !== newState[i].id) {
+                    return false
+                }
+            }
+            return true
+        }
+    )
 
     // const { files, initialLoading } = useFileWatcher(initialFiles, path)
     let dirPath = path
     useEffect(() => {
         const startWatching = async () => {
             if (!dirPath) {
-                return () => { }
+                return () => {}
             }
             let loading = false
             if (prevDirPath !== dirPath) {
@@ -130,7 +135,7 @@ const EditorPanel = ({
             const success = await window.api.invoke('watch-dir', dirPath)
             if (!success) {
                 console.error('Failed to start watching directory')
-                return () => { }
+                return () => {}
             }
             const handleFileChanges = (events: FileEvent) => {
                 if (initialLoading || loading) {
@@ -140,30 +145,43 @@ const EditorPanel = ({
                     const fileMap = new Map(
                         prevFiles.map(file => [file.path, file])
                     )
-   
-                        events.files.forEach(file => {
-                            fileMap.set(file, {
-                                id: file,
-                                name: file.split('/').pop() ?? 'unnamed_file',
-                                path: file,
-                                language: getLanguageFromFilename(file.split('/').pop() ?? '') ?? '',
-                                value: undefined,
-                                icon: getIconFromFilename(file.split('/').pop() ?? '') ?? '',
-                            })
+                    events.files.forEach(file => {
+                        fileMap.set(file, {
+                            id: file,
+                            name: file.split('/').pop() ?? 'unnamed_file',
+                            path: file,
+                            language:
+                                getLanguageFromFilename(
+                                    file.split('/').pop() ?? ''
+                                ) ?? '',
+                            value: undefined,
+                            icon:
+                                getIconFromFilename(
+                                    file.split('/').pop() ?? ''
+                                ) ?? '',
                         })
+                    })
                     return Array.from(fileMap.values())
                 })
-                
-                setOpenFiles(events.openFiles.map((file) => {
-                    return {
-                        id: file.path,
-                        name: file.path.split('/').pop() ?? 'unnamed_file',
-                        path: file.path,
-                        language: getLanguageFromFilename(file.path.split('/').pop() ?? '') ?? '',
-                        value: file.content,
-                        icon: getIconFromFilename(file.path.split('/').pop() ?? '') ?? '',
+
+                setOpenFiles(
+                    events.openFiles.map(file => {
+                        return {
+                            id: file.path,
+                            name: file.path.split('/').pop() ?? 'unnamed_file',
+                            path: file.path,
+                            language:
+                                getLanguageFromFilename(
+                                    file.path.split('/').pop() ?? ''
+                                ) ?? '',
+                            value: file.content,
+                            icon:
+                                getIconFromFilename(
+                                    file.path.split('/').pop() ?? ''
+                                ) ?? '',
                         }
-                    }))
+                    })
+                )
             }
 
             window.api.receive('editor-file-changed', handleFileChanges)
@@ -199,7 +217,8 @@ const EditorPanel = ({
 
         if (newFiles.length > 0) {
             setOpenFiles(prevOpenFiles => [...prevOpenFiles, ...newFiles])
-            if (selectedFileId === null) {
+            // "Follows" the agent (opens in editor the new files that the agent opens)
+            if (selectedFileId === null || selectedFileId !== newFiles[0].id) {
                 setSelectedFileId(newFiles[0].id)
             }
         }
@@ -211,7 +230,7 @@ const EditorPanel = ({
     useEffect(() => {
         openFiles.forEach(file => {
             if (!file.value) {
-                window.api.invoke("editor-add-open-file", file.path)
+                window.api.invoke('editor-add-open-file', file.path)
             }
         })
     }, [openFiles])
@@ -222,8 +241,11 @@ const EditorPanel = ({
             let selectedFile = files.find(file => file.id === fileId)
 
             if (selectedFile && !openFiles.some(file => file.id === fileId)) {
-                selectedFile.value = "" 
-                setOpenFiles(prevOpenFiles => [...prevOpenFiles, selectedFile as unknown as File<string>])
+                selectedFile.value = ''
+                setOpenFiles(prevOpenFiles => [
+                    ...prevOpenFiles,
+                    selectedFile as unknown as File<string>,
+                ])
             }
         },
         [files, openFiles]
@@ -231,20 +253,25 @@ const EditorPanel = ({
 
     return (
         <div
-            className={`flex flex-col h-full w-full ${showEditorBorders ? 'pb-7' : ''
-                }`}
+            className={`flex flex-col h-full w-full ${
+                showEditorBorders ? 'pb-7' : ''
+            }`}
         >
             <div
-                className={`flex flex-row h-full ${showEditorBorders
+                className={`flex flex-row h-full ${
+                    showEditorBorders
                         ? 'rounded-md border bg-midnight border-outlinecolor pt-0 mr-3 overflow-hidden'
                         : ''
-                    }`}
+                }`}
             >
                 <div
                     // direction="vertical"
                     className="flex flex-col flex-grow w-full h-full"
                 >
-                    <EditorPanelHeader path={path} initialLoading={initialLoading}/>
+                    <EditorPanelHeader
+                        path={path}
+                        initialLoading={initialLoading}
+                    />
                     <div
                         // defaultSize={80}
                         className="flex overflow-hidden h-full"

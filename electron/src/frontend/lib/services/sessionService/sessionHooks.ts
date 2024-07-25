@@ -2,19 +2,6 @@ import { useState, useEffect } from 'react'
 import axios from 'axios'
 import { useBackendUrl } from '@/contexts/backend-url-context'
 
-export async function getSessions(backendUrl: string) {
-    if (!backendUrl) {
-        return []
-    }
-    try {
-        const response = await axios.get(`${backendUrl}/sessions`)
-        return response.data
-    } catch (error) {
-        console.error('Error fetching sessions:', error)
-        return []
-    }
-}
-
 export const useReadSessions = () => {
     const { backendUrl } = useBackendUrl()
     const [loading, setLoading] = useState(false)
@@ -34,7 +21,7 @@ export const useReadSessions = () => {
         try {
             const response = await axios.get(`${backendUrl}/sessions`)
             setSessions(response.data)
-        } catch (err) {
+        } catch (err: any) {
             setError(err.message || 'Unknown error')
             setSessions([]) // Reset session keys on error
         }
@@ -57,7 +44,7 @@ export const useDeleteSession = () => {
 
     // Function to delete a session
     // Note: session is the session id
-    const deleteSession = async session => {
+    const deleteSession = async (session: unknown) => {
         setLoading(true)
         setError(null)
         try {
@@ -65,7 +52,7 @@ export const useDeleteSession = () => {
                 params: { session },
             })
             setResponse(response.data) // Save the response data which might be the updated session list
-        } catch (err) {
+        } catch (err: any) {
             setError(err.message || 'Unknown error')
         }
         setLoading(false)

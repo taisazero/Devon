@@ -16,7 +16,9 @@ from devon_agent.agents.prompts.openai_prompts import (
     openai_conversation_agent_last_user_prompt_template,
     openai_conversation_agent_system_prompt_template)
 from devon_agent.model import AnthropicModel, ModelArguments, OpenAiModel
+from devon_agent.tools import parse_command
 from devon_agent.tools.utils import get_cwd
+from devon_agent.utils.config_utils import make_checkpoint
 from devon_agent.utils.utils import LOGGER_NAME, Hallucination
 
 if TYPE_CHECKING:
@@ -32,31 +34,29 @@ def parse_response(response):
         scratchpad = None
         if "<scratchpad>" in response:
             scratchpad = response.split("<scratchpad>")[1].split("</scratchpad>")[0]
-        commit_message = None
-        if "<COMMIT_MESSAGE>" in response:
-            commit_message = response.split("<COMMIT_MESSAGE>")[1].split("</COMMIT_MESSAGE>")[0]
     else:
         thought = response.split("<THOUGHT>")[1].split("</THOUGHT>")[0]
         action = response.split("<COMMAND>")[1].split("</COMMAND>")[0]
         scratchpad = None
         if "<SCRATCHPAD>" in response:
             scratchpad = response.split("<SCRATCHPAD>")[1].split("</SCRATCHPAD>")[0]
-        commit_message = None
-        if "<COMMIT_MESSAGE>" in response:
-            commit_message = response.split("<COMMIT_MESSAGE>")[1].split("</COMMIT_MESSAGE>")[0]
 
-    return thought, action, scratchpad, commit_message
+    return thought, action, scratchpad
 
 class ConversationalAgent(Agent):
     scratchpad: str = None
 
     default_models = {
         "gpt4-o": OpenAiModel,
+        "gpt-4o-mini": OpenAiModel,
         "claude-3-5-sonnet": AnthropicModel,
     }
 
     default_model_configs = {
         "gpt4-o": {
+            "prompt_type": "openai",
+        },
+        "gpt-4o-mini": {
             "prompt_type": "openai",
         },
         "claude-3-5-sonnet": {
@@ -67,7 +67,7 @@ class ConversationalAgent(Agent):
     def reset(self):
         self.agent_config.chat_history = []
         self.interrupt = ""
-        self.scratchpad = None
+        self.global_config.state["scratchpad"] = None
 
     def _initialize_model(self):
         return self.default_models[self.agent_config.model](
@@ -107,7 +107,7 @@ class ConversationalAgent(Agent):
             [self._format_editor_entry(k, v, PAGE_SIZE) for k, v in editor.items()]
         )
 
-    def _prepare_anthropic(self, task, editor, session):
+    def _prepare_anthropic(self, task, editor, session, scratchpad=None):
         command_docs = (
             "Custom Commands Documentation:\n"
             + anthropic_commands_to_command_docs(
@@ -125,18 +125,18 @@ class ConversationalAgent(Agent):
                 {
                     "session": session,
                     "environment": session.default_environment,
-                    "state": session.state,
+                    "state": session.config.state,
                 }
             ),
-            session.base_path,
-            self.scratchpad,
+            session.config.path,
+            scratchpad,
         )
 
         messages = [{"role": "user", "content": last_user_prompt}]
         return messages, system_prompt
 
-    def _prepare_openai(self, task, editor, session):
-        time.sleep(3)
+    def _prepare_openai(self, task, editor, session, scratchpad=None):
+        # time.sleep(3)
 
         command_docs = (
             "Custom Commands Documentation:\n"
@@ -159,11 +159,11 @@ class ConversationalAgent(Agent):
                 {
                     "session": session,
                     "environment": session.default_environment,
-                    "state": session.state,
+                    "state": session.config.state,
                 }
             ),
-            session.base_path,
-            self.scratchpad,
+            session.config.path,
+            scratchpad
         )
 
         messages = history + [{"role": "user", "content": last_user_prompt}]
@@ -174,16 +174,16 @@ class ConversationalAgent(Agent):
         task: str,
         observation: str,
         session: "Session",
-    ) -> Tuple[str, str, str, str]:
+    ) -> Tuple[str, str, str]:
         self.current_model = self._initialize_model()
 
         if self.interrupt:
-            observation = observation + ". also " + self.interrupt
+            observation = observation + ". also " + "YOU HAVE BEEN **INTERRUPTED**. You got the following message :   " + self.interrupt + "   : **INTERRUPTED**"
             self.interrupt = ""
 
         try:
             editor = self._convert_editor_to_view(
-                session.state.editor.files, session.state.editor.PAGE_SIZE
+                session.config.state["editor"]["files"], session.config.state["editor"]["PAGE_SIZE"]
             )
 
             self.agent_config.chat_history.append(
@@ -202,8 +202,9 @@ class ConversationalAgent(Agent):
                     self.agent_config.model
                 ]["prompt_type"]
 
+
             messages, system_prompt = prompts[self.agent_config.prompt_type](
-                task, editor, session
+                task, editor, session, session.config.state["scratchpad"]
             )
             output = None
             while not output:
@@ -218,7 +219,7 @@ class ConversationalAgent(Agent):
                             "consumer": "none",
                         }
                     )
-                    return "error", "error", "error", "error"
+                    return "error", "error", "error"
                 except Exception as e:
                     session.event_log.append(
                         {
@@ -228,23 +229,31 @@ class ConversationalAgent(Agent):
                             "consumer": "none",
                         }
                     )
-                    return "error", "error", "error", "error"
+                    return "error", "error", "error"
                  
-                
-
-                
-
             thought = None
             action = None
 
             try:
-                thought, action, scratchpad, commit_message = parse_response(output)
+                thought, action, scratchpad = parse_response(output)
+                toolname, args = parse_command(action)
+                if toolname == "ask_user" and len(args) == 2:
+                    commit_message = args[1]
+                    if session.config.versioning_type == "git":
+                        checkpoint = make_checkpoint(commit_message,session.config, session.event_id, session.versioning)
+                        session.config.checkpoints.append(checkpoint)
+                        session.event_log.append(
+                            {
+                                "type": "Checkpoint",
+                                "content": f"{session.config.checkpoints[-1].checkpoint_id}",
+                                "producer": "devon",
+                                "consumer": "user",
+                            }
+                        )
                 if scratchpad:
-                    self.scratchpad = scratchpad
-                if commit_message:
-                    print("COMMIT MESSAGE: ", commit_message)
+                    session.config.state["scratchpad"] = scratchpad
             except Exception:
-                raise Hallucination(f"Multiple actions found in response: {output}")
+                raise Hallucination(f"Multiple actions found in response or incorrect formatting: {output}")
 
             if not thought or not action:
                 raise Hallucination(
@@ -273,14 +282,13 @@ OBSERVATION: {observation}
 
 SCRATCHPAD: {scratchpad}
 
-COMMIT MESSAGE: {commit_message}
 \n\n****************\n\n\n\n""")
 
-            return thought, action, output, commit_message
+            return thought, action, output
         except KeyboardInterrupt:
             raise
         except Hallucination:
-            return "hallucination", "hallucination", "Incorrect response format",""
+            return "hallucination", "hallucination", "Incorrect response format"
         except RuntimeError as e:
             session.event_log.append(
                 {
@@ -294,8 +302,7 @@ COMMIT MESSAGE: {commit_message}
             return (
                 f"Exit due to runtime error: {e}",
                 "exit_error",
-                f"exit due to runtime error: {e}",
-                ""
+                f"exit due to runtime error: {e}"
             )
         except RetryError as e:
             session.event_log.append(
@@ -310,8 +317,7 @@ COMMIT MESSAGE: {commit_message}
             return (
                 f"Exit due to retry error: {e}",
                 "exit_api",
-                f"exit due to retry error: {e}",
-                ""
+                f"exit due to retry error: {e}"
             )
         except Exception as e:
             session.event_log.append(
@@ -328,5 +334,4 @@ COMMIT MESSAGE: {commit_message}
                 f"Exit due to exception: {e}",
                 "exit_error",
                 f"exit due to exception: {e}",
-                ""
             )

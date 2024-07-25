@@ -9,6 +9,7 @@ const FolderPicker = ({
     showTitle = true,
     customButton,
     buttonClassName,
+    hideButton = false,
 }: {
     folderPath: string
     setFolderPath: (path: string) => void
@@ -16,6 +17,7 @@ const FolderPicker = ({
     showTitle?: boolean
     customButton?: React.ReactNode
     buttonClassName?: string
+    hideButton?: boolean
 }) => {
     const handleDirectoryPicker = e => {
         //@ts-ignore
@@ -47,12 +49,14 @@ const FolderPicker = ({
                 {/* <input>{folderPath}</input> */}
                 <Input
                     type="text"
-                    className="w-full mr-4 min-w-[300px] disabled:opacity-90" // Remove this after allowing the user to type path
+                    className={`w-full min-w-[300px] disabled:opacity-90 ${
+                        !hideButton ? 'mr-4' : ''
+                    }`} // Remove this after allowing the user to type path
                     value={folderPath}
                     onChange={handleInputChange}
                     disabled={true} // TODO: Don't have path validation on input of string yet so disable for now. See comment above as well
                 />
-                {customButton ? (
+                {hideButton ? null : customButton ? (
                     customButton
                 ) : (
                     <Button

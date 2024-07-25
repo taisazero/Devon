@@ -4,6 +4,7 @@ import { SessionContextProviderComponent } from '@/contexts/session-machine-cont
 import Landing from './landing'
 import { useBackendUrl } from '@/contexts/backend-url-context'
 import AtomLoader from '@/components/ui/atom-loader/atom-loader'
+import { loadAppSettings } from '@/lib/app-settings'
 
 const LOADING_TIMEOUT = 15000
 const MINIMUM_LOADING_DURATION = 3000
@@ -18,11 +19,15 @@ export default function IndexPage() {
     const [smHealthCheckDone, setSmHealthCheckDone] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const [startFadeIn, setStartFadeIn] = useState(false)
 
     useEffect(() => {
+        setStartFadeIn(true)
         if (backendUrl) {
             setSessionMachineProps({ host: backendUrl, name: 'UI' })
         }
+        // Check and set initial user settings (set only if not set before)
+        loadAppSettings()
     }, [backendUrl])
 
     useEffect(() => {
@@ -69,7 +74,7 @@ export default function IndexPage() {
                     sessionMachineProps={sessionMachineProps}
                 >
                     <button
-                        className="absolute top-4 right-0 z-10 p-4 text-sm text-neutral-500 hover:text-white duration-200"
+                        className="absolute top-0 right-0 z-10 py-3 px-4 text-sm text-neutral-500 hover:text-white duration-200"
                         onClick={() =>
                             window.api.invoke('open-logs-directory', null)
                         }
@@ -83,7 +88,11 @@ export default function IndexPage() {
                 </SessionContextProviderComponent>
             )}
             {!sessionMachineProps || isLoading || !smHealthCheckDone ? (
-                <div className="absolute top-0 left-0 w-full h-full bg-night z-50">
+                <div
+                    className={`absolute top-0 left-0 w-full h-full bg-night z-50 transition-opacity duration-1000 ${
+                        startFadeIn ? 'opacity-100' : 'opacity-0'
+                    }`}
+                >
                     <div className="fixed left-[50%] top-[50%] grid translate-x-[-50%] translate-y-[-50%]">
                         <div className="flex items-center justify-center flex-col gap-10">
                             <AtomLoader size="lg" />

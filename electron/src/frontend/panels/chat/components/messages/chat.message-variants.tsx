@@ -149,7 +149,8 @@ export const ToolResponseMessage = ({
         if (index === 0) {
             return null
         }
-        return <ThoughtMessage content={'Let me cook...'} />
+        // return <ThoughtMessage content={'Let me cook...'} />
+        return <ThoughtMessage content={'Let me think some more...'} />
     }
 
     if (command.includes('Running command: edit')) {
@@ -185,7 +186,7 @@ export const ToolResponseMessage = ({
                         </div>
                     )}
                 <div className="relative w-full font-sans codeblock bg-zinc-950 rounded-md overflow-hidden">
-                    <div className="flex items-center justify-between w-full pl-3 py-0 pr-1 bg-code-header text-zinc-100 rounded-t-md sticky top-0 hover:cursor-pointer">
+                    <div className="flex items-center justify-between w-full pl-3 py-0 pr-1 bg-code-header text-zinc-100 rounded-t-md sticky top-0">
                         <div className="flex py-2 items-center text-gray-300 px-1">
                             <pre className="text-sm flex">diff</pre>
                         </div>
@@ -249,47 +250,48 @@ export const ErrorMessage = ({
     className?: string
 }) => {
     const [expanded, setExpanded] = useState(true)
-    const [height, setHeight] = useState(0)
-    const contentRef = useRef<HTMLPreElement>(null)
-
-    const toggleExpanded = () => setExpanded(prev => !prev)
+    const contentRef = useRef<HTMLDivElement>(null)
+    const [contentHeight, setContentHeight] = useState<number | undefined>(
+        undefined
+    )
 
     useEffect(() => {
         if (contentRef.current) {
-            setHeight(expanded ? contentRef.current.scrollHeight : 0)
+            setContentHeight(contentRef.current.scrollHeight)
         }
-    }, [expanded, content])
+    }, [content])
+
+    const toggleExpanded = () => setExpanded(prev => !prev)
 
     return (
-        <div className={cn('mt-3 overflow-auto', className)}>
+        <div className={cn('mt-3', className)}>
             <div className="relative w-full font-sans codeblock bg-zinc-950 rounded-md overflow-hidden">
                 <div
-                    className="flex items-center justify-between w-full pl-3 py-0 pr-1 bg-code-header text-zinc-100 rounded-t-md sticky top-0 hover:cursor-pointer"
+                    className="flex items-center justify-between w-full pl-3 py-0 pr-1 bg-code-header text-zinc-100 rounded-t-md cursor-pointer"
                     onClick={toggleExpanded}
                 >
                     <div className="flex py-2 items-center text-red-400 px-[1px] gap-[3px]">
-                        {/* <CircleAlert
-                            className={cn(
-                                'h-[13px] w-[13px] transition-transform duration-200 ease-in-out mr-[3px]'
-                            )}
-                        /> */}
-                        <Ban
-                            className={cn(
-                                'h-[12px] w-[12px] transition-transform duration-200 ease-in-out mr-[3px] ml-[2px]'
-                            )}
-                        />
+                        <Ban className="h-[12px] w-[12px] transition-transform duration-200 ease-in-out mr-[3px] ml-[2px]" />
                         <pre className="text-sm flex">Error</pre>
                     </div>
                 </div>
                 <div
-                    style={{ height: `${height}px` }}
-                    className="transition-[height] duration-300 ease-in-out overflow-auto bg-midnight"
+                    style={{
+                        maxHeight: expanded
+                            ? contentHeight
+                                ? Math.min(contentHeight, 300)
+                                : 300
+                            : 0,
+                        transition: 'max-height 300ms ease-in-out',
+                    }}
+                    className="overflow-hidden bg-midnight"
                 >
-                    <div className="duration-300 ease-in-out overflow-y-auto bg-midnight w-full max-h-[300px]">
-                        <pre
-                            ref={contentRef}
-                            className="text-zinc-100 p-5 text-sm w-full rounded-b-md whitespace-pre-wrap break-words"
-                        >
+                    <div
+                        ref={contentRef}
+                        className="overflow-auto"
+                        style={{ maxHeight: 300 }}
+                    >
+                        <pre className="text-zinc-100 p-5 text-sm w-full rounded-b-md whitespace-pre-wrap break-words">
                             {content}
                         </pre>
                     </div>

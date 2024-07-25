@@ -216,6 +216,8 @@ def openai_conversation_agent_last_user_prompt_template(
   3. Always make sure to look at the currently open file and the current working directory (which appears right after the currently open file). The currently open file might be in a different directory than the working directory! Note that some commands, such as 'create', open files, so they might change the current  open file.
 
   4. When editing files, it is easy to accidentally specify a wrong line number or to write code with incorrect indentation. Always check the code after you issue an edit to make sure that it reflects what you wanted to accomplish. If it didn't, issue another command to fix it.
+
+  5. If you see an INTERRUPT message in the observation, ALWAYS use the tool ask_user for clarification
         
   (Current directory: {cwd})
   bash-$

@@ -26,6 +26,7 @@ import {
     // createActor
 } from 'xstate'
 import type { Message } from '@/lib/types'
+import { getGitSettings } from '@/lib/app-settings'
 
 type ServerEvent = {
     type:
@@ -40,10 +41,18 @@ type ServerEvent = {
         | 'ToolRequest'
         | 'Error'
         | 'UserResponse'
-        | 'GitEvent'
         | 'ShellRequest'
         | 'ShellResponse'
         | 'RateLimit'
+        | 'GitEvent'
+        | 'GitError'
+        | 'GitResolve'
+        | 'GitInit'
+        | 'Checkpoint'
+        | 'GitAskUser'
+        | 'GitCorrupted'
+        | 'GitCorruptedResolved'
+        | 'GitMergeResult'
     content: any
     identifier: string | null
 }
@@ -55,13 +64,29 @@ type ServerEventContext = {
     toolMessage: string
     userRequest: boolean
     gitData: {
-        base_commit: string | null
-        commits: string[]
+        base_commit: {
+            message: string
+            hash: string
+        } | null
+        commits: {
+            message: string
+            hash: string
+        }[]
     }
+    gitError: string | null
+    gitInit: string | null
+    gitMessage: string | null
+    gitCorrupted: boolean
+    gitMergeResult: {
+        success: boolean
+        message: string
+    } | null
+    status: string | null //'idle' | 'thinking' | 'executing' | 'waiting_for_user'
 }
 
 export const eventHandlingLogic = fromTransition(
     (state: ServerEventContext, event: ServerEvent) => {
+        // console.log('event', event)
         switch (event.type) {
             case 'session.reset': {
                 return {
@@ -75,18 +100,22 @@ export const eventHandlingLogic = fromTransition(
                         base_commit: null,
                         commits: [],
                     },
+                    gitMessage: null,
+                    gitCorrupted: false,
+                    gitMergeResult: null,
                 }
             }
             case 'Stop': {
                 return { ...state, ended: true }
             }
             case 'ModelRequest': {
-                return { ...state, modelLoading: true }
+                return { ...state, modelLoading: true, status: 'thinking' }
             }
             case 'ModelResponse': {
                 const content = JSON.parse(event.content)
                 return {
                     ...state,
+                    status: 'idle',
                     modelLoading: false,
                     messages: [
                         ...state.messages,
@@ -121,8 +150,20 @@ export const eventHandlingLogic = fromTransition(
             case 'ToolRequest': {
                 return {
                     ...state,
+                    status: 'executing',
+                    toolLoading: true,
                     toolMessage:
                         'Running command: ' + event.content.raw_command.trim(),
+                }
+            }
+            case 'Checkpoint': {
+                return {
+                    ...state,
+                    status: 'idle',
+                    messages: [
+                        ...state.messages,
+                        { text: event.content, type: 'checkpoint' } as Message,
+                    ],
                 }
             }
             case 'ToolResponse': {
@@ -130,6 +171,7 @@ export const eventHandlingLogic = fromTransition(
                     state.toolMessage + '|START_RESPONSE|' + event.content
                 return {
                     ...state,
+                    toolLoading: false,
                     toolMessage: '',
                     messages: [
                         ...state.messages,
@@ -158,6 +200,7 @@ export const eventHandlingLogic = fromTransition(
             case 'UserRequest': {
                 return {
                     ...state,
+                    status: 'waiting_for_user',
                     userRequest: true,
                     messages: [
                         ...state.messages,
@@ -197,12 +240,16 @@ export const eventHandlingLogic = fromTransition(
                 }
             }
             case 'GitEvent': {
+                const commit = {
+                    message: event.content?.message?.trim(),
+                    hash: event.content?.commit_hash,
+                }
                 if (event.content.type === 'base_commit') {
                     return {
                         ...state,
                         gitData: {
-                            base_commit: event.content.commit,
-                            commits: [event.content.commit],
+                            base_commit: commit,
+                            commits: [commit],
                         },
                     }
                 } else if (event.content.type === 'commit') {
@@ -210,17 +257,14 @@ export const eventHandlingLogic = fromTransition(
                         ...state,
                         gitData: {
                             base_commit: state.gitData.base_commit,
-                            commits: [
-                                ...state.gitData.commits,
-                                event.content.commit,
-                            ],
+                            commits: [...state.gitData.commits, commit],
                         },
                     }
                 } else if (event.content.type === 'revert') {
                     return {
                         ...state,
                         gitData: {
-                            base_commit: event.content.commit,
+                            base_commit: commit,
                             commits: state.gitData.commits.slice(
                                 0,
                                 state.gitData.commits.indexOf(
@@ -233,7 +277,54 @@ export const eventHandlingLogic = fromTransition(
                     return state
                 }
             }
-
+            case 'GitError': {
+                return {
+                    ...state,
+                    gitError: event.content ?? null,
+                }
+            }
+            case 'GitResolve': {
+                return {
+                    ...state,
+                    gitError: null,
+                    gitMessage: null,
+                }
+            }
+            case 'GitAskUser':
+                return {
+                    ...state,
+                    gitMessage: event.content ?? null,
+                }
+            case 'GitInit': {
+                return {
+                    ...state,
+                    gitInit: event.content ?? null,
+                }
+            }
+            case 'GitCorrupted': {
+                return {
+                    ...state,
+                    gitCorrupted: true,
+                }
+            }
+            case 'GitCorruptedResolved': {
+                return {
+                    ...state,
+                    gitCorrupted: false,
+                }
+            }
+            case 'GitMergeResult': {
+                return {
+                    ...state,
+                    gitMergeResult: event.content,
+                }
+            }
+            case 'GitMergeResolve': {
+                return {
+                    ...state,
+                    gitMergeResult: null,
+                }
+            }
             default: {
                 return state
             }
@@ -249,6 +340,12 @@ export const eventHandlingLogic = fromTransition(
             base_commit: null,
             commits: [],
         },
+        gitError: null,
+        gitInit: null,
+        gitMessage: null,
+        gitMergeResult: null,
+        gitCorrupted: false,
+        status: 'idle',
     }
 )
 
@@ -326,11 +423,14 @@ const createSessionActor = fromPromise(
     }) => {
         // sleep for 5 sec
         // await new Promise(resolve => setTimeout(resolve, 5000));
-
         try {
+            const { versioning_type } = await getGitSettings()
             const response = await axios.post(
                 `${input.host}/sessions/${input?.name}`,
-                input.agentConfig,
+                {
+                    versioning_type,
+                    ...input.agentConfig,
+                },
                 {
                     params: {
                         // session: input?.name,
@@ -382,17 +482,56 @@ const startSessionActor = fromPromise(
             }
         )
 
-        const events = (
-            await axios.get(`${input?.host}/sessions/${input?.name}/events`)
-        ).data
+        // const events = (
+        //     await axios.get(`${input?.host}/sessions/${input?.name}/events`)
+        // ).data
 
-        const state = (
-            await axios.get(`${input?.host}/sessions/${input?.name}/state`)
-        ).data
+        // const state = (
+        //     await axios.get(`${input?.host}/sessions/${input?.name}/state`)
+        // ).data
 
         return response
     }
 )
+
+const revertSessionActor = fromPromise(
+    async ({
+        input,
+    }: {
+        input: { host: string; name: string; checkpoint_id: number }
+    }) => {
+        console.log('reverting', input.checkpoint_id)
+        const response = await axios.patch(
+            `${input?.host}/sessions/${input?.name}/revert?checkpoint_id=${input.checkpoint_id}`
+        )
+        return response
+    }
+)
+
+type SendEventType = {
+    type: string
+    params: {
+        serverEventType: string
+        content: any
+    }
+}
+
+const sendEvent = async ({
+    input,
+}: {
+    input: { host: string; name: string; event: SendEventType }
+}) => {
+    const response = await axios.post(
+        `${input.host}/sessions/${input.name}/event`,
+        {
+            type: input.event.params.serverEventType,
+            content: input.event.params.content,
+            producer: 'user',
+            consumer: 'agent',
+        }
+    )
+    return response.data
+}
 
 const sendMessage = async ({
     host,
@@ -427,7 +566,7 @@ const sendMessage = async ({
 
 export const fetchSessionState = async (host: string, sessionId: string) => {
     const { data } = await axios.get(
-        `${host}/sessions/${encodeURIComponent(sessionId)}/state`
+        `${host}/sessions/${encodeURIComponent(sessionId)}/config`
     )
     return data
 }
@@ -444,7 +583,7 @@ export const newSessionMachine = setup({
             path: string
             serverEventContext: ServerEventContext
             agentConfig: any
-            sessionState: any
+            sessionConfig: any
             healthcheckRetry: number
         },
     },
@@ -455,6 +594,7 @@ export const newSessionMachine = setup({
         startSession: startSessionActor,
         eventSourceActor: eventSourceActor,
         eventHandlingLogic: eventHandlingLogic,
+        // sendEventActor: sendEventActor,
         checkServer: fromPromise(
             async ({ input }: { input: { host: string } }) => {
                 const response = await axios.get(`${input?.host}/`)
@@ -491,20 +631,33 @@ export const newSessionMachine = setup({
                     `${input?.host}/sessions/${input?.name}/reset`
                 )
 
-                const state = (
-                    await axios.get(
-                        `${input?.host}/sessions/${input?.name}/state`
-                    )
-                ).data
+                // const state = (
+                //     await axios.get(
+                //         `${input?.host}/sessions/${input?.name}/state`
+                //     )
+                // ).data
 
                 return response
             }
         ),
         deleteSession: fromPromise(
             async ({ input }: { input: { host: string; name: string } }) => {
-                // pause session first
+                // Perform teardown (backend endpoint)
+                await axios.get(
+                    `${input?.host}/sessions/${input?.name}/teardown`
+                )
+                // Delete session
                 const response = await axios.delete(
                     `${input?.host}/sessions/${input?.name}`
+                )
+                return response
+            }
+        ),
+        revertSession: revertSessionActor,
+        resumeSession: fromPromise(
+            async ({ input }: { input: { host: string; name: string } }) => {
+                const response = await axios.patch(
+                    `${input?.host}/sessions/${input?.name}/resume`
                 )
                 return response
             }
@@ -517,7 +670,7 @@ export const newSessionMachine = setup({
         name: input.name,
         path: '',
         agentConfig: undefined,
-        sessionState: undefined,
+        sessionConfig: undefined,
         serverEventContext: {
             messages: [],
             ended: false,
@@ -528,6 +681,11 @@ export const newSessionMachine = setup({
                 base_commit: null,
                 commits: [],
             },
+            gitMergeResult: null,
+            gitMessage: null,
+            gitError: null,
+            gitInit: null,
+            gitCorrupted: false,
         },
         healthcheckRetry: 0,
     }),
@@ -879,11 +1037,25 @@ export const newSessionMachine = setup({
                 'session.stateUpdate': {
                     target: 'running',
                     actions: assign(({ event }) => {
+                        // console.log('stateUpdate', event.payload)
                         return {
-                            sessionState: event.payload,
+                            sessionConfig: event.payload,
                         }
                     }),
                     reenter: true,
+                },
+                'session.revert': {
+                    target: 'reverting',
+                },
+            },
+        },
+        resuming: {
+            invoke: {
+                id: 'resumeSession',
+                src: 'resumeSession',
+                input: ({ context: { host, name } }) => ({ host, name }),
+                onDone: {
+                    target: 'initializing',
                 },
             },
         },
@@ -906,11 +1078,51 @@ export const newSessionMachine = setup({
                 'session.delete': {
                     target: 'deleting',
                 },
+                'session.revert': {
+                    target: 'reverting',
+                },
+            },
+        },
+        reverting: {
+            invoke: {
+                id: 'revertSession',
+                src: 'revertSession',
+                input: ({ context: { host, name }, event }) => ({
+                    host,
+                    name,
+                    checkpoint_id: event.params.checkpoint_id,
+                }),
+                onDone: {
+                    actions: [
+                        sendTo(EVENTSOURCE_ACTOR_ID, ({ self }) => {
+                            return {
+                                type: 'stopStream',
+                                sender: self,
+                            }
+                        }),
+                    ],
+                    target: 'resuming',
+                },
             },
         },
         stopped: {
             type: 'final',
         },
         error: {},
+    },
+    on: {
+        'session.sendEvent': {
+            actions: [
+                ({ event, context }) => {
+                    sendEvent({
+                        input: {
+                            host: context.host,
+                            name: context.name,
+                            event: event as SendEventType,
+                        },
+                    })
+                },
+            ],
+        },
     },
 })

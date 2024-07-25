@@ -1,15 +1,20 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
-import Editor, { Monaco } from '@monaco-editor/react'
-import type { editor, Selection } from 'monaco-editor'
+import Editor, { Monaco, DiffEditor } from '@monaco-editor/react'
+import type { editor, Selection, IDisposable } from 'monaco-editor'
 import FileTabs from '@/panels/editor/components/file-tabs/file-tabs'
 import { File } from '@/lib/types'
 import { atom, useAtom } from 'jotai'
+import { Switch } from '@/components/ui/switch'
 import {
     ICodeSnippet,
     SnippetId,
     FileId,
 } from '@/panels/chat/components/ui/code-snippet'
 import { getRelativePath, getFileName } from '@/lib/utils'
+import { getCheckpointDiff } from '@/lib/services/sessionService/sessionService'
+import { SessionMachineContext } from '@/contexts/session-machine-context'
+import { checkpointTrackerAtom } from '@/panels/timeline/lib'
+import { useToast } from '@/components/ui/use-toast'
 
 export const selectedCodeSnippetAtom = atom<ICodeSnippet | null>(null)
 
@@ -21,6 +26,8 @@ export default function CodeEditor({
     showEditorBorders,
     path,
     initialFiles,
+    originalValue,
+    modifiedValue,
 }: {
     files: File[]
     selectedFileId: string | null
@@ -29,6 +36,8 @@ export default function CodeEditor({
     showEditorBorders: boolean
     path: string
     initialFiles: File[]
+    originalValue?: string
+    modifiedValue?: string
 }): JSX.Element {
     const [popoverVisible, setPopoverVisible] = useState(false)
     const [popoverPosition, setPopoverPosition] = useState({ top: 0, left: 0 })
@@ -44,6 +53,10 @@ export default function CodeEditor({
     const [, setSelectedCodeSnippet] = useAtom<ICodeSnippet | null>(
         selectedCodeSnippetAtom
     )
+    const [checkpointTracker, setCheckpointTracker] = useAtom(
+        checkpointTrackerAtom
+    )
+    const [showInlineDiff, setShowInlineDiff] = useState(false)
 
     useEffect(() => {
         if (
@@ -104,6 +117,22 @@ export default function CodeEditor({
             }
         },
         [openFiles, selectedFileId, setSelectedFileId]
+    )
+
+    const handleDiffEditorDidMount = useCallback(
+        (editor: editor.IDiffEditor, monaco: Monaco) => {
+            const modifiedEditor = editor.getModifiedEditor()
+            editorRef.current = modifiedEditor
+            monacoRef.current = monaco
+
+            // Restore the previous selection for the file
+            const previousSelection =
+                fileSelectionsRef.current[selectedFileId ?? '']
+            if (previousSelection) {
+                modifiedEditor.setSelection(previousSelection)
+            }
+        },
+        [selectedFileId]
     )
 
     const isSelectionVisible = useCallback(
@@ -208,9 +237,16 @@ export default function CodeEditor({
                 colors: {},
             })
             monaco.editor.setTheme('theme')
+            reloadEditorForSyntaxHighlighting(editorRef)
         },
         []
     )
+
+    useEffect(() => {
+        if (editorRef.current) {
+            reloadEditorForSyntaxHighlighting(editorRef)
+        }
+    }, [showInlineDiff, selectedFileId])
 
     useEffect(() => {
         if (!editorRef.current || !monacoRef.current) return
@@ -278,68 +314,83 @@ export default function CodeEditor({
 
     useEffect(() => {
         const attachListeners = () => {
-            if (!editorRef.current || !monacoRef.current) return;
-            
-            const editor = editorRef.current;
-            const monaco = monacoRef.current;
-    
+            if (!editorRef.current || !monacoRef.current) return
+
+            const editor = editorRef.current
+            const monaco = monacoRef.current
+
             const handleMouseUp = () => {
-                const selection = editor.getSelection();
+                const selection = editor.getSelection()
                 if (selection && !selection.isEmpty()) {
-                    setPopoverVisible(true);
-                }
-            };
-    
-            const handleSelectionChange = (e: editor.ICursorSelectionChangedEvent) => {
-                const selection = editor.getSelection();
-                if (selectedFileId && selection && !selection.isEmpty()) {
-                    fileSelectionsRef.current[selectedFileId] = selection;
-                    updateSelectionInfo(editor, monaco, selection, selectedFileId);
-                } else {
-                    setPopoverVisible(false);
-                }
-            };
-    
-            const disposable = editor.onDidChangeCursorSelection(handleSelectionChange);
-    
-            // Restore selection when switching tabs or opening a new file
-            if (selectedFileId) {
-                const storedSelection = fileSelectionsRef.current[selectedFileId];
-                if (storedSelection) {
-                    editor.setSelection(storedSelection);
-                    updateSelectionInfo(editor, monaco, storedSelection, selectedFileId);
-                } else {
-                    // Clear selection and hide popover when opening a new file
-                    setPopoverVisible(false);
-                    editor.setSelection(new monaco.Selection(0, 0, 0, 0));
+                    setPopoverVisible(true)
                 }
             }
-    
-            window.addEventListener('mouseup', handleMouseUp);
-    
+
+            const handleSelectionChange = (
+                e: editor.ICursorSelectionChangedEvent
+            ) => {
+                const selection = editor.getSelection()
+                if (selectedFileId && selection && !selection.isEmpty()) {
+                    fileSelectionsRef.current[selectedFileId] = selection
+                    updateSelectionInfo(
+                        editor,
+                        monaco,
+                        selection,
+                        selectedFileId
+                    )
+                } else {
+                    setPopoverVisible(false)
+                }
+            }
+
+            const disposable = editor.onDidChangeCursorSelection(
+                handleSelectionChange
+            )
+
+            // Restore selection when switching tabs or opening a new file
+            if (selectedFileId) {
+                const storedSelection =
+                    fileSelectionsRef.current[selectedFileId]
+                if (storedSelection) {
+                    editor.setSelection(storedSelection)
+                    updateSelectionInfo(
+                        editor,
+                        monaco,
+                        storedSelection,
+                        selectedFileId
+                    )
+                } else {
+                    // Clear selection and hide popover when opening a new file
+                    setPopoverVisible(false)
+                    editor.setSelection(new monaco.Selection(0, 0, 0, 0))
+                }
+            }
+
+            window.addEventListener('mouseup', handleMouseUp)
+
             return () => {
-                disposable.dispose();
-                window.removeEventListener('mouseup', handleMouseUp);
-            };
-        };
-    
+                disposable.dispose()
+                window.removeEventListener('mouseup', handleMouseUp)
+            }
+        }
+
         // Initial attempt to attach listeners
-        let cleanup = attachListeners();
-    
+        let cleanup = attachListeners()
+
         // If editor is not available, set up an interval to check periodically
         const checkInterval = setInterval(() => {
             if (editorRef.current && monacoRef.current) {
-                clearInterval(checkInterval);
-                if (cleanup) cleanup();
-                cleanup = attachListeners();
+                clearInterval(checkInterval)
+                if (cleanup) cleanup()
+                cleanup = attachListeners()
             }
-        }, 100); // Check every 100ms
-    
+        }, 100) // Check every 100ms
+
         return () => {
-            clearInterval(checkInterval);
-            if (cleanup) cleanup();
-        };
-    }, [selectedFileId, updateSelectionInfo]);
+            clearInterval(checkInterval)
+            if (cleanup) cleanup()
+        }
+    }, [selectedFileId, updateSelectionInfo])
 
     useEffect(() => {
         if (selectedFileId) {
@@ -367,6 +418,10 @@ export default function CodeEditor({
         // setPopoverVisible(false)
     }
 
+    const isReverting = SessionMachineContext.useActorRef()
+        .getSnapshot()
+        .matches('reverting')
+
     return (
         <div className="flex flex-col h-full overflow-hidden relative">
             <div className="flex-none overflow-x-auto whitespace-nowrap bg-night border-b border-outlinecolor">
@@ -379,18 +434,26 @@ export default function CodeEditor({
                     className={showEditorBorders ? '' : ''}
                     isExpandedVariant={isExpandedVariant}
                     loading={files.length === 0}
+                    diffEnabled={showInlineDiff}
+                    setDiffEnabled={setShowInlineDiff}
                 />
             </div>
             {files && (
                 <PathDisplay path={path} selectedFileId={selectedFileId} />
             )}
             <div className="flex-grow w-full bg-midnight rounded-b-lg mt-[-2px] overflow-auto">
-                {selectedFileId && (
+                {(selectedFileId || checkpointTracker?.selected) &&
+                !isReverting ? (
                     <BothEditorTypes
                         file={files?.find(f => f.id === selectedFileId)}
+                        projectPath={path}
+                        handleFileSelect={handleFileSelect}
                         handleEditorDidMount={handleEditorDidMount}
+                        handleDiffEditorDidMount={handleDiffEditorDidMount}
+                        showInlineDiff={showInlineDiff}
+                        setShowInlineDiff={setShowInlineDiff}
                     />
-                )}
+                ) : null}
                 {popoverVisible && (
                     <button
                         onClick={handleAddCodeReference}
@@ -412,26 +475,206 @@ export default function CodeEditor({
 
 const BothEditorTypes = ({
     file,
+    projectPath,
+    handleFileSelect,
     handleEditorDidMount,
+    handleDiffEditorDidMount,
+    showInlineDiff,
+    setShowInlineDiff,
 }: {
     file: File | undefined
+    projectPath: string
+    handleFileSelect: (id: string) => void
     handleEditorDidMount: (
         editor: editor.IStandaloneCodeEditor,
         monaco: Monaco
     ) => void
-}) => (
-    <Editor
-        className="h-full"
-        theme="vs-dark"
-        defaultLanguage={'python'}
-        language={file?.language ?? 'python'}
-        defaultValue={''}
-        value={file?.value?.lines ?? file?.value ?? ''}
-        onMount={handleEditorDidMount}
-        path={file?.path}
-        options={{ readOnly: true, fontSize: 10 }}
-    />
-)
+    handleDiffEditorDidMount: (
+        editor: editor.IDiffEditor,
+        monaco: Monaco
+    ) => void
+    showInlineDiff: boolean
+    setShowInlineDiff: (show: boolean) => void
+}) => {
+    const [checkpointTracker, setCheckpointTracker] = useAtom(
+        checkpointTrackerAtom
+    )
+    const [diffContent, setDiffContent] = useState<{
+        before: string
+        after: string
+        file: string
+    } | null>(null)
+    const diffEditorRef = useRef<editor.IDiffEditor | null>(null)
+    const { toast } = useToast()
+    const host = SessionMachineContext.useSelector(state => state.context.host)
+    const name = SessionMachineContext.useSelector(state => state.context.name)
+
+    useEffect(() => {
+        if (diffEditorRef.current) {
+            reloadEditorForSyntaxHighlighting(diffEditorRef)
+        }
+    }, [diffContent, showInlineDiff, file?.id])
+
+    const fetchDiff = async (autoSelectFile: boolean = false) => {
+        try {
+            if (!checkpointTracker) {
+                setDiffContent(null)
+                return
+            }
+            const srcId = checkpointTracker?.initial?.checkpoint_id
+            const destId =
+                checkpointTracker?.selected?.checkpoint_id ??
+                checkpointTracker?.current?.checkpoint_id
+            if (!srcId) {
+                setDiffContent(null)
+                toast({
+                    title: 'Failed to get initial checkpoint id',
+                })
+                return
+            }
+            if (!destId) {
+                setDiffContent(null)
+                toast({
+                    title: 'Failed to get destination checkpoint id',
+                })
+                return
+            }
+
+            const result = await getCheckpointDiff(host, name, srcId, destId)
+            if (!result || result.files.length === 0) {
+                setDiffContent(null)
+                return
+            }
+            let fileInDiff: any = false
+            if (file) {
+                fileInDiff = result.files.find(
+                    f => projectPath + '/' + f.file_path === file.id
+                )
+            }
+            const p = fileInDiff
+                ? fileInDiff.file_path
+                : result.files[result.files.length - 1].file_path
+            // Rn this opens the most recent unless the current file open is already in the diff (prevent switching when clicking through timeline)
+            if (autoSelectFile && !fileInDiff) {
+                const selectedFilePath = projectPath + '/' + p
+                handleFileSelect(selectedFilePath)
+            } else {
+                setShowInlineDiff(true)
+            }
+            const fileDiff = result.files.find(f => f.file_path === p)
+            // Only set the diff if current file is in it... might change later to just fileDiff
+            // Added the fileInDiff condition to prevent flashing
+            if (fileInDiff && fileDiff) {
+                setDiffContent(fileDiff)
+            } else {
+                setDiffContent(null)
+            }
+            return fileInDiff
+        } catch (error) {
+            console.error('Error fetching diff:', error)
+        }
+        return false
+    }
+
+    useEffect(() => {
+        if (Boolean(checkpointTracker?.selected)) {
+            fetchDiff(true)
+        } else if (!Boolean(checkpointTracker?.selected)) {
+            setDiffContent(null)
+        }
+    }, [checkpointTracker?.selected])
+
+    useEffect(() => {
+        if (showInlineDiff) {
+            fetchDiff()
+        }
+    }, [host, name, showInlineDiff])
+
+    useEffect(() => {
+        // If there's a selected checkpoint, check if the current file has a diff associated with it
+        if (checkpointTracker?.selected || showInlineDiff) {
+            fetchDiff().then(r => {
+                setShowInlineDiff(r)
+            })
+        }
+    }, [file?.path, file?.value])
+
+    const customDiffEditorOptions = {
+        readOnly: true,
+        fontSize: 10,
+        renderSideBySide: false, // This makes it an inline diff
+        diffWordWrap: 'on',
+        // Remove line decorations (including +/- signs)
+        renderIndicators: false,
+        // Customize diff colors
+        diffAlgorithm: 'advanced',
+        originalEditable: false,
+        ignoreTrimWhitespace: false,
+        // Disable the overview ruler (scrollbar annotations)
+        overviewRulerLanes: 0,
+    }
+
+    const handleCustomDiffEditorDidMount = (editor, monaco) => {
+        handleDiffEditorDidMount(editor, monaco)
+        diffEditorRef.current = editor
+
+        monaco.editor.defineTheme('custom-diff-theme', {
+            base: 'vs-dark',
+            inherit: true,
+            rules: [],
+            colors: {
+                'diffEditor.insertedTextBackground': '#2d592b',
+                'diffEditor.removedTextBackground': '#FF000030',
+                'diffEditor.insertedLineBackground': '#2d592b',
+                'diffEditor.removedLineBackground': '#FF000030',
+                'diffEditor.diagonalFill': '#00000000',
+            },
+        })
+        monaco.editor.setTheme('custom-diff-theme')
+
+        // Hide line numbers
+        const modifiedEditor = editor.getModifiedEditor()
+        modifiedEditor.updateOptions()
+        const originalEditor = editor.getOriginalEditor()
+        originalEditor.updateOptions({
+            lineNumbers: 'off',
+        })
+    }
+
+    if (showInlineDiff && diffContent) {
+        return (
+            <DiffEditor
+                className="h-full"
+                theme="vs-dark"
+                original={diffContent.before}
+                modified={diffContent.after}
+                language={file?.language ?? 'python'}
+                onMount={handleCustomDiffEditorDidMount}
+                options={customDiffEditorOptions}
+            />
+        )
+    }
+
+    return (
+        <>
+            <Editor
+                className="h-full"
+                theme="vs-dark"
+                defaultLanguage={'python'}
+                language={file?.language ?? 'python'}
+                defaultValue={''}
+                value={
+                    checkpointTracker?.selected && diffContent
+                        ? diffContent.after
+                        : file?.value ?? ''
+                }
+                onMount={handleEditorDidMount}
+                path={file?.path}
+                options={{ readOnly: true, fontSize: 10 }}
+            />
+        </>
+    )
+}
 
 function getPathBeforeLastSlash(str: string) {
     // Remove trailing slash if it exists
@@ -456,7 +699,7 @@ const PathDisplay = ({
             selectedFileId ? 'bg-editor-night -mt-[2px]' : 'pt-[3px]'
         }`}
     >
-        <p className="text-xs text-neutral-500">
+        <p className="text-xs text-neutral-500 text-ellipsis">
             {selectedFileId
                 ? convertPath(
                       selectedFileId.replace(getPathBeforeLastSlash(path), '')
@@ -481,4 +724,35 @@ export function convertPath(path: string) {
     const customPath = filteredParts.join(' > ')
 
     return customPath
+}
+
+function isDiffEditor(editor: any): editor is editor.IDiffEditor {
+    return 'getModifiedEditor' in editor && 'getOriginalEditor' in editor
+}
+
+function reloadEditorForSyntaxHighlighting(
+    editorRef: React.RefObject<
+        editor.IDiffEditor | editor.IStandaloneCodeEditor
+    >
+) {
+    setTimeout(() => {
+        const currentEditor = editorRef.current
+        if (!currentEditor) return
+
+        if (isDiffEditor(currentEditor)) {
+            const modifiedEditor = currentEditor.getModifiedEditor()
+            const originalEditor = currentEditor.getOriginalEditor()
+            // Unfortunately this was the best fix I could figure out to make the editor show the diff
+            // Simulate a small scroll in both editors
+            modifiedEditor.setScrollTop(1)
+            modifiedEditor.setScrollTop(0)
+            originalEditor.setScrollTop(1)
+            originalEditor.setScrollTop(0)
+        } else {
+            // Unfortunately this was the best fix I could figure out to make the editor show the diff
+            // Simulate a small scroll in both editors
+            currentEditor.setScrollTop(1)
+            currentEditor.setScrollTop(0)
+        }
+    }, 50) // Small delay to ensure content is loaded
 }

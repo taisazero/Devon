@@ -2,10 +2,15 @@ import FolderPicker from '@/components/ui/folder-picker'
 import { useState, lazy, useEffect, Suspense } from 'react'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
 
 import { ActorRefFrom, AnyMachineSnapshot } from 'xstate'
 import { newSessionMachine } from '@/lib/services/stateMachineService/stateMachine'
 import { useSafeStorage } from '@/lib/services/safeStorageService'
+import * as VisuallyHidden from '@radix-ui/react-visually-hidden'
+import IndexManagementModal from './index-management-modal'
+import { savedFolderPathAtom } from '@/lib/utils'
+import { useAtomValue } from 'jotai'
 
 const Dialog = lazy(() =>
     import('@/components/ui/dialog').then(module => ({
@@ -22,6 +27,24 @@ const DialogTrigger = lazy(() =>
 const DialogContent = lazy(() =>
     import('@/components/ui/dialog').then(module => ({
         default: module.DialogContent,
+    }))
+)
+
+const DialogHeader = lazy(() =>
+    import('@/components/ui/dialog').then(module => ({
+        default: module.DialogHeader,
+    }))
+)
+
+const DialogTitle = lazy(() =>
+    import('@/components/ui/dialog').then(module => ({
+        default: module.DialogTitle,
+    }))
+)
+
+const DialogDescription = lazy(() =>
+    import('@/components/ui/dialog').then(module => ({
+        default: module.DialogDescription,
     }))
 )
 
@@ -47,11 +70,14 @@ const SelectProjectDirectoryModal = ({
     const [folderPath, setFolderPath] = useState('')
     const [open, setOpen] = useState(false)
     const [page, setPage] = useState(1)
+    const [indexExists, setIndexExists] = useState(false)
+    const [shouldIndex, setShouldIndex] = useState(false)
+    const [isIndexManagementModalOpen, setIsIndexManagementModalOpen] =
+        useState(false)
 
     const { getApiKey } = useSafeStorage()
     const [apiKey, setApiKey] = useState('')
-
-    // const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.Panel)
+    const savedFolderPath = useAtomValue(savedFolderPathAtom)
 
     useEffect(() => {
         getApiKey(model).then(value => {
@@ -60,12 +86,42 @@ const SelectProjectDirectoryModal = ({
             }
         })
     }, [])
+    // }, [open])
+
+    function checkIndexExists(s: string) {
+        return true
+    }
+
+    useEffect(() => {
+        if (savedFolderPath) {
+            setFolderPath(savedFolderPath)
+        }
+    }, [savedFolderPath])
+
+    useEffect(() => {
+        if (folderPath) {
+            // checkIndexExists(folderPath).then(exists => {
+            //     setIndexExists(exists)
+            //     setShouldIndex(exists) // If index exists, default to using it
+            // })
+            let found = false
+            setIndexExists(found)
+            setShouldIndex(found)
+        }
+    }, [folderPath])
+
+    const handleIndexCheckboxChange = (checked: boolean) => {
+        setShouldIndex(checked)
+        if (checked && !indexExists) {
+            setIsIndexManagementModalOpen(true)
+        }
+    }
 
     function validate() {
         return folderPath !== ''
     }
 
-    function afterSubmit() {
+    async function afterSubmit() {
         sessionActorref.send({
             type: 'session.create',
             payload: {
@@ -74,13 +130,16 @@ const SelectProjectDirectoryModal = ({
                     model: model,
                     api_key: apiKey,
                 },
+                indexing: {
+                    shouldIndex: shouldIndex,
+                    indexExists: indexExists,
+                },
             },
         })
         sessionActorref.on('session.creationComplete', () => {
             sessionActorref.send({
                 type: 'session.init',
                 payload: {
-                    // path: folderPath,
                     agentConfig: {
                         model: model,
                         api_key: apiKey,
@@ -89,6 +148,18 @@ const SelectProjectDirectoryModal = ({
             })
         })
         setOpen(false)
+    }
+
+    async function handleContinueChat() {
+        sessionActorref.send({
+            type: 'session.init',
+            payload: {
+                agentConfig: {
+                    model: model,
+                    api_key: apiKey,
+                },
+            },
+        })
     }
 
     function handleOpenChange(open: boolean) {
@@ -116,21 +187,18 @@ const SelectProjectDirectoryModal = ({
                             hideclose ? true.toString() : false.toString()
                         }
                     >
+                        <VisuallyHidden.Root>
+                            <DialogHeader>
+                                <DialogTitle>
+                                    Select Project Directory
+                                </DialogTitle>
+                            </DialogHeader>
+                        </VisuallyHidden.Root>
                         <div className="dark mx-8 my-4">
                             {state.matches('sessionReady') ? (
                                 <>
                                     <ExistingSessionFound
-                                        continueChat={() => {
-                                            sessionActorref.send({
-                                                type: 'session.init',
-                                                payload: {
-                                                    agentConfig: {
-                                                        model: model,
-                                                        api_key: apiKey,
-                                                    },
-                                                },
-                                            })
-                                        }}
+                                        continueChat={handleContinueChat}
                                         newChat={() => {
                                             sessionActorref.send({
                                                 type: 'session.delete',
@@ -173,10 +241,28 @@ const SelectProjectDirectoryModal = ({
                                         folderPath={folderPath}
                                         setFolderPath={setFolderPath}
                                     />
+                                    {/* <div className="flex items-center space-x-2 mt-4">
+                                        <Checkbox
+                                            id="indexCheckbox"
+                                            checked={shouldIndex}
+                                            onCheckedChange={
+                                                handleIndexCheckboxChange
+                                            }
+                                        />
+                                        <label htmlFor="indexCheckbox">
+                                            {indexExists
+                                                ? 'Index found. Use existing index'
+                                                : 'Index this codebase (Recommended for better assistance)'}
+                                        </label>
+                                    </div> */}
+                                    <IndexManagementModal
+                                        isOpen={isIndexManagementModalOpen}
+                                        setOpen={setIsIndexManagementModalOpen}
+                                        folderPath={folderPath}
+                                    />
                                     <StartChatButton
                                         disabled={!validate()}
                                         onClick={afterSubmit}
-                                        folderPath={folderPath}
                                     />
                                 </>
                             ) : (
@@ -233,7 +319,11 @@ const ExistingSessionFound = ({ continueChat, newChat }) => {
     return (
         <div className="dark">
             <div>
-                <p className="text-2xl font-bold">Continue previous chat?</p>
+                <DialogDescription asChild>
+                    <p className="text-2xl font-bold">
+                        Continue previous chat?
+                    </p>
+                </DialogDescription>
                 {/* <p className="text-md mt-2 text-neutral-400">
                         {`Previous task: "`}
                         <span className="italic">Create a snake game</span>

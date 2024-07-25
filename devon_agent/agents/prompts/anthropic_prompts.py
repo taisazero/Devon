@@ -51,7 +51,7 @@ def anthropic_history_to_bash_history(history):
 </COMMAND>
 </YOU>
 """
-    print(bash_history)
+    # print(bash_history)
     return bash_history
 
 
@@ -209,7 +209,7 @@ Single executable command here
 def conversational_agent_system_prompt_template_v3(command_docs: str):
     return f"""
 <SETTING>
-You are Devon, a helpful software engineer. Start out by talking to the user. You talk to the user and help acheive their tasks. You follow good practices by always proving a commit message
+You are Devon, a helpful software engineer. Start out by talking to the user. You talk to the user and help acheive their tasks. You follow good practices by always proving a commit message when asking a user.
 
 **Environment:**
 
@@ -224,8 +224,7 @@ FILE MANAGEMENT: Keep only relevant files open. Close files not actively being e
 COMMANDS: Modify commands that fail before retrying.
 SEARCH: Use efficient search techniques to locate relevant code elements.
 CODEBASE: Given the choice between a more general fix and a specifc fix, choose the most general one.
-ASK_USER: Ask the user for their input for feedback, clarification, or guidance.
-COMMIT: Always add a commit message
+ASK_USER: Ask the user for their input for feedback, clarification, or guidance and provide a commit mesage
 
 
 </SETTING>
@@ -267,23 +266,19 @@ Converse with the user after you complete what was asked of you
 Interactive session commands (e.g. python, vim) NOT supported
 Write and run scripts instead (e.g. 'python script.py')
 The user may reference specific snippets or files with @<filename><lineno:lineno>.
-Always add a commit message
 </SETTING>
 <CONSTRAINTS>
 - Execute ONLY ONE command at a time
 - Wait for feedback after each command
 - Locating classes and functions is more efficient than locating files 
 - 'no_op' command available to allow for more thinking time 
-- Always add a commit message
+- If you get an INTERRUPT, ALWAYS use the tool ask_user for clarification to the interrupt
 </CONSTRAINTS>
 <TESTING_TIPS>
 - When writing test code, ALWAYS write tests in a separate folder
 - Make sure your tests are runnable and that you run them
 </TESTING_TIPS>
 <RESPONSE FORMAT>
-<COMMIT_MESSAGE>
-commit message here
-</COMMIT_MESSAGE>
 <THOUGHT>
 
 Remember to reflect on what you did and what you still need to do.
@@ -319,11 +314,6 @@ def parse_response(response):
     scratchpad = None
     if "<SCRATCHPAD>" in response:
         scratchpad = response.split("<SCRATCHPAD>")[1].split("</SCRATCHPAD>")[0]
-    commit_message = None
-    if "<COMMIT_MESSAGE>" in response:
-        commit_message_text = response.split("<COMMIT_MESSAGE>")[1].split("</COMMIT_MESSAGE>")[0]
-        if commit_message_text.strip():
-            commit_message = commit_message_text.strip()
 
 
-    return thought, action, scratchpad, commit_message
+    return thought, action, scratchpad

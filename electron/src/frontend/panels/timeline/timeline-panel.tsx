@@ -1,287 +1,243 @@
-import { useEffect, useState, useRef, RefObject } from 'react'
+import { useEffect, useState } from 'react'
+import { GitBranch } from 'lucide-react'
+import { useAtom } from 'jotai'
+import { SessionMachineContext } from '@/contexts/session-machine-context'
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip'
+import { Button } from '@/components/ui/button'
+import { Checkpoint, CheckpointTracker } from '@/lib/types'
+import { exampleSteps, StepType, checkpointTrackerAtom } from './lib'
+import Step from './components/step'
+import MergeBranchModal from '@/components/modals/merge-branch-modal'
+import { Icon } from '@iconify/react'
+import { useToast } from '@/components/ui/use-toast'
 
-type SubStepType = {
-    id: number
-    label: string
-    subtitle?: string
-}
+const ANIMATE_DEMO = false
 
-type StepType = {
-    id: number
-    label: string
-    subtitle?: string
-    subSteps: SubStepType[]
-}
-
-const steps: StepType[] = [
-    {
-        id: 1,
-        label: 'Initialize the project',
-        subtitle: 'Setting up the initial project structure',
-        subSteps: [
-            {
-                id: 1.1,
-                label: 'Install dependencies',
-                subtitle: 'Add necessary packages',
-            },
-            {
-                id: 1.2,
-                label: 'Create project files',
-                subtitle: 'Setup basic file structure',
-            },
-            {
-                id: 1.3,
-                label: 'Initialize the project',
-                subtitle: 'Setup the project configuration',
-            },
-        ],
-    },
-    {
-        id: 2,
-        label: 'Create the game loop',
-        subtitle: 'Implement the main game loop',
-        subSteps: [
-            {
-                id: 2.1,
-                label: 'Define game loop logic',
-                subtitle: 'Setup the game loop function',
-            },
-        ],
-    },
-    {
-        id: 3,
-        label: 'Add snake logic',
-        subtitle: 'Implement the snake movement and controls',
-        subSteps: [],
-    },
-    {
-        id: 4,
-        label: 'Implement the game board',
-        subtitle: 'Design and code the game board layout',
-        subSteps: [],
-    },
-    {
-        id: 5,
-        label: 'Add collision detection',
-        subtitle: 'Implement logic to detect collisions',
-        subSteps: [],
-    },
-    {
-        id: 6,
-        label: 'Add food and scoring',
-        subtitle: 'Add food items and scoring mechanism',
-        subSteps: [],
-    },
-    {
-        id: 7,
-        label: 'Finalize the game',
-        subtitle: 'Finish up and test the game',
-        subSteps: [],
-    },
-]
-
-const TimelinePanel: React.FC = () => {
+const TimelinePanel = ({
+    expanded,
+    setExpanded,
+    setShowMinimizedTimeline,
+}: {
+    expanded: boolean
+    setExpanded: (value: boolean) => void
+    setShowMinimizedTimeline: (value: boolean) => void
+}) => {
     const [activeStep, setActiveStep] = useState(0)
     const [subStepFinished, setSubStepFinished] = useState(false)
+    const [selectedRevertStep, setSelectedRevertStep] = useState<number | null>(
+        null
+    )
+    const { toast } = useToast()
+    const [animationKey, setAnimationKey] = useState(0)
+    const [mergeBranchModalOpen, setMergeBranchModalOpen] = useState(false)
+    const sessionActorRef = SessionMachineContext.useActorRef()
+    const checkpoints: Checkpoint[] = SessionMachineContext.useSelector(
+        state => state.context.sessionConfig?.checkpoints,
+        (a, b) =>
+            a?.length === b?.length &&
+            a?.every(
+                (checkpoint: { checkpoint_id: any }, index: string | number) =>
+                    checkpoint?.checkpoint_id === b[index]?.checkpoint_id
+            )
+    )
+
+    const commits: Checkpoint[] =
+        checkpoints
+            ?.filter(checkpoint => checkpoint.commit_hash !== 'no_commit')
+            .map((checkpoint, index) => ({ ...checkpoint, index })) ?? []
+
+    const versioning_type = SessionMachineContext.useSelector(
+        state => state.context.sessionConfig?.versioning_type
+    )
+    const hasCommits =
+        versioning_type === 'git' && commits && commits.length > 0
+    const old_branch = SessionMachineContext.useSelector(
+        state => state.context.sessionConfig?.versioning_metadata?.user_branch
+    )
+
+    const steps: StepType[] = hasCommits
+        ? commits.map((commit, index) => ({
+              ...commit,
+              subSteps: [],
+          }))
+        : exampleSteps
+
+    const [checkpointTracker, setCheckpointTracker] =
+        useAtom<CheckpointTracker | null>(checkpointTrackerAtom)
 
     useEffect(() => {
-        if (activeStep < steps.length) {
-            const timer = setTimeout(() => {
-                if (
-                    subStepFinished ||
-                    steps[activeStep].subSteps.length === 0
-                ) {
-                    setActiveStep(activeStep + 1)
-                    setSubStepFinished(false)
-                }
-            }, 2000)
-            return () => clearTimeout(timer)
+        if (commits.length > 0) {
+            const selected = checkpointTracker?.selected ?? null
+            setCheckpointTracker({
+                initial: commits[0],
+                current: commits[commits.length - 1],
+                selected,
+            })
+            if (!selected) {
+                setSelectedRevertStep(null)
+            }
         }
-    }, [activeStep, subStepFinished])
+    }, [commits?.length, checkpointTracker?.selected])
+
+    useEffect(() => {
+        setShowMinimizedTimeline(hasCommits)
+    }, [hasCommits])
+
+    useEffect(() => {
+        if (ANIMATE_DEMO) {
+            if (activeStep < steps.length - 1) {
+                const timer = setTimeout(() => {
+                    if (
+                        subStepFinished ||
+                        steps[activeStep].subSteps.length === 0
+                    ) {
+                        setActiveStep(activeStep + 1)
+                        setSubStepFinished(false)
+                    }
+                }, 2000)
+                return () => clearTimeout(timer)
+            }
+        } else {
+            // If not animating, set activeStep to the last step immediately
+            setActiveStep(steps.length - 1)
+        }
+    }, [activeStep, subStepFinished, steps.length])
 
     return (
-        <div className="flex flex-col h-full w-full px-5 mt-10">
+        <div className="flex flex-col justify-between h-full">
             <div className="relative">
-                <div className="absolute inset-0 flex flex-col w-full">
-                    {steps.map((step, index) => (
+                <div
+                    className={`flex justify-between ${
+                        expanded || !hasCommits
+                            ? 'h-6 mb-5 gap-1'
+                            : 'h-0 mb-0 overflow-hidden'
+                    } transition-all duration-300 ease-in-out`}
+                >
+                    <h2 className={`text-lg font-semibold overflow-hidden`}>
+                        Devon's Timeline
+                    </h2>
+                    {versioning_type === 'git' && expanded && (
+                        <TooltipProvider delayDuration={100}>
+                            <div className="flex flex-col align-end gap-[5px] mt-[1px] animate-fade-in">
+                                <Tooltip>
+                                    <TooltipTrigger
+                                        className="self-end"
+                                        onClick={() =>
+                                            toast({
+                                                title: 'This is the branch that Devon branched off of',
+                                            })
+                                        }
+                                    >
+                                        <div className="flex items-center">
+                                            <code className="flex gap-2 bg-black px-[6px] py-[3px] rounded-md text-neutral-500 text-[0.8rem] whitespace-nowrap overflow-hidden">
+                                                <Icon
+                                                    icon="bx:git-branch"
+                                                    className="h-[16px] w-[16px]"
+                                                />
+                                                {isString(old_branch)
+                                                    ? old_branch
+                                                    : '(name not found)'}
+                                            </code>
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right" align="end">
+                                        <p>Source branch</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                    <TooltipTrigger
+                                        className="self-end"
+                                        onClick={() =>
+                                            toast({
+                                                title: 'Devon pushes commits to this branch while working',
+                                            })
+                                        }
+                                    >
+                                        <div className="flex items-center">
+                                            <code className="flex gap-2 bg-black px-[6px] py-[3px] rounded-md text-primary text-opacity-100 text-[0.8rem]">
+                                                <Icon
+                                                    icon="bx:git-branch"
+                                                    className="h-[16px] w-[16px]"
+                                                />
+                                                devon_agent
+                                            </code>
+                                        </div>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right" align="end">
+                                        <p>Current branch</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </div>
+                        </TooltipProvider>
+                    )}
+                </div>
+                {hasCommits ? (
+                    steps.map((step, index) => (
                         <Step
-                            key={step.id}
+                            key={step.checkpoint_id}
                             step={step}
                             index={index}
                             activeStep={activeStep}
                             setSubStepFinished={setSubStepFinished}
+                            stepsLength={steps.length}
+                            animateDemo={ANIMATE_DEMO}
+                            hasCommits={hasCommits}
+                            expanded={expanded}
+                            setExpanded={setExpanded}
+                            selectedRevertStep={selectedRevertStep}
+                            setSelectedRevertStep={setSelectedRevertStep}
+                            sessionActorRef={sessionActorRef}
+                            animationKey={animationKey}
+                            setAnimationKey={setAnimationKey}
                         />
-                    ))}
-                </div>
-            </div>
-        </div>
-    )
-}
-
-const Step: React.FC<{
-    step: StepType
-    index: number
-    activeStep: number
-    setSubStepFinished: (value: boolean) => void
-}> = ({ step, index, activeStep, setSubStepFinished }) => {
-    const [subStepActiveIndex, setSubStepActiveIndex] = useState(-1)
-    const [connectorHeight, setConnectorHeight] = useState(0)
-    const contentRef: RefObject<HTMLDivElement> = useRef(null)
-    const pathRef: RefObject<SVGPathElement> = useRef(null)
-    const PADDING_OFFSET = 10
-    const CURVE_SVG_WIDTH = 40 + PADDING_OFFSET
-    const CURVE_SVG_HEIGHT_OFFSET = 50 // Dynamic height not really working yet... this is needed if there's no subtitle
-    const CURVE_SVG_ANIMATION_DURATION = 1000
-
-    const SUBITEM_LEFT_MARGIN = 50 // Only change this if you change the padding of each substep item
-
-    useEffect(() => {
-        if (contentRef.current) {
-            const totalHeight =
-                contentRef.current.clientHeight + CURVE_SVG_HEIGHT_OFFSET
-            setConnectorHeight(totalHeight)
-        }
-    }, [contentRef])
-
-    useEffect(() => {
-        if (activeStep === index && step.subSteps.length > 0) {
-            const interval = setInterval(() => {
-                setSubStepActiveIndex(prevIndex => {
-                    if (prevIndex < step.subSteps.length - 1) {
-                        return prevIndex + 1
-                    }
-                    clearInterval(interval)
-                    /**
-                     * This setTimeout ensures setSubStepFinished is called after the state update
-                        Or else you get the error:
-                        Cannot update a component (`TimelinePanel`) while rendering a different component (`Step`). To locate the bad setState() call inside `Step`,
-                     */
-                    setTimeout(() => {
-                        setSubStepFinished(true)
-                    }, 0)
-                    return prevIndex
-                })
-            }, 1000)
-            return () => clearInterval(interval)
-        } else if (activeStep === index) {
-            setSubStepFinished(true)
-        }
-    }, [activeStep, index, setSubStepFinished, step.subSteps.length])
-
-    useEffect(() => {
-        if (pathRef.current) {
-            const pathLength = pathRef.current.getTotalLength()
-            pathRef.current.style.strokeDasharray = `${pathLength}`
-            pathRef.current.style.strokeDashoffset = `${pathLength}`
-            pathRef.current.getBoundingClientRect()
-            pathRef.current.style.transition = `stroke-dashoffset ${CURVE_SVG_ANIMATION_DURATION}ms ease-in-out`
-            pathRef.current.style.strokeDashoffset = '0'
-        }
-    }, [connectorHeight, subStepActiveIndex])
-
-    const connectorPath = `
-        M 12 0
-        Q 12 ${connectorHeight / 2} ${CURVE_SVG_WIDTH} ${connectorHeight / 2}
-    `
-
-    return (
-        <div className="flex flex-row">
-            <div className="relative flex-start">
-                <div
-                    className={`z-10 flex items-center justify-center w-6 h-6 bg-white rounded-full ${activeStep >= index ? 'opacity-100' : 'opacity-0'} transition-opacity duration-1000`}
-                >
-                    {index === 0 && (
-                        <div className="w-3 h-3 bg-primary rounded-full"></div>
-                    )}
-                    {index !== 0 && (
-                        <div className="w-2 h-2 bg-white rounded-full"></div>
-                    )}
-                </div>
-                {index < steps.length - 1 && (
-                    <div
-                        className={`absolute w-px ${activeStep > index ? 'h-full' : 'h-0'} bg-white top-6 left-1/2 transform -translate-x-1/2 transition-all duration-1000`}
-                    ></div>
-                )}
-                {step.subSteps.length > 0 && subStepActiveIndex >= 0 && (
-                    <svg
-                        width={CURVE_SVG_WIDTH}
-                        height={connectorHeight}
-                        className="absolute"
-                    >
-                        <path
-                            ref={pathRef}
-                            d={connectorPath}
-                            className="stroke-white"
-                            fill="transparent"
-                            strokeWidth="1.5"
-                        />
-                    </svg>
-                )}
-            </div>
-            <div
-                className={`flex items-center ml-5 mb-3 ${activeStep >= index ? 'opacity-100' : 'opacity-0'} transition-opacity duration-1000 delay-800`}
-            >
-                <div className="flex flex-col">
-                    <div ref={contentRef} className="flex flex-col">
-                        <span className="text-white">{step.label}</span>
-                        <span className="mt-1 text-gray-400">
-                            {step.subtitle}
-                        </span>
+                    ))
+                ) : (
+                    <div className="flex">
+                        <p className="whitespace-nowrap text-center text-md text-gray-400">
+                            {versioning_type === 'git'
+                                ? `Devon hasn't made any commits yet`
+                                : 'Git is disabled for this project'}
+                        </p>
                     </div>
-                    {activeStep >= index && step.subSteps.length > 0 && (
-                        <div
-                            style={{
-                                marginLeft: `calc(${CURVE_SVG_WIDTH}px - ${SUBITEM_LEFT_MARGIN}px)`,
-                            }}
-                            className="mt-3"
-                        >
-                            {step.subSteps.map((subStep, subIndex) => (
-                                <SubStep
-                                    key={subStep.id}
-                                    subStep={subStep}
-                                    showLine={
-                                        subIndex < step.subSteps.length - 1
-                                    }
-                                    active={subStepActiveIndex >= subIndex}
-                                />
-                            ))}
-                        </div>
-                    )}
-                </div>
+                )}
             </div>
-        </div>
-    )
-}
+            {expanded && hasCommits && (
+                <div className="flex flex-col gap-4 items-center pb-2 border-t border-outlinecolor">
+                    <p className="mt-4 flex whitespace-nowrap">
+                        Sync changes with{' '}
+                        <code className="bg-black px-[6px] py-[1px] rounded-md text-primary text-opacity-100 text-[0.9rem] mx-[4px]">
+                            {isString(old_branch)
+                                ? old_branch
+                                : '(name not found)'}
+                        </code>{' '}
+                        branch?
+                    </p>
 
-const SubStep: React.FC<{
-    subStep: SubStepType
-    showLine: boolean
-    active: boolean
-}> = ({ subStep, showLine, active }) => {
-    return (
-        <div className="relative flex flex-col pb-3">
-            <div className="flex">
-                <div
-                    className={`z-10 flex items-center justify-center w-4 h-4 bg-gray-400 rounded-full translate-y-1 ${active ? 'opacity-100' : 'opacity-0'} transition-opacity duration-1000`}
-                >
-                    <div className="w-2 h-2 bg-white rounded-full"></div>
+                    <MergeBranchModal
+                        branchName={isString(old_branch) ? old_branch : ''}
+                        trigger={
+                            <Button
+                                className="w-fit"
+                                onClick={() => setMergeBranchModalOpen(true)}
+                                disabled={selectedRevertStep !== null}
+                            >
+                                Merge branch
+                            </Button>
+                        }
+                    />
                 </div>
-                <div
-                    className={`ml-3 ${active ? 'opacity-100' : 'opacity-0'} transition-opacity duration-1000 delay-800`}
-                >
-                    <span className="text-white">{subStep.label}</span>
-                    <span className="block mt-1 text-gray-400">
-                        {subStep.subtitle}
-                    </span>
-                </div>
-            </div>
-            {showLine && (
-                <div
-                    className={`absolute w-px ${active ? 'h-full' : 'h-0'} bg-gray-400 left-2 transform translate-y-3 -translate-x-1/2 transition-all duration-1000 delay-800`}
-                ></div>
             )}
         </div>
     )
+}
+
+function isString(value: unknown) {
+    return typeof value === 'string' || value instanceof String
 }
 
 export default TimelinePanel

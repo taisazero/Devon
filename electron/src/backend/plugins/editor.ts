@@ -59,8 +59,13 @@ class EditorFileManager {
     }
 
     async addOpenFile(filename: string) {
-        const content = await fsPromise.readFile(filename, 'utf8')
-        this.openFiles.set(filename, { path: filename, content })
+        try {
+            const content = await fsPromise.readFile(filename, 'utf8')
+            this.openFiles.set(filename, { path: filename, content })
+        }
+        catch (err) {
+            // console.error(`Error reading file ${filename}:`, err)
+        }
     }
 
     handleEvent(changedFiles: FileEvent[]) {
@@ -217,7 +222,14 @@ ipcMain.handle('watch-dir', async (event, dirPath) => {
                 }
                 timeoutId = setTimeout(() => {
                     state = editorFileManager.handleEvent(updatedEvents)
-                    event.sender.send('editor-file-changed', state)
+                    try {
+                        if (event && event.sender && event.sender.send) {
+                            event.sender.send('editor-file-changed', state)
+                        }
+                    }
+                    catch (err) {
+                        console.error('Error sending editor-file-changed:', err)
+                    }
                 }, 500) // Adjust debounce timing as needed
             }
         )

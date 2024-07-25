@@ -122,7 +122,7 @@ def write_file(ctx, file_path: str, content: str = "") -> str:
         if not exists:
             raise Exception(f"Could not write to file, file does not exist: {abs_path}")
 
-        if abs_path not in ctx["state"].editor.files:
+        if abs_path not in ctx["state"]["editor"]["files"]:
             raise Exception(
                 f"Could not write to file, file not open in editor: {abs_path}"
             )
@@ -133,7 +133,7 @@ def write_file(ctx, file_path: str, content: str = "") -> str:
         if result[1] == 1:
             raise Exception(result)
 
-        ctx["state"].editor.files[abs_path]["lines"] = content
+        ctx["state"]["editor"]["files"][abs_path]["lines"] = content
         msg = f"Successfully wrote to file {abs_path}"
         ctx["config"].logger.info(msg)
 

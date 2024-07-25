@@ -62,7 +62,7 @@ function App() {
                     <div className="relative w-full overflow-hidden bg-day transition-colors duration-200 dark:bg-night flex">
                         <BackendUrlProvider>
                             <AppHeader />
-                            <main className="mt-[54px] flex flex-row w-full">
+                            <main className="mt-[36px] flex flex-row w-full">
                                 <Page />
                             </main>
                         </BackendUrlProvider>

@@ -1,3 +1,4 @@
+import time
 from typing import TYPE_CHECKING, Callable
 
 from devon_agent.environment import EnvironmentModule
@@ -28,6 +29,8 @@ class UserEnvironment(EnvironmentModule):
                 "consumer": self.name,
             }
         )
+        print("added user request",self.event_log[-1],len(self.event_log))
+
         response = self.user_func()
         self.event_log.append(
             {

@@ -15,6 +15,9 @@ import { useBackendUrl } from '@/contexts/backend-url-context'
 import { useAtom } from 'jotai'
 import { selectedCodeSnippetAtom } from '@/panels/editor/components/code-editor'
 import CodeSnippet, { ICodeSnippet, codeSnippetsAtom } from '../ui/code-snippet'
+import { checkpointTrackerAtom } from '@/panels/timeline/lib'
+import { CheckpointTracker } from '@/lib/types'
+import { Button } from '@/components/ui/button'
 
 const ChatInputField = ({
     isAtBottom,
@@ -22,14 +25,12 @@ const ChatInputField = ({
     viewOnly,
     eventContext,
     loading,
-    sessionId,
 }: {
     isAtBottom: boolean
     scrollToBottom: () => void
     viewOnly: boolean
     eventContext: any
     loading: boolean
-    sessionId: string
 }) => {
     const [focused, setFocused] = useState(false)
     const { formRef, onKeyDown } = useEnterSubmit()
@@ -38,18 +39,46 @@ const ChatInputField = ({
     const [selectedCodeSnippet, setSelectedCodeSnippet] =
         useAtom<ICodeSnippet | null>(selectedCodeSnippetAtom)
     const [codeSnippets, setCodeSnippets] = useAtom(codeSnippetsAtom)
+    const [checkpointTracker, setCheckpointTracker] =
+        useAtom<CheckpointTracker | null>(checkpointTrackerAtom)
     const [removedSnippets, setRemovedSnippets] = useState<Set<string>>(
         new Set()
     )
+    const timeTraveling = Boolean(checkpointTracker?.selected)
+    const disableInput = loading || timeTraveling
     const prevProjectPath = useRef<string>('')
 
-    const [openProjectModal, setOpenProjectModal] = useState(false)
-    const { backendUrl } = useBackendUrl()
+    // const [openProjectModal, setOpenProjectModal] = useState(false)
+    // const { backendUrl } = useBackendUrl()
 
     const sessionActorRef = SessionMachineContext.useActorRef()
     const projectPath = SessionMachineContext.useSelector(
-        state => state?.context?.sessionState?.path
+        state => state?.context?.sessionConfig?.path
     )
+    const status = SessionMachineContext.useSelector(
+        state => state?.context?.serverEventContext?.status
+    )
+
+    useEffect(() => {
+        // For autofilling the input field after finished loading (after a revert)
+        if (checkpointTracker?.consumeCommitMessage) {
+            setInput(checkpointTracker.consumeCommitMessage)
+            setCheckpointTracker({
+                ...checkpointTracker,
+                consumeCommitMessage: undefined,
+            })
+        }
+    }, [checkpointTracker?.consumeCommitMessage, loading])
+
+    function clearSelectedCheckpoint() {
+        if (checkpointTracker?.selected) {
+            setCheckpointTracker({
+                ...checkpointTracker,
+                selected: null,
+            })
+            scrollToBottom()
+        }
+    }
 
     useEffect(() => {
         if (!prevProjectPath.current) {
@@ -57,7 +86,9 @@ const ChatInputField = ({
         } else if (prevProjectPath.current !== projectPath) {
             // Clear Jotai snippets
             setCodeSnippets([])
+            setSelectedCodeSnippet(null)
             setInput('')
+            setCheckpointTracker(null)
             prevProjectPath.current = projectPath
         }
     }, [projectPath, setCodeSnippets])
@@ -140,15 +171,19 @@ const ChatInputField = ({
                 eventContext.modelLoading ||
                 eventContext.userRequest ||
                 sessionActorRef.getSnapshot().matches('paused') ||
-                sessionActorRef.getSnapshot().matches('running')) && (
+                sessionActorRef.getSnapshot().matches('running') ||
+                sessionActorRef.getSnapshot().matches('reverting')) && (
                 <InformationBox
                     modelLoading={eventContext.modelLoading}
                     userRequested={eventContext.userRequest}
                     loading={loading}
                     paused={sessionActorRef.getSnapshot().matches('paused')}
                     pauseHandler={handlePause}
+                    backInTime={Boolean(checkpointTracker?.selected)}
+                    status={status}
                 />
             )}
+
             <CodeSnippet
                 snippets={codeSnippets}
                 onClose={handleRemoveSnippet}
@@ -188,9 +223,9 @@ const ChatInputField = ({
                                 onFocus={handleFocus}
                                 onBlur={() => setFocused(false)}
                                 onKeyDown={onKeyDown}
-                                value={input}
+                                value={timeTraveling || loading ? '' : input}
                                 onChange={e => setInput(e.target.value)}
-                                disabled={loading}
+                                disabled={disableInput}
                                 codeSnippets={codeSnippets}
                             />
                             {/* <button
@@ -202,8 +237,13 @@ const ChatInputField = ({
                                 />
                             </button> */}
                             <button
-                                className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 xl:right-4"
+                                className={`absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 xl:right-4 ${
+                                    disableInput
+                                        ? 'cursor-not-allowed opacity-30'
+                                        : ''
+                                }`}
                                 type="submit"
+                                disabled={disableInput}
                             >
                                 <ArrowRight
                                     className={`h-4 w-4 ${
@@ -211,6 +251,15 @@ const ChatInputField = ({
                                     }`}
                                 />
                             </button>
+                            {timeTraveling && (
+                                <Button
+                                    onClick={clearSelectedCheckpoint}
+                                    variant="outline"
+                                    className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 px-6 py-3 h-auto rounded-lg bg-midnight bg-opacity-60 tracking-[0.03em]"
+                                >
+                                    Jump back to present
+                                </Button>
+                            )}
                         </div>
                     </form>
                     {/* <SelectProjectDirectoryModal
@@ -230,12 +279,16 @@ const InformationBox = ({
     loading,
     paused,
     pauseHandler,
+    backInTime,
+    status,
 }: {
     modelLoading: boolean
     userRequested: boolean
     loading: boolean
     paused: boolean
     pauseHandler: () => void
+    backInTime: boolean
+    status: string | null
 }) => {
     const types: {
         [key: string]: {
@@ -254,7 +307,7 @@ const InformationBox = ({
             accessory: <></>,
         },
         loading: {
-            text: 'Devon is gathering himself...',
+            text: 'Devon is cleaning up his desk...',
             accessory: <></>,
         },
         paused: {
@@ -263,20 +316,39 @@ const InformationBox = ({
                 <PauseButton paused={paused} pauseHandler={pauseHandler} />
             ),
         },
+        backInTime: {
+            text: 'Devon is time traveling with you...',
+            accessory: <></>,
+        },
+        executing: {
+            text: 'Devon is using a tool...',
+            accessory: (
+                <PauseButton paused={paused} pauseHandler={pauseHandler} />
+            ),
+        },
+        error: {
+            // text: 'Something went wrong',
+            // text: 'Something unexpected occurred',
+            text: 'Devon is cleaning up his desk...',
+            accessory: <></>,
+        },
     }
 
     let currentType
     if (loading) {
         currentType = types.loading
+    } else if (backInTime) {
+        currentType = types.backInTime
     } else if (paused) {
-        // console.log("type is paused")
         currentType = types.paused
     } else if (modelLoading) {
         currentType = types.modelLoading
     } else if (userRequested) {
         currentType = types.userRequested
+    } else if (status === 'executing') {
+        currentType = types.executing
     } else {
-        currentType = types.loading
+        currentType = types.error
     }
 
     // console.log(currentType)

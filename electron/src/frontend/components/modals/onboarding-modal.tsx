@@ -13,8 +13,8 @@ import {
 } from '@/components/ui/popover'
 import { useSafeStorage } from '@/lib/services/safeStorageService'
 import SafeStoragePopoverContent from '@/components/modals/safe-storage-popover-content'
-import Combobox, { ComboboxItem } from '@/components/ui/combobox'
-import { models } from '@/lib/config'
+import Combobox from '@/components/ui/combobox'
+import { useModels } from '@/lib/models'
 
 const Dialog = lazy(() =>
     import('@/components/ui/dialog').then(module => ({
@@ -27,16 +27,16 @@ const DialogContent = lazy(() =>
     }))
 )
 
-type ExtendedComboboxItem = ComboboxItem & { company: string, apiKeyUrl?: string }
-
-const comboboxItems: ExtendedComboboxItem[] = models
-    .filter(model => !model.comingSoon)
-    .map(model => ({
-        value: model.id,
-        label: model.name,
-        company: model.company,
-        apiKeyUrl: model.apiKeyUrl,
+const DialogHeader = lazy(() =>
+    import('@/components/ui/dialog').then(module => ({
+        default: module.DialogHeader,
     }))
+)
+const DialogTitle = lazy(() =>
+    import('@/components/ui/dialog').then(module => ({
+        default: module.DialogTitle,
+    }))
+)
 
 const OnboardingModal = ({
     setModelName,
@@ -53,13 +53,15 @@ const OnboardingModal = ({
 }) => {
     const [folderPath, setFolderPath] = useState('')
     const [apiKey, setApiKey] = useState('')
-    const [selectedModel, setSelectedModel] = useState(comboboxItems[0])
+
     const { addApiKey, getApiKey, setUseModelName } = useSafeStorage()
     const [isKeySaved, setIsKeySaved] = useState(false)
     const [hasClickedQuestion, setHasClickedQuestion] = useState(false)
+    const { comboboxItems, selectedModel, setSelectedModel } = useModels()
 
     useEffect(() => {
         const fetchApiKey = async () => {
+            if (!selectedModel) return
             const res = await getApiKey(selectedModel.value)
             // If it's already entered, don't let user edit
             if (res) {
@@ -80,6 +82,7 @@ const OnboardingModal = ({
     }
 
     function afterSubmit() {
+        if (!selectedModel) return
         const handleSaveApiKey = async () => {
             await addApiKey(selectedModel.value, apiKey, false)
             setIsKeySaved(true)
@@ -104,9 +107,11 @@ const OnboardingModal = ({
                     className="w-[500px]"
                 >
                     <div className="flex flex-col items-center justify-center my-8 mx-8">
-                        <h1 className="text-3xl font-bold">
-                            Welcome to Devon!
-                        </h1>
+                        <DialogHeader>
+                            <DialogTitle className="text-3xl font-bold">
+                                Welcome to Devon!
+                            </DialogTitle>
+                        </DialogHeader>
                         <DisabledWrapper
                             disabled={false}
                             className="mt-10 w-full"
@@ -123,14 +128,18 @@ const OnboardingModal = ({
                                         <p className="text-lg font-semibold">
                                             {`Choose your model:`}
                                         </p>
-                                        <Combobox
-                                            items={comboboxItems}
-                                            itemType="model"
-                                            selectedItem={selectedModel}
-                                            setSelectedItem={setSelectedModel}
-                                        />
+                                        {selectedModel && setSelectedModel && (
+                                            <Combobox
+                                                items={comboboxItems}
+                                                itemType="model"
+                                                selectedItem={selectedModel}
+                                                setSelectedItem={
+                                                    setSelectedModel
+                                                }
+                                            />
+                                        )}
                                     </div>
-                                    {selectedModel.value !==
+                                    {selectedModel?.value !==
                                         'claude-3-5-sonnet' && (
                                         <span className="text-sm text-green-500 mt-2 flex gap-1 items-center">
                                             <Info className="w-4 h-4" />
@@ -142,11 +151,15 @@ const OnboardingModal = ({
 
                                 <div className="flex gap-1 items-center mb-4">
                                     <p className="text-lg font-bold">
-                                        {`${selectedModel.company} API Key`}
+                                        {`${selectedModel?.company} API Key`}
                                     </p>
                                     <Popover>
-                                        <PopoverTrigger className="ml-[2px]"
-                                        onClick={() => setHasClickedQuestion(true)}>
+                                        <PopoverTrigger
+                                            className="ml-[2px]"
+                                            onClick={() =>
+                                                setHasClickedQuestion(true)
+                                            }
+                                        >
                                             <CircleHelp size={14} />
                                         </PopoverTrigger>
                                         {isKeySaved ? (
@@ -173,7 +186,11 @@ const OnboardingModal = ({
                                 <Input
                                     className="w-full"
                                     type="password"
-                                    value={apiKey}
+                                    value={
+                                        isKeySaved
+                                            ? '******************************'
+                                            : apiKey
+                                    }
                                     onChange={handleApiKeyInputChange}
                                     disabled={isKeySaved}
                                 />
