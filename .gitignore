@@ -201,3 +201,7 @@ TODO
 .test
 
 requirements
+*.lock
+poetry.lock
+package-lock.json
+# electron/*.lock
